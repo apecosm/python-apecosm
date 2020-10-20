@@ -35,7 +35,7 @@ setup(
                       'netCDF4>=1.1', 
                       'matplotlib>=1.4',
                       'basemap>=1.0',
-                      'pyshp'
+                      'pandas'
                      ],
 
     long_description = long_description,
