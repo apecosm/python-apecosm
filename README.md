@@ -8,7 +8,7 @@
     <img src="https://avatars3.githubusercontent.com/u/71690308?s=400&u=fec22b3993d64d6f6def5228bdf0da8a8e2b0286&v=4" width=100>
 </div>
 
-# Ichthyop
+# Apecosm
 
 Apecosm is a model that aims to represent the spatialized dynamics of open ocean pelagic ecosystems in the global ocean. 
 
