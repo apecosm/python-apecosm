@@ -1,4 +1,5 @@
 ![License](https://img.shields.io/github/license/apecosm/apecosm-python)
+[![DOI](https://zenodo.org/badge/297683758.svg)](https://zenodo.org/badge/latestdoi/297683758)
 [![PyPI](https://img.shields.io/pypi/v/apecosm)](https://pypi.org/project/apecosm/)
 [![Latest Release](https://img.shields.io/github/release/apecosm/apecosm-python)](https://github.com/apecosm/apecosm-python/issues)
 [![GitHub Issues](https://img.shields.io/github/issues/apecosm/apecosm-python)](https://github.com/apecosm/apecosm-python/issues)
