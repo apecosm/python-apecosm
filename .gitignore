@@ -1,2 +1,5 @@
 # git ignore for Python
 __pycache__
+build
+dist
+*egg-info*

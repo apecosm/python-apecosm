@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-setup for packaging Apecosm "
+Setup for packaging Apecosm package"
 """
 
 __docformat__ = "restructuredtext en"
@@ -11,54 +11,50 @@ import os
 from setuptools import setup, find_packages
 
 VERSION_FILE = 'VERSION'
-version = open(VERSION_FILE).read().strip()
+with open(VERSION_FILE) as fv:
+    version = fv.read().strip()
+
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 setup(
-    name="Apecosm",
+    name="apecosm",
     version=version,
-    author="APECOSM team",
+    author="Apecosm team",
     author_email="nicolas.barrier@ird.fr",
     maintainer='Nicolas Barrier',
     maintainer_email='nicolas.barrier@ird.fr',
-    description="Python package for manipulating Apecosm model input and outputs",
-    license="CeCILL", 
-    keywords="ocean grid model transport",
+    description="Python package for the analysis of Apecosm outputs",
+    long_description_content_type="text/markdown",
+    keywords="ocean; grid model; ocean ecosystem; biology; deb",
     include_package_data=True,
-    url="http://www.apecosm.org/",
+    url="https://github.com/apecosm/apecosm-python",
     packages=find_packages(),
-    install_requires=['docutils>=0.12',
-                      'sphinx>=1.3.1',
-                      'pylint>=1.4.2',
-                      'pyenchant>=1.6.6',
-                      'xarray>=0.9.6',
-                      'pep8>=1.6.2',
-                      'pyflakes>=0.9.2',
-                      'check-manifest>=0.25',
+    install_requires=['xarray>=0.1',
                       'numpy>=1.9',
                       'netCDF4>=1.1', 
+                      'matplotlib>=1.4',
+                      'basemap>=1.0',
+                      'pyshp'
                      ],
-    requires=['numpy(>=1.9.2)',
-              'netcdf4(>1.1.9)',
-             ],
-    long_description=open('README.txt').read(),
+
+    long_description = long_description,
 
     classifiers = [
         #"Development Status :: 5 - Production/Stable",
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering :: Mathematics",
-        "Topic :: Scientific/Engineering :: Physics",
         "Topic :: Scientific/Engineering :: Visualization",
-        "Topic :: Scientific/Engineering :: Physics",
-        "License :: Free To Use But Restricted",  # .. todo::
+        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: Unix",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3",
     ],
 
     # ++ test_suite =
     # ++ download_url
     platforms=['linux', 'mac osx'],
-    scripts = []
 )
