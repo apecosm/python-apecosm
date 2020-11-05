@@ -28,7 +28,7 @@ setup(
     long_description_content_type="text/markdown",
     keywords="ocean; grid model; ocean ecosystem; biology; deb",
     include_package_data=True,
-    url="https://github.com/apecosm/apecosm-python",
+    url="https://github.com/apecosm/python-apecosm",
     packages=find_packages(),
     install_requires=['xarray>=0.1',
                       'numpy>=1.9',
