@@ -4,11 +4,8 @@ related to domains
 '''
 
 import numpy as np
-try:
-    from mpl_toolkits.basemap import Basemap
-    import pylab as plt
-except ImportError:
-    pass
+import cartopy.crs as ccrs 
+import matplotlib.pyplot as plt
     
 
 # Defintions of some domains (list to be completed)
@@ -106,17 +103,21 @@ def plot_domains(filename='apecosm_domains.pdf', ncol=2, leg_font_size=8):
 
     cmap = getattr(plt.cm, plt.rcParams['image.cmap'])
     plt.figure()
-    m = Basemap()
+    projection = ccrs.PlateCarree()
+    ax = plt.axes(projection=projection)
     cpt = 0.0
     for k, v in DOMAINS.items():
         col = cmap(cpt / len(DOMAINS.items()))
-        m.plot(v['lon'], v['lat'], label=k, linewidth=1, color=col)
+        plt.plot(v['lon'], v['lat'], label=k, linewidth=1, color=col, transform=projection)
         cpt += 1.0
 
-    m.drawcoastlines(linewidth=0.5)
+    ax.coastlines(linewidth=0.5)
     plt.legend(fontsize=leg_font_size, ncol=ncol)
     plt.savefig(filename, bbox_inches='tight')
 
+if __name__ == '__main__':
+
+    plot_domains()
 
 
 
