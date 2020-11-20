@@ -18,12 +18,13 @@ def report(outputdir, meshfile, fmt='html'):
     if(fmt == 'html'):
         print('export html')
         c.HTMLExporter.preprocessors = ["nbconvert.preprocessors.TagRemovePreprocessor"]
-        HTMLExporter(config=c).from_filename("report.ipynb")
+        x = HTMLExporter(config=c).from_filename("report.ipynb")
+        print(dir(x))
+        print(x)
     else:
         print('export pdf')
         c.PDFExporter.preprocessors = ["nbconvert.preprocessors.TagRemovePreprocessor"]
         x = PDFExporter(config=c).from_filename("report.ipynb")
-        print(dir(x))
     
     #commandlist = ['jupyter', 'nbconvert', '--to', fmt, 'report.ipynb']
     #print(commandlist)
