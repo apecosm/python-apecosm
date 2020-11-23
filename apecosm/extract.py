@@ -108,10 +108,12 @@ def extract_apecosm_constants(input_dir):
     
     if(len(fileconst) == 0): 
         message = 'No ConstantFields file found in directory.'
+        print(message)
         sys.exit(1)
        
     if(len(fileconst) > 1): 
         message = 'More than  one ConstantFields file found in directory.'
+        print(message)
         sys.exit(1)    
 
     constants = xr.open_dataset(fileconst[0])
