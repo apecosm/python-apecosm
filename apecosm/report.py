@@ -13,6 +13,7 @@ import cartopy.crs as ccrs
 import papermill as pm
 import pkg_resources
 import os
+import cartopy.feature as cfeature
 
 def report(input_dir, meshfile, output):
         
@@ -67,7 +68,7 @@ def plot_report_ts(input_dir, input_mesh):
     try:
         date = [d.strftime("%Y-%m") for d in time]
         date = np.array(date)
-        rotation = 90
+        rotation = 45
     except:
         date = time
         rotation = 0
@@ -76,6 +77,9 @@ def plot_report_ts(input_dir, input_mesh):
     stride = ntime // 20
     stride = max(1, stride)
     labelindex = np.arange(0, ntime, stride)
+
+    # move time back into time
+    time = np.arange(ntime)
 
 
     print('Mean total biomass, all communities: %e J' %(np.mean(np.sum(oope, axis=(1, 2)), axis=0)))
@@ -105,7 +109,7 @@ def plot_report_ts(input_dir, input_mesh):
         plt.close(fig)
     
 
-def plot_report_map(input_dir, input_mesh):
+def plot_report_map(input_dir, input_mesh, draw_features=True):
     
     constants = extract_apecosm_constants(input_dir)
     wstep = constants['weight_step'].values
@@ -125,6 +129,9 @@ def plot_report_map(input_dir, input_mesh):
     
     fig = plt.figure()
     ax = plt.axes(projection=projection)
+    if(draw_features):
+        ax.add_feature(cfeature.LAND, zorder=1000)
+        ax.add_feature(cfeature.COASTLINE)
     temp = np.sum(oope, axis=-1)
     temp = np.log10(temp, where=(temp > 0))
     cmin, cmax = find_percentile(temp)
@@ -138,6 +145,9 @@ def plot_report_map(input_dir, input_mesh):
     for i in range(oope.shape[-1]):
         fig = plt.figure()
         ax = plt.axes(projection=projection)
+        if(draw_features):
+            ax.add_feature(cfeature.LAND, zorder=1000)
+            ax.add_feature(cfeature.COASTLINE)
         temp = oope[:, :, i]
         temp = np.log10(temp, where=(temp > 0))
         cmin, cmax = find_percentile(temp)
