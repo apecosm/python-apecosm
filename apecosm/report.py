@@ -64,6 +64,20 @@ def plot_report_ts(input_dir, input_mesh):
     weight = data['weight'].values
     oope = data['OOPE'].values
     
+    try:
+        date = [d.strftime("%Y-%m") for d in time]
+        date = np.array(date)
+        rotation = 90
+    except:
+        date = time
+        rotation = 0
+
+    ntime = len(time)
+    stride = ntime // 20
+    stride = max(1, stride)
+    labelindex = np.arange(0, ntime, stride)
+
+
     print('Mean total biomass, all communities: %e J' %(np.mean(np.sum(oope, axis=(1, 2)), axis=0)))
     for i in range(0, len(comm)):
         print('Mean total biomass, community %d: %e J' %(i + 1, np.mean(np.sum(oope[:, i, :], axis=(-1)), axis=0)))
@@ -74,6 +88,8 @@ def plot_report_ts(input_dir, input_mesh):
     plt.title('Total biomass, all communities')
     plt.xlabel('Time')
     plt.ylabel('OOPE (J)')
+    plt.gca().set_xticks(time[labelindex])
+    plt.gca().set_xticklabels(date[labelindex], rotation=rotation)
     plt.show()
     plt.close(fig)
         
@@ -83,6 +99,8 @@ def plot_report_ts(input_dir, input_mesh):
         plt.title('Total biomass, community %d' %(i + 1))
         plt.xlabel('Time')
         plt.ylabel('OOPE (J)')
+        plt.gca().set_xticks(time[labelindex])
+        plt.gca().set_xticklabels(date[labelindex], rotation=rotation)
         plt.show()
         plt.close(fig)
     
@@ -135,11 +153,16 @@ def plot_report_size_spectra(input_dir, input_mesh):
      # extract data in the entire domain, integrates over space
     data = extract_oope_data(input_dir, input_mesh, domain_name='global', use_wstep=False)
     data = extract_time_means(data)
-    data = data['OOPE']
+    data = data['OOPE']  # community, w
+    ncom, nw = data.shape
     
     const = extract_apecosm_constants(input_dir)
     weight = const['weight'].values
     length = const['length'].values
+
+    if(weight.ndims == 1):
+        weight = np.tile(weight, (ncom, 1))
+        length = np.tile(length, (ncom, 1))
     
     ncom, nweight = data.shape
     
