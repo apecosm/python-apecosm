@@ -18,7 +18,16 @@
 # + tags=["remove_input"]
 import apecosm
 import matplotlib.pyplot as plt
-plt.rcParams['image.cmap'] = 'jet'
+from IPython.core.display import HTML
+HTML("""
+<style>
+.output_png {
+    display: table-cell;
+    text-align: center;
+    vertical-align: middle;
+}
+</style>
+""")
 
 # + tags=["parameters"]
 input_dir = '/home/barrier/Codes/apecosm/git-apecosm-config/gyre_multicom/output_apecosm'
@@ -27,12 +36,17 @@ input_mesh = '/home/barrier/Codes/apecosm/git-apecosm-config/gyre/mesh_mask.nc'
 
 # ## Time-series
 
+# + tags=["remove_input"]
 apecosm.plot_report_ts(input_dir, input_mesh)
+# -
 
 # ## Maps
 
+# + tags=["remove_input"]
 apecosm.plot_report_map(input_dir, input_mesh)
+# -
 
 # ## Size-spectras
 
+# + tags=["remove_input"]
 apecosm.plot_report_size_spectra(input_dir, input_mesh)
