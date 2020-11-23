@@ -4,6 +4,7 @@ from __future__ import print_function
 import sys
 import xarray as xr
 import numpy as np
+from glob import glob
 from .domains import DOMAINS, inpolygon
 
 
@@ -101,8 +102,24 @@ def extract_time_means(data, time=None):
 
     return climatology
 
+def extract_apecosm_constants(input_dir): 
+    
+    fileconst = glob('%s/*ConstantFields.nc' %input_dir)
+    
+    if(len(fileconst) == 0): 
+        message = 'No ConstantFields file found in directory.'
+        print(message)
+        sys.exit(1)
+       
+    if(len(fileconst) > 1): 
+        message = 'More than  one ConstantFields file found in directory.'
+        print(message)
+        sys.exit(1)    
 
-def extract_oope_data(file_pattern, varname, meshfile, domain_name):
+    constants = xr.open_dataset(fileconst[0])
+    return constants
+
+def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True):
 
     '''
     Extraction of OOPE values on a given domain.
@@ -117,60 +134,70 @@ def extract_oope_data(file_pattern, varname, meshfile, domain_name):
     :return: A tuple with the time-value and the LTL time series
 
     '''
-
-    # open the dataset
-    dataset = xr.open_mfdataset(file_pattern)
-    data = dataset[varname].values
-    data = np.ma.masked_where(np.isnan(data), data)
-
+    
+    # Extract constant fields and extract weight_step
+    if(use_wstep):
+        const = extract_apecosm_constants(input_dir)
+        wstep = const['weight_step'].values   # weight
+        wstep = wstep[np.newaxis, np.newaxis, np.newaxis, :]  #time, lat, lon, comm, weight
+    else:
+        wstep = 1
+        
+    # extract the list of OOPE files
+    filelist = np.sort(glob("%s/*OOPE*nc" %(input_dir)))
+    
     # open the mesh file, extract tmask, lonT and latT
     mesh = xr.open_dataset(meshfile)
     e2t = mesh['e2t'].values
     e1t = mesh['e1t'].values
 
     surf = e1t * e2t
-    surf = surf[:, :, :, np.newaxis, np.newaxis]
+    surf = surf[:, :, :, np.newaxis, np.newaxis]  # time, lat, lon, comm, weight
 
-    tmask = mesh['tmask'].values
+    tmask = mesh['tmask'].values  # time, depth, lat, lon
+    tmaskutil = mesh['tmaskutil'].values    # time, lat, lon
+    tmask = tmask * tmaskutil[:, np.newaxis, :, :]
     lon = np.squeeze(mesh['glamt'].values)
     lat = np.squeeze(mesh['gphit'].values)
-
+   
     # extract the domain coordinates
     if(isinstance(domain_name, str)):
-        domain = DOMAINS[domain_name]
+        if(domain_name != 'global'):
+            domain = DOMAINS[domain_name]
     else:
         domain = domain_name
 
-    # generate the domain mask
-    maskdom = inpolygon(lon, lat, domain['lon'], domain['lat'])
+    if(domain_name != 'global'): 
+        # generate the domain mask
+        maskdom = inpolygon(lon, lat, domain['lon'], domain['lat'])
+    else:
+        maskdom = np.ones(lon.shape)
 
     # add virtual dimensions to domain mask and
     # correct landsea mask
-    maskdom = maskdom[np.newaxis, np.newaxis, :, :]
+    maskdom = maskdom[np.newaxis, np.newaxis, :, :]  # time, depth, lat, lon
     tmask = tmask * maskdom
-    tmask = tmask[:, 0, :, :, np.newaxis, np.newaxis]
+    tmask = tmask[:, 0, :, :, np.newaxis, np.newaxis]  # time, lat, lon, com, length
 
-    # check whether orca grid or not (i.e. the lat dimension has 1 row missing in OOPE)
-    if tmask.shape[1] == data.shape[1] + 1:
-        message = 'Assuming that working on Orca grid.\n'
-        message += 'Last row of mask and surface is removed.'
-        print(message)
-        surf = surf[:, :-1, :, :, :]
-        tmask = tmask[:, :-1, :, :, :]
+    output = []
+    timeout = []
+    for f in filelist:
+        dataset = xr.open_dataset(f)
+        data = dataset['OOPE'].to_masked_array()
+        timeout.extend(dataset['time'].values)
+        output.extend(np.sum(surf * tmask * data * wstep, axis=(1, 2)))
 
     # integrate spatially the OOPE concentrations
-    data = np.sum(surf * tmask * data, axis=(1, 2))
-
+    output = np.array(output)
+    timeout = np.array(timeout)
+ 
     # output the time series as a Dataset in order to keep track of
     # the coordinates (community and weight)
-    output = xr.Dataset({'OOPE': (['time', 'community', 'weight'], data)})
-    output['community'] = dataset['community']
-    output['weight'] = dataset['weight']
-    output['time'] = dataset['time']
-    output['length'] = dataset['length']
+    output = xr.Dataset({'OOPE': (['time', 'community', 'weight'], output)})
+    output['time'] = timeout
 
     return output
-
+    
 
 # if __name__ == '__main__':
 #
