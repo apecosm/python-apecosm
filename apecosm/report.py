@@ -69,9 +69,11 @@ def plot_report_ts(input_dir, input_mesh):
         date = [d.strftime("%Y-%m") for d in time]
         date = np.array(date)
         rotation = 45
+        ha = 'right'
     except:
         date = time
         rotation = 0
+        ha = 'center'
 
     ntime = len(time)
     stride = ntime // 20
@@ -80,7 +82,6 @@ def plot_report_ts(input_dir, input_mesh):
 
     # move time back into time
     time = np.arange(ntime)
-
 
     print('Mean total biomass, all communities: %e J' %(np.mean(np.sum(oope, axis=(1, 2)), axis=0)))
     for i in range(0, len(comm)):
@@ -93,7 +94,7 @@ def plot_report_ts(input_dir, input_mesh):
     plt.xlabel('Time')
     plt.ylabel('OOPE (J)')
     plt.gca().set_xticks(time[labelindex])
-    plt.gca().set_xticklabels(date[labelindex], rotation=rotation)
+    plt.gca().set_xticklabels(date[labelindex], rotation=rotation, ha=ha)
     plt.show()
     plt.close(fig)
         
@@ -104,7 +105,7 @@ def plot_report_ts(input_dir, input_mesh):
         plt.xlabel('Time')
         plt.ylabel('OOPE (J)')
         plt.gca().set_xticks(time[labelindex])
-        plt.gca().set_xticklabels(date[labelindex], rotation=rotation)
+        plt.gca().set_xticklabels(date[labelindex], rotation=rotation, ha=ha)
         plt.show()
         plt.close(fig)
     
