@@ -132,7 +132,7 @@ def plot_report_map(input_dir, input_mesh, draw_features=True):
     ax = plt.axes(projection=projection)
     if(draw_features):
         ax.add_feature(cfeature.LAND, zorder=1000)
-        ax.add_feature(cfeature.COASTLINE)
+        ax.add_feature(cfeature.COASTLINE, zorder=1001)
     temp = np.sum(oope, axis=-1)
     temp = np.log10(temp, where=(temp > 0))
     cmin, cmax = find_percentile(temp)
@@ -148,7 +148,7 @@ def plot_report_map(input_dir, input_mesh, draw_features=True):
         ax = plt.axes(projection=projection)
         if(draw_features):
             ax.add_feature(cfeature.LAND, zorder=1000)
-            ax.add_feature(cfeature.COASTLINE)
+            ax.add_feature(cfeature.COASTLINE, zorder=1001)
         temp = oope[:, :, i]
         temp = np.log10(temp, where=(temp > 0))
         cmin, cmax = find_percentile(temp)
