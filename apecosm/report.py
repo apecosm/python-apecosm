@@ -160,7 +160,7 @@ def plot_report_size_spectra(input_dir, input_mesh):
     weight = const['weight'].values
     length = const['length'].values
 
-    if(weight.ndims == 1):
+    if(weight.ndim == 1):
         weight = np.tile(weight, (ncom, 1))
         length = np.tile(length, (ncom, 1))
     
