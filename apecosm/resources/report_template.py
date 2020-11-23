@@ -15,7 +15,9 @@
 
 # # Apecosm report
 
-# + tags=["remove_input"]
+# + tags=["remove_input", "remove_output", "remove_cell"]
+import warnings
+warnings.filterwarnings('ignore')
 import apecosm
 import matplotlib.pyplot as plt
 from IPython.core.display import HTML
@@ -29,7 +31,7 @@ HTML("""
 </style>
 """)
 
-# + tags=["parameters"]
+# + tags=["parameters", "remove_input", "remove_output", "remove_cell"]
 input_dir = '/home/barrier/Codes/apecosm/git-apecosm-config/gyre_multicom/output_apecosm'
 input_mesh = '/home/barrier/Codes/apecosm/git-apecosm-config/gyre/mesh_mask.nc'
 # -

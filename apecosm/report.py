@@ -10,31 +10,50 @@ import numpy as np
 import matplotlib.pyplot as plt
 import xarray as xr
 import cartopy.crs as ccrs
+import papermill as pm
+import pkg_resources
+import os
 
-def report(outputdir, meshfile, fmt='html'):
+def report(input_dir, meshfile, output):
+        
+    suffindex = output.rfind(".")
+    fmt = output[suffindex + 1:]
+    
+    tempfile = output.replace(fmt, "ipynb")
+    
+    if fmt not in ['pdf', 'html']:
+        message = "The output format must be 'html' or 'pdf'. The program will stop"
+        print(message)
+        sys.exit(1)
+
+    template_file = pkg_resources.resource_filename('apecosm', 'resources/report_template.ipynb')
+    param = dict(input_dir=input_dir, input_mesh=meshfile)
+    pm.execute_notebook(template_file, tempfile, parameters=param)
 
     c = Config()
 
     c.TagRemovePreprocessor.remove_cell_tags = ("remove_cell",)
     c.TagRemovePreprocessor.remove_all_outputs_tags = ('remove_output',)
     c.TagRemovePreprocessor.remove_input_tags = ('remove_input',)    
-    c.TagRemovePreprocessor.enabled=True
-    c.NotebookExporter.preprocessors = ["nbconvert.preprocessors.TagRemovePreprocessor"]
+    c.TagRemovePreprocessor.enabled = True
 
     if(fmt == 'html'):
-        print('export html')
         c.HTMLExporter.preprocessors = ["nbconvert.preprocessors.TagRemovePreprocessor"]
-        x = HTMLExporter(config=c).from_filename("report.ipynb")
-        print(dir(x))
-        print(x)
+        exporter = HTMLExporter(config=c)
     else:
-        print('export pdf')
         c.PDFExporter.preprocessors = ["nbconvert.preprocessors.TagRemovePreprocessor"]
-        x = PDFExporter(config=c).from_filename("report.ipynb")
+        exporter = PDFExporter(config=c)
     
-    #commandlist = ['jupyter', 'nbconvert', '--to', fmt, 'report.ipynb']
-    #print(commandlist)
-    #result = subprocess.call(commandlist)
+    strout, objout = exporter.from_filename(tempfile)
+    if(type(strout) == bytes):
+        wmode = "wb"
+    else:
+        wmode = "w"
+    
+    with open(output, wmode) as fout:
+        fout.write(strout)
+        
+    os.remove(tempfile)
     
 def plot_report_ts(input_dir, input_mesh):
 
@@ -129,9 +148,7 @@ def plot_report_size_spectra(input_dir, input_mesh):
     fig = plt.figure()
     ax = plt.gca()
     for icom in range(ncom):
-        print(icom / (ncom - 1))
         color = cmap(icom / (ncom - 1))
-        print(color)
         ax.plot(weight[icom], data[icom], marker='o', linestyle='none', color=color, label='Community %d' %(icom + 1))
     ax.loglog()
     plt.legend()
