@@ -104,7 +104,7 @@ def extract_time_means(data, time=None):
 
 def extract_apecosm_constants(input_dir): 
     
-    fileconst = glob('%s/*GYRE_ConstantFields.nc' %input_dir)
+    fileconst = glob('%s/*ConstantFields.nc' %input_dir)
     
     if(len(fileconst) == 0): 
         message = 'No ConstantFields file found in directory.'
