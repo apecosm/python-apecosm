@@ -8,7 +8,7 @@ Setup for packaging Apecosm package"
 __docformat__ = "restructuredtext en"
 
 import os
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
 
 VERSION_FILE = 'VERSION'
 with open(VERSION_FILE) as fv:
@@ -54,6 +54,8 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
     ],
+    
+    ext_modules=[Extension('apecosm', ['apecosm/src/apecosm_par.c'])], 
 
     # ++ test_suite =
     # ++ download_url
