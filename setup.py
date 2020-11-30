@@ -55,7 +55,7 @@ setup(
         "Programming Language :: Python :: 3",
     ],
     
-    ext_modules=[Extension('apecosm', ['apecosm/src/apecosm_par.c'])], 
+    ext_modules=[Extension('apecosm_clib', ['apecosm/src/apecosm_clib.c'])], 
 
     # ++ test_suite =
     # ++ download_url
