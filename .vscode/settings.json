@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "/home/barrier/Softwares/anaconda3/bin/python"
+    "python.pythonPath": "/home/barrier/Softwares/anaconda3/bin/python",
+    "C_Cpp.clang_format_style": " { BasedOnStyle: LLVM, UseTab: Never, IndentWidth: 4, TabWidth: 4, AllowShortIfStatementsOnASingleLine: false, IndentCaseLabels: false, ColumnLimit: 0, AccessModifierOffset: -4, NamespaceIndentation: All }"
 }
