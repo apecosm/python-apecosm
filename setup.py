@@ -9,6 +9,44 @@ __docformat__ = "restructuredtext en"
 
 import os
 from setuptools import setup, find_packages, Extension
+import subprocess
+import re
+
+""" Recovers the NetCDF configuration for NetCDF library """
+def get_ncconfig():
+
+    try:
+        cmd = ["nc-config", "--all"]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except FileNotFoundError:
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        print("The 'nc-config' command is not found. Make sure that NetCDF is installed")
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        raise
+    try:
+        o, e = proc.communicate()
+    except:
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        print("Could not recover output of the 'nc-config' command")
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        raise
+
+    o = o.decode("utf-8")
+    o = o.split("\n")
+
+    regex = re.compile(" *--.* *-> *")
+    output = {}
+    for l in o:
+        if(regex.match(l)): 
+            key, val = l.split("->")
+            key = key.replace("--", "").strip()
+            val = val.strip()
+            output[key] = val
+
+    return output
+
+params = get_ncconfig()
+ext_cmodule = Extension('apecosm_clib', ['apecosm/src/apecosm_clib.c'], library_dirs=[params["libs"]], include_dirs=[params["cflags"]])
 
 VERSION_FILE = 'VERSION'
 with open(VERSION_FILE) as fv:
@@ -54,8 +92,9 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
     ],
-    
-    ext_modules=[Extension('apecosm_clib', ['apecosm/src/apecosm_clib.c'])], 
+   
+
+    ext_modules = [ext_cmodule],
 
     # ++ test_suite =
     # ++ download_url
