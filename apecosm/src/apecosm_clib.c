@@ -12,6 +12,9 @@
 #define get_bottom(cell) (0)
 #define get_deltaz(cell, k) (0)
 
+void get_ndims(int ncid, const char *dimname, size_t *nval);
+void get_var(int ncid, const char *varname, double **array);
+
 // Dimnsion: CHL concentration; R/G/B
 float zrgb[NROWS][NCOLS];
 
@@ -21,6 +24,9 @@ static PyObject *compute_par(PyObject *self, PyObject *args, PyObject *kw) {
     const char *mesh_mask;
     const char *chl_pattern;
     const char *qsr_pattern;
+    int ncid;
+    
+    size_t nx, ny, nz;
     
     // length of format specifies the number of arguments
     char format[] = {'s', 's', 's'};
@@ -32,8 +38,37 @@ static PyObject *compute_par(PyObject *self, PyObject *args, PyObject *kw) {
     printf("++++++++++++++++++ %s\n", mesh_mask);
     printf("++++++++++++++++++ %s\n", chl_pattern);
     printf("++++++++++++++++++ %s\n", qsr_pattern);
+    
+    nc_open(mesh_mask, NC_NOWRITE, &ncid);
+
+    get_ndims(ncid, "x", &nx);
+    get_ndims(ncid, "y", &ny);
+    get_ndims(ncid, "z", &nz);
+
+    printf("++++++++++++++++++ nx = %ld\n", nx);
+    printf("++++++++++++++++++ ny = %ld\n", ny);
+    printf("++++++++++++++++++ nz = %ld\n", nz);
+
+    nc_close(ncid);
 
     return Py_BuildValue("s", "Hello, Python extensions!!");
+}
+
+void get_ndims(int ncid, const char *dimname, size_t *nval) { 
+    
+    int dimid;
+    nc_inq_dimid(ncid, dimname, &dimid);
+    nc_inq_dimlen(ncid, dimid, nval);
+    
+}
+
+
+void get_var(int ncid, const char *varname, double **array) { 
+    
+    int varid;
+    nc_inq_varid(ncid, varname, &varid);
+    nc_get_var_double(ncid, varid, *array);
+    
 }
 
 static char compute_par_docs[] = "compute_par(): Computation of PAR from CHL, and light using PISCES RGB algorithm\n";
