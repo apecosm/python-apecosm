@@ -1,7 +1,7 @@
 #define PY_SSIZE_T_CLEAN
+#include "netcdf.h"
 #include <Python.h>
 #include <math.h>
-#include "netcdf.h"
 
 #define NROWS 4
 #define NCOLS 61
@@ -13,7 +13,7 @@
 #define get_deltaz(cell, k) (0)
 
 void get_ndims(int ncid, const char *dimname, size_t *nval);
-void get_var(int ncid, const char *varname, double **array);
+void get_var_infos(int ncid, const char *varname, size_t **count, int *ndims);
 
 // Dimnsion: CHL concentration; R/G/B
 float zrgb[NROWS][NCOLS];
@@ -25,9 +25,7 @@ static PyObject *compute_par(PyObject *self, PyObject *args, PyObject *kw) {
     const char *chl_pattern;
     const char *qsr_pattern;
     int ncid;
-    
-    size_t nx, ny, nz;
-    
+
     // length of format specifies the number of arguments
     char format[] = {'s', 's', 's'};
 
@@ -35,64 +33,74 @@ static PyObject *compute_par(PyObject *self, PyObject *args, PyObject *kw) {
         return NULL;
     }
 
-    printf("++++++++++++++++++ %s\n", mesh_mask);
-    printf("++++++++++++++++++ %s\n", chl_pattern);
-    printf("++++++++++++++++++ %s\n", qsr_pattern);
-    
     nc_open(mesh_mask, NC_NOWRITE, &ncid);
 
-    get_ndims(ncid, "x", &nx);
-    get_ndims(ncid, "y", &ny);
-    get_ndims(ncid, "z", &nz);
-
-    printf("++++++++++++++++++ nx = %ld\n", nx);
-    printf("++++++++++++++++++ ny = %ld\n", ny);
-    printf("++++++++++++++++++ nz = %ld\n", nz);
+    int ndims_tmask;
+    size_t *count_tmask;
+    get_var_infos(ncid, "tmask", &count_tmask, &ndims_tmask);
 
     nc_close(ncid);
 
     return Py_BuildValue("s", "Hello, Python extensions!!");
 }
 
-void get_ndims(int ncid, const char *dimname, size_t *nval) { 
-    
+/** Recover the length of a given dimension. */
+void get_ndims(int ncid, const char *dimname, size_t *nval) {
     int dimid;
     nc_inq_dimid(ncid, dimname, &dimid);
     nc_inq_dimlen(ncid, dimid, nval);
-    
 }
 
+/** Recover informations about a variable
+ * 
+ * @param ncid Index of the Netcdf file
+ * @param varname Name of the variable
+ * @param count Number of values along each dimension (return value)
+ * @param ndims Number of dimensions of the variable (return value)
+ */
+void get_var_infos(int ncid, const char *varname, size_t **count, int *ndims) {
 
-void get_var(int ncid, const char *varname, double **array) { 
-    
     int varid;
+
+    // recover the variable id
     nc_inq_varid(ncid, varname, &varid);
-    nc_get_var_double(ncid, varid, *array);
-    
+
+    // recover the array dimension
+    nc_inq_varndims(ncid, varid, ndims);
+
+    // Count = array containing the number of elements along each dimension
+    *count = malloc(*ndims * sizeof(size_t));
+    int *dimids = malloc(*ndims * sizeof(int));
+    nc_inq_vardimid(ncid, varid, dimids);
+
+    for (int id = 0; id < *ndims; id++) {
+        nc_inq_dimlen(ncid, *(dimids + id), (*count + id));
+    }
+
+    free(dimids);
+
 }
 
 static char compute_par_docs[] = "compute_par(): Computation of PAR from CHL, and light using PISCES RGB algorithm\n";
 
 static PyMethodDef apecosm_clib_methods[] = {
-   //{"compute_par", apecosm_compute_par, METH_VARARGS | METH_KEYWORDS, compute_par_docs},
-   {"compute_par", compute_par, METH_VARARGS | METH_KEYWORDS, compute_par_docs},
-   {NULL, NULL, 0, NULL }   // sentinel, compulsory!
+    //{"compute_par", apecosm_compute_par, METH_VARARGS | METH_KEYWORDS, compute_par_docs},
+    {"compute_par", compute_par, METH_VARARGS | METH_KEYWORDS, compute_par_docs},
+    {NULL, NULL, 0, NULL} // sentinel, compulsory!
 };
 
 static struct PyModuleDef apecosm_clib_module = {
     PyModuleDef_HEAD_INIT,
-    "apecosm_clib",   /* name of module */
-    NULL, /* module documentation, may be NULL */
-    -1,       /* size of per-interpreter state of the module,
+    "apecosm_clib", /* name of module */
+    NULL,           /* module documentation, may be NULL */
+    -1,             /* size of per-interpreter state of the module,
                  or -1 if the module keeps state in global variables. */
-    apecosm_clib_methods
-};
+    apecosm_clib_methods};
 
 PyMODINIT_FUNC PyInit_apecosm_clib(void) {
     Py_Initialize();
     return PyModule_Create(&apecosm_clib_module);
 }
-
 
 void init_zrgb(void) {
 
@@ -161,12 +169,12 @@ void init_zrgb(void) {
 }
 
 void compute_par_c(void) {
-    
-    int nOceanCell=100, NLEVEL_OPA=75;
+
+    int nOceanCell = 100, NLEVEL_OPA = 75;
 
     // 1 = Blue, 2=Green, 3=Red
     double output[nOceanCell][NLEVEL_OPA];
-    double ze1[nOceanCell][NLEVEL_OPA];  
+    double ze1[nOceanCell][NLEVEL_OPA];
     double ze2[nOceanCell][NLEVEL_OPA];
     double ze3[nOceanCell][NLEVEL_OPA];
     double ek1[nOceanCell][NLEVEL_OPA];
@@ -211,7 +219,6 @@ void compute_par_c(void) {
             output[c][k] = (ze1[c][k] + ze2[c][k] + ze3[c][k]) / 3.;
         }
     }
-    
+
     return;
-    
 }
