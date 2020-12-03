@@ -46,7 +46,7 @@ def get_ncconfig():
     return output
 
 params = get_ncconfig()
-ext_cmodule = Extension('apecosm_clib', ['apecosm/src/apecosm_clib.c'], library_dirs=[params["libs"]], include_dirs=[params["cflags"]])
+ext_cmodule = Extension('apecosm_clib', ['apecosm/src/apecosm_clib.c'], library_dirs=[params["libdir"]], libraries=["netcdf"])
 
 VERSION_FILE = 'VERSION'
 with open(VERSION_FILE) as fv:
