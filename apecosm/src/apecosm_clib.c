@@ -21,6 +21,8 @@ static PyObject *compute_par(PyObject *self, PyObject *args, PyObject *kw) {
     const char *mesh_mask;
     const char *chl_pattern;
     const char *qsr_pattern;
+    
+    // length of format specifies the number of arguments
     char format[] = {'s', 's', 's'};
 
     if (!PyArg_ParseTuple(args, format, &mesh_mask, &chl_pattern, &qsr_pattern)) {
