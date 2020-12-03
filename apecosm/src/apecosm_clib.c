@@ -17,8 +17,20 @@ float zrgb[NROWS][NCOLS];
 
 //static PyObject* apecosm_compute_par(PyObject* self, PyObject *args, PyObject *kw) {
 static PyObject *compute_par(PyObject *self, PyObject *args, PyObject *kw) {
-    //if (!PyArg_ParseTuple(args, "s", &command))
-    //    return NULL;
+
+    const char *mesh_mask;
+    const char *chl_pattern;
+    const char *qsr_pattern;
+    char format[] = {'s', 's', 's'};
+
+    if (!PyArg_ParseTuple(args, format, &mesh_mask, &chl_pattern, &qsr_pattern)) {
+        return NULL;
+    }
+
+    printf("++++++++++++++++++ %s\n", mesh_mask);
+    printf("++++++++++++++++++ %s\n", chl_pattern);
+    printf("++++++++++++++++++ %s\n", qsr_pattern);
+
     return Py_BuildValue("s", "Hello, Python extensions!!");
 }
 
@@ -111,7 +123,7 @@ void init_zrgb(void) {
     zrgb[0][60] = 10.000, zrgb[1][60] = 0.47804, zrgb[2][60] = 0.27178, zrgb[3][60] = 0.56870;
 }
 
-void compute_par_c() {
+void compute_par_c(void) {
     
     int nOceanCell=100, NLEVEL_OPA=75;
 
