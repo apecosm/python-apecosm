@@ -41,7 +41,7 @@ def extract_ltl_data(file_pattern, varname, meshfile,
     else:
         e3t = mesh['e3t_0'].values  # 1, z, lat, lon
 
-    tmask = mesh['tmask'].values  # 1, z, lat, lon
+    tmask = mesh['tmask'].values * mesh['tmaskutil'].values[np.newaxis, :, :, :]  # 1, z, lat, lon
     lon = np.squeeze(mesh['glamt'].values)
     lat = np.squeeze(mesh['gphit'].values)
 
@@ -99,7 +99,7 @@ def extract_time_means(data, time=None):
         print(message)
         sys.exit(0)
 
-    if 'time_counter' in data.dims.keys():
+    if 'time_counter' in data.dims:
         dimname = 'time_counter'
     else:
         dimname = 'time'
@@ -136,7 +136,7 @@ def extract_apecosm_constants(input_dir):
     return constants
 
 
-def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True):
+def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True, compute_mean=True):
 
     '''
     Extraction of OOPE values on a given domain.
@@ -147,6 +147,7 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True):
     :param str varname: OOPE variable name
     :param str meshfile: Name of the NetCDF meshfile
     :param str domain_name: Name of the domain to extract
+    :param str compute_mean: True if mean, else integral.
 
     :return: A tuple with the time-value and the LTL time series
 
@@ -155,8 +156,13 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True):
     # Extract constant fields and extract weight_step
     if use_wstep:
         const = extract_apecosm_constants(input_dir)
-        wstep = const['weight_step'].values   # weight
-        wstep = wstep[np.newaxis, np.newaxis, np.newaxis, :]  #time, lat, lon, comm, weight
+        wstep = const['weight_step'].values   # weight or (comm, weight)
+
+        # if wstep is 1d, we tile it along the community dimension
+        if wstep.ndim == 1:
+            wstep = wstep[np.newaxis, :]
+
+        wstep = wstep[np.newaxis, np.newaxis, np.newaxis, :, :]  # time, lat, lon, comm, weight
     else:
         wstep = 1
 
@@ -165,15 +171,10 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True):
 
     # open the mesh file, extract tmask, lonT and latT
     mesh = xr.open_dataset(meshfile)
-    e2t = mesh['e2t'].values
-    e1t = mesh['e1t'].values
-
-    surf = e1t * e2t
+    surf = mesh['e2t'].values * mesh['e1t'].values
     surf = surf[:, :, :, np.newaxis, np.newaxis]  # time, lat, lon, comm, weight
 
-    tmask = mesh['tmask'].values  # time, depth, lat, lon
-    tmaskutil = mesh['tmaskutil'].values    # time, lat, lon
-    tmask = tmask * tmaskutil[:, np.newaxis, :, :]
+    tmask = mesh['tmaskutil'].values[:, :, :, np.newaxis, np.newaxis]  # time, lat, lon, comm, weight 
     lon = np.squeeze(mesh['glamt'].values)
     lat = np.squeeze(mesh['gphit'].values)
 
@@ -192,29 +193,23 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True):
 
     # add virtual dimensions to domain mask and
     # correct landsea mask
-    maskdom = maskdom[np.newaxis, np.newaxis, :, :]  # time, depth, lat, lon
+    maskdom = maskdom[np.newaxis, :, :, np.newaxis, np.newaxis]  # time, lat, lon, comm, w
     tmask = tmask * maskdom
-    tmask = tmask[:, 0, :, :, np.newaxis, np.newaxis]  # time, lat, lon, com, length
+    weight = tmask * surf  # time, lat, lon, comm, w
 
-    output = []
-    timeout = []
-    for f in filelist:
-        dataset = xr.open_dataset(f)
-        data = dataset['OOPE'].to_masked_array()
-        timeout.extend(dataset['time'].values)
-        output.extend(np.sum(surf * tmask * data * wstep, axis=(1, 2)))
 
-    # integrate spatially the OOPE concentrations
-    output = np.array(output)
-    timeout = np.array(timeout)
+    data = xr.open_mfdataset(fileelist)
+    data = data['OOPE']
 
-    # output the time series as a Dataset in order to keep track of
-    # the coordinates (community and weight)
-    output = xr.Dataset({'OOPE': (['time', 'community', 'weight'], output)})
-    output['time'] = timeout
+    if use_wstep:
+        data = data * wstep
 
-    return output
+    data = data.sum(dim=('x', 'y'))  # time, com, w
 
+    if compute_mean:
+        data /= np.sum(weight, axis=(1, 2)) 
+    
+    return data
 
 # if __name__ == '__main__':
 #
