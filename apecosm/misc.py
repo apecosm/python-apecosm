@@ -17,6 +17,7 @@ def find_percentile(data, percentage=1):
     :return: A tuple containing the lower and upper bounds (cmin, cmax)
 
     '''
+
     data = np.ma.masked_where(np.isnan(data), data)
     iok = np.nonzero(np.logical_not(np.ma.getmaskarray(data)))
     temp = data[iok]
