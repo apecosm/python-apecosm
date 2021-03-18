@@ -18,11 +18,13 @@ from matplotlib.backends.backend_pdf import PdfPages
 import cartopy.feature as cfeature
 plt.rcParams['text.usetex'] = False
 
-def plot_oope_map(data, figname, size_class=None, projection=None, percentage=1, features=None, figargs={}):
+def plot_oope_map(data, lonf, latf, figname, size_class=None, projection=None, percentage=1, features=None, figargs={}):
 
     ''' Draws 2D OOPE maps.
 
     :param xarray.Dataset data: 2D OOPE array. Dims must be (y, x, comm, size)
+    :param numpy.array lonf: Longitude of the ``F`` points (variable `glamf` of grid files)
+    :param numpy.array latf: Latitude of the ``F`` points (variable `gphif` of grid files)
     :param str figname: Name of the figure file (must end by .png or .pdf)
     :param list size_class: Size classes to output (in m)
     :param float percentage: percentage used to saturate colorbar from percentile.
@@ -54,8 +56,6 @@ def plot_oope_map(data, figname, size_class=None, projection=None, percentage=1,
     # Recover data variables
     length = data['length'].values
     oope = data['OOPE'].to_masked_array()
-    lon = data['longitude'][:].values
-    lat = data['latitude'][:].values
     comm = data['community'][:].values.astype(np.int)
 
     comm_string = misc.extract_community_names(data)
@@ -92,7 +92,7 @@ def plot_oope_map(data, figname, size_class=None, projection=None, percentage=1,
                 #ax = plt.subplot(1, 1, 1, projection=projection)
                 ax = plt.axes(projection=projection)
                 
-                cs = plt.pcolormesh(lon, lat, temp, transform=ccrs.PlateCarree())
+                cs = plt.pcolormesh(lonf, latf, temp[1:, 1:], transform=ccrs.PlateCarree())
                 cs.set_clim(cmin, cmax)
                 cb = plt.colorbar(cs, orientation='horizontal')
                 cb.set_label(r"OOPE ($J.kg^-1.m^{-2}$)")
