@@ -115,10 +115,10 @@ def compute_lightpref(par, daylen, opt_light=1.0e2, sigm_light=1.7e2, same_dayni
 
     nfactor = nfactor[:, np.newaxis, np.newaxis, np.newaxis, np.newaxis]   # dn, time, z, y, x
 
-    mu = np.log(opt_light) - .5 * np.log1p((sigm_light * sigm_light) / (opt_light * opt_light));
-    sigm = np.sqrt(np.log1p(sigm_light * sigm_light / (opt_light * opt_light)));
-    ssigm = sigm * sigm;
-    mode = np.exp(mu - ssigm);
+    mu = np.log(opt_light) - .5 * np.log1p((sigm_light * sigm_light) / (opt_light * opt_light))
+    sigm = np.sqrt(np.log1p(sigm_light * sigm_light / (opt_light * opt_light)))
+    ssigm = sigm * sigm
+    mode = np.exp(mu - ssigm)
 
     par = np.ma.masked_where(np.isnan(par), par)
     par = par[np.newaxis, :, :, :, :]
@@ -127,7 +127,7 @@ def compute_lightpref(par, daylen, opt_light=1.0e2, sigm_light=1.7e2, same_dayni
     daylen = np.ma.masked_where(par[:, :, 0:1, :, :].mask, daylen)
     tmplight = np.divide(par, daylen, where=(par.mask == False)) * nfactor + 2 * sys.float_info.min 
 
-    output = np.divide(mode, tmplight, where=(tmplight.mask==False)) * np.exp((np.power((np.log(mode) - mu), 2.) - np.power((np.log(tmplight, where=(tmplight.mask==False)) - mu), 2.)) / (2. * ssigm));
+    output = np.divide(mode, tmplight, where=(tmplight.mask==False)) * np.exp((np.power((np.log(mode) - mu), 2.) - np.power((np.log(tmplight, where=(tmplight.mask==False)) - mu), 2.)) / (2. * ssigm))
 
     return output
 
