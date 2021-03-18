@@ -2,13 +2,14 @@
 
 from __future__ import print_function
 import sys
+from glob import glob
 import xarray as xr
 import numpy as np
-from glob import glob
 from .domains import DOMAINS, inpolygon
 
 
-def extract_ltl_data(file_pattern, varname, meshfile, domain_name, depth_max=None):
+def extract_ltl_data(file_pattern, varname, meshfile,
+                     domain_name, compute_mean=False, depth_max=None):
 
     '''
     Extraction of LTL values on a given domain.
@@ -19,66 +20,74 @@ def extract_ltl_data(file_pattern, varname, meshfile, domain_name, depth_max=Non
     :param str varname: LTL variable name
     :param str meshfile: Name of the NetCDF meshfile
     :param str domain_name: Name of the domain to extract
+    :param bool vvl: True if VVL is on, else False
+    :param bool compute_mean: If True, mean is computed. If False, integral is provided.
 
     :return: A xarray dataset
 
     '''
 
     # open the dataset
-    dataset = xr.open_mfdataset(file_pattern)
-    data = dataset[varname].values
-    data = np.ma.masked_where(np.isnan(data), data)
+    data = xr.open_mfdataset(file_pattern)
 
     # open the mesh file, extract tmask, lonT and latT
     mesh = xr.open_dataset(meshfile)
-    e3t = mesh['e3t'].values
-    e2t = mesh['e2t'].values
-    e1t = mesh['e1t'].values
+    surf = mesh['e2t'] * mesh['e1t'] # 1, lat, lon
+    surf = surf.values[np.newaxis, :, :, :] # 1, 1, lat, lon
 
-    surf = e1t * e2t
-    surf = surf[np.newaxis, :, :, :]
+    if 'e3t' in data.variables:
+        # if VVL, e3t should be read from data
+        e3t = data['e3t']  # time, z, lat, lon
+    else:
+        e3t = mesh['e3t_0'].values  # 1, z, lat, lon
 
-    tmask = mesh['tmask'].values
+    tmask = mesh['tmask'].values  # 1, z, lat, lon
     lon = np.squeeze(mesh['glamt'].values)
     lat = np.squeeze(mesh['gphit'].values)
 
     # extract the domain coordinates
-    if isinstance(domain_name, str):
-        domain = DOMAINS[domain_name]
+    if domain_name == 'global':
+        maskdom = 1
     else:
-        domain = domain_name
 
-    # generate the domain mask
-    maskdom = inpolygon(lon, lat, domain['lon'], domain['lat'])
+        if isinstance(domain_name, str):
+            domain = DOMAINS[domain_name]
+        else:
+            domain = domain_name
 
-    # add virtual dimensions to domain mask and
-    # correct landsea mask
-    maskdom = maskdom[np.newaxis, np.newaxis, :, :]
-    tmask = tmask * maskdom
+        # generate the domain mask
+        maskdom = inpolygon(lon, lat, domain['lon'], domain['lat'])
 
-    temp = surf * e3t * tmask * data
+        # add virtual dimensions to domain mask and
+        # correct landsea mask
+        maskdom = maskdom[np.newaxis, np.newaxis, :, :]  # time, depth, lat, lon
+
+    tmask = tmask * maskdom  #  0 if land or out of domain, else 1
+    weight = surf * e3t * tmask  # (1, z, lat, lon) or (time, z, lat, lon)
+
+    # clear unused variables
+    del(surf, e3t, tmask, maskdom)
 
     if depth_max is not None:
-        iok = np.nonzero(np.squeeze(mesh['gdept_0'].values) < depth_max)[0]
-        temp = temp[:, iok, :, :]
+        idepth = np.nonzero(np.squeeze(mesh['gdept_1d'].values) < depth_max)[0]
+        weight = weight[:, idepth, :, :]
+        data = data.isel(z=idepth)
 
     # integrate spatially and vertically the LTL concentrations
-    data = np.sum(temp, axis=(1, 2, 3))
-    # output the time series as a Dataset in order to keep track of
-    # the coordinates (community and weight)
-    output = xr.Dataset({varname: (['time_counter'], data)})
-    output['time_counter'] = dataset['time_counter']
+    data = (data[varname] * weight).sum(dim=('y', 'x', 'z'))  # time
+    if compute_mean:
+        data /= np.sum(weight, axis=(1, 2, 3))
 
-    return output
+    return data
 
 
 def extract_time_means(data, time=None):
 
-    ''' 
+    r'''
     Extract data time mean.
 
     :param str file_pattern: File pattern (for instance, "data/\*nc")
-    :param str time: Time mean. Can be time average ('tot'), 
+    :param str time: Time mean. Can be time average ('tot'),
      yearly means ('year'), seasonal means ('season') or monthly means
      ('monthly')
 
@@ -102,22 +111,30 @@ def extract_time_means(data, time=None):
 
     return climatology
 
-def extract_apecosm_constants(input_dir): 
-    
+def extract_apecosm_constants(input_dir):
+
+    ''' Extracts APECOSM constant fields
+
+    :param str input_dir: Directory containing Apecosm outputs
+    :return: A dataset containing the outputs
+
+     '''
+
     fileconst = glob('%s/*ConstantFields.nc' %input_dir)
-    
-    if(len(fileconst) == 0): 
+
+    if len(fileconst) == 0:
         message = 'No ConstantFields file found in directory.'
         print(message)
         sys.exit(1)
-       
-    if(len(fileconst) > 1): 
+
+    if len(fileconst) > 1:
         message = 'More than  one ConstantFields file found in directory.'
         print(message)
-        sys.exit(1)    
+        sys.exit(1)
 
     constants = xr.open_dataset(fileconst[0])
     return constants
+
 
 def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True):
 
@@ -134,18 +151,18 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True):
     :return: A tuple with the time-value and the LTL time series
 
     '''
-    
+
     # Extract constant fields and extract weight_step
-    if(use_wstep):
+    if use_wstep:
         const = extract_apecosm_constants(input_dir)
         wstep = const['weight_step'].values   # weight
         wstep = wstep[np.newaxis, np.newaxis, np.newaxis, :]  #time, lat, lon, comm, weight
     else:
         wstep = 1
-        
+
     # extract the list of OOPE files
     filelist = np.sort(glob("%s/*OOPE*nc" %(input_dir)))
-    
+
     # open the mesh file, extract tmask, lonT and latT
     mesh = xr.open_dataset(meshfile)
     e2t = mesh['e2t'].values
@@ -159,19 +176,19 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True):
     tmask = tmask * tmaskutil[:, np.newaxis, :, :]
     lon = np.squeeze(mesh['glamt'].values)
     lat = np.squeeze(mesh['gphit'].values)
-   
+
     # extract the domain coordinates
-    if(isinstance(domain_name, str)):
-        if(domain_name != 'global'):
+    if isinstance(domain_name, str):
+        if domain_name != 'global':
             domain = DOMAINS[domain_name]
     else:
         domain = domain_name
 
-    if(domain_name != 'global'): 
+    if domain_name != 'global':
         # generate the domain mask
         maskdom = inpolygon(lon, lat, domain['lon'], domain['lat'])
     else:
-        maskdom = np.ones(lon.shape)
+        maskdom = 1.
 
     # add virtual dimensions to domain mask and
     # correct landsea mask
@@ -190,14 +207,14 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True):
     # integrate spatially the OOPE concentrations
     output = np.array(output)
     timeout = np.array(timeout)
- 
+
     # output the time series as a Dataset in order to keep track of
     # the coordinates (community and weight)
     output = xr.Dataset({'OOPE': (['time', 'community', 'weight'], output)})
     output['time'] = timeout
 
     return output
-    
+
 
 # if __name__ == '__main__':
 #
