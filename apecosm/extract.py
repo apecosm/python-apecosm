@@ -145,8 +145,10 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True):
         
     # extract the list of OOPE files
     filelist = np.sort(glob("%s/*OOPE*nc" %(input_dir)))
+    print(filelist)
     
     # open the mesh file, extract tmask, lonT and latT
+    print('+++++++++++++++++ ', meshfile)
     mesh = xr.open_dataset(meshfile)
     e2t = mesh['e2t'].values
     e1t = mesh['e1t'].values
@@ -155,7 +157,12 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True):
     surf = surf[:, :, :, np.newaxis, np.newaxis]  # time, lat, lon, comm, weight
 
     tmask = mesh['tmask'].values  # time, depth, lat, lon
-    tmaskutil = mesh['tmaskutil'].values    # time, lat, lon
+
+    if('tmaskutil' in mesh.variables):
+        tmaskutil = mesh['tmaskutil'].values    # time, lat, lon
+    else:
+        tmaskutil = mesh['tmask'].values[:, 0, :, :]   # time, lat, lon
+
     tmask = tmask * tmaskutil[:, np.newaxis, :, :]
     lon = np.squeeze(mesh['glamt'].values)
     lat = np.squeeze(mesh['gphit'].values)
