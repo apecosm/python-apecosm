@@ -122,8 +122,8 @@ def plot_report_map(input_dir, input_mesh, draw_features=True):
     oope = oope.sum(dim=('w')).to_masked_array()   # sum over all weight classes: (lat, lon, com)
     
     mesh = xr.open_dataset(input_mesh)
-    lon = mesh['glamt'].values[0]
-    lat = mesh['gphit'].values[0]
+    lon = mesh['glamf'].values[0]
+    lat = mesh['gphif'].values[0]
     tmask = mesh['tmask'].values[0, 0]
     
     projection = ccrs.PlateCarree()
@@ -136,7 +136,7 @@ def plot_report_map(input_dir, input_mesh, draw_features=True):
     temp = np.sum(oope, axis=-1)
     temp = np.log10(temp, where=(temp > 0))
     cmin, cmax = find_percentile(temp)
-    cs = plt.pcolormesh(lon, lat, temp, transform=projection)
+    cs = plt.pcolormesh(lon, lat, temp[1:, 1:], transform=projection)
     cs.set_clim(cmin, cmax)
     cb = plt.colorbar(cs, orientation='horizontal')
     cb.set_label('LOG10 OOPE (J/m2), all communities')
@@ -152,7 +152,7 @@ def plot_report_map(input_dir, input_mesh, draw_features=True):
         temp = oope[:, :, i]
         temp = np.log10(temp, where=(temp > 0))
         cmin, cmax = find_percentile(temp)
-        cs = plt.pcolormesh(lon, lat, temp, transform=projection)
+        cs = plt.pcolormesh(lon, lat, temp[1:, 1:], transform=projection)
         cs.set_clim(cmin, cmax)
         cb = plt.colorbar(cs, orientation='horizontal')
         cb.set_label('LOG10 OOPE (J/m2), community %d' %(i + 1))
