@@ -89,10 +89,9 @@ def compute_lightpref(par, daylen, opt_light=1.0e2, sigm_light=1.7e2, same_dayni
 
     .. math:: 
 
-        \begin{eqnarray}
             & & light & = & \frac{PAR}{DAYLENGTH}*nfactor+EPS \\ 
+
             H_{lpref} & = & H_{lpred} & = & \frac{mode}{light} \times \exp\left[\frac{(\log(mode)-mu)^2-(\log(light)-mu)^2}{2\times ssigm} \right] 
-        \end{eqnarray}
 
     :param numpy.array par: Photosynthetically Active Radiation (in :math:`W.m^{-2}`). **Should be 4D (time, z, y, x).**
     :param numpy.array daylen: Fraction of day within 24h (can be obtained from the :py:func:`compute_daylength` function). Its shape should allow broadcasting
