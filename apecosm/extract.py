@@ -174,7 +174,14 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True, compute_
     surf = mesh['e2t'].values * mesh['e1t'].values
     surf = surf[:, :, :, np.newaxis, np.newaxis]  # time, lat, lon, comm, weight
 
-    tmask = mesh['tmaskutil'].values[:, :, :, np.newaxis, np.newaxis]  # time, lat, lon, comm, weight 
+    tmask = mesh['tmask'].values  # time, depth, lat, lon
+
+    if('tmaskutil' in mesh.variables):
+        tmask = mesh['tmaskutil'].values[:, :, :, np.newaxis, np.newaxis]  # time, lat, lon, comm, weight 
+
+    else:
+        tmask = mesh['tmask'].values[:, 0, :, :, np.newaxis, np.newaxis]   # time, lat, lon
+
     lon = np.squeeze(mesh['glamt'].values)
     lat = np.squeeze(mesh['gphit'].values)
 
