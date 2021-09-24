@@ -205,7 +205,7 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True, compute_
     weight = tmask * surf  # time, lat, lon, comm, w
 
 
-    data = xr.open_mfdataset(fileelist)
+    data = xr.open_mfdataset(filelist)
     data = data['OOPE']
 
     if use_wstep:
