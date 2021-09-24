@@ -1,7 +1,17 @@
 import numpy as np
 
 def get_monthly_clim(var):
-    
+
+    ''' Computes the mean monthly seasonal cycle and the
+    monthly anomalies. It assumes that time is the first 
+    dimension and that all years have 12 months.
+
+    :param numpy.array var: Input array
+    :return: tuple containing the seasonal cycle and associated 
+        anomalies
+
+    '''
+
     ntime = var.shape[0]
 
     nyears = ntime // 12
