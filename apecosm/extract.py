@@ -41,7 +41,15 @@ def extract_ltl_data(file_pattern, varname, meshfile,
     else:
         e3t = mesh['e3t_0'].values  # 1, z, lat, lon
 
-    tmask = mesh['tmask'].values * mesh['tmaskutil'].values[np.newaxis, :, :, :]  # 1, z, lat, lon
+    if(e3t.ndim == 2):
+        # if e3t is 2D (1, z), it is retiled
+        e3t = e3t[:, :, np.newaxis, np.newaxis]
+    
+    tmask = mesh['tmask'].values
+    
+    if('tmaskutil' in mesh.variables):
+        tmask *= mesh['tmaskutil'].values[np.newaxis, :, :, :]  # 1, z, lat, lon
+    
     lon = np.squeeze(mesh['glamt'].values)
     lat = np.squeeze(mesh['gphit'].values)
 
@@ -73,8 +81,10 @@ def extract_ltl_data(file_pattern, varname, meshfile,
         weight = weight[:, idepth, :, :]
         data = data.isel(z=idepth)
 
+    tdim, zdim, ydim, xdim = data[varname].dims
+    
     # integrate spatially and vertically the LTL concentrations
-    data = (data[varname] * weight).sum(dim=('y', 'x', 'z'))  # time
+    data = (data[varname] * weight).sum(dim=(zdim, ydim, xdim))  # time
     if compute_mean:
         data /= np.sum(weight, axis=(1, 2, 3))
 
