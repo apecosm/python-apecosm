@@ -9,7 +9,7 @@ from .domains import DOMAINS, inpolygon
 
 
 def extract_ltl_data(file_pattern, varname, meshfile,
-                     domain_name, compute_mean=False, depth_max=None):
+                     domain_name, compute_mean=False, depth_max=None, replace_dims={}):
 
     '''
     Extraction of LTL values on a given domain.
@@ -22,6 +22,7 @@ def extract_ltl_data(file_pattern, varname, meshfile,
     :param str domain_name: Name of the domain to extract
     :param bool vvl: True if VVL is on, else False
     :param bool compute_mean: If True, mean is computed. If False, integral is provided.
+    :param dict replace_dims: Replacement of the dimensions names, should be consistent with mesh_mask dimensions.
 
     :return: A xarray dataset
 
@@ -29,33 +30,30 @@ def extract_ltl_data(file_pattern, varname, meshfile,
 
     # open the dataset
     data = xr.open_mfdataset(file_pattern)
+    data = data.rename_dims(replace_dims)
 
     # open the mesh file, extract tmask, lonT and latT
     mesh = xr.open_dataset(meshfile)
     surf = mesh['e2t'] * mesh['e1t'] # 1, lat, lon
-    surf = surf.values[np.newaxis, :, :, :] # 1, 1, lat, lon
 
     if 'e3t' in data.variables:
         # if VVL, e3t should be read from data
         e3t = data['e3t']  # time, z, lat, lon
     else:
-        e3t = mesh['e3t_0'].values  # 1, z, lat, lon
-
-    if(e3t.ndim == 2):
-        # if e3t is 2D (1, z), it is retiled
-        e3t = e3t[:, :, np.newaxis, np.newaxis]
+        e3t = mesh['e3t_0']  # 1, z, lat, lon
     
-    tmask = mesh['tmask'].values
+    tmask = mesh['tmask']
     
     if('tmaskutil' in mesh.variables):
-        tmask *= mesh['tmaskutil'].values[np.newaxis, :, :, :]  # 1, z, lat, lon
+        tmask *= mesh['tmaskutil']
     
-    lon = np.squeeze(mesh['glamt'].values)
-    lat = np.squeeze(mesh['gphit'].values)
+    lon = _squeeze_variable(mesh['glamt']).values
+    lat = _squeeze_variable(mesh['glamt']).values
+    nlat, nlon = lat.shape
 
     # extract the domain coordinates
     if domain_name == 'global':
-        maskdom = 1
+        maskdom = np.ones(lat.shape)
     else:
 
         if isinstance(domain_name, str):
@@ -64,11 +62,9 @@ def extract_ltl_data(file_pattern, varname, meshfile,
             domain = domain_name
 
         # generate the domain mask
-        maskdom = inpolygon(lon, lat, domain['lon'], domain['lat'])
+        maskdom = inpolygon(lon, lat, domain['lon'], domain['lat']).astype(int)
 
-        # add virtual dimensions to domain mask and
-        # correct landsea mask
-        maskdom = maskdom[np.newaxis, np.newaxis, :, :]  # time, depth, lat, lon
+    maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
 
     tmask = tmask * maskdom  #  0 if land or out of domain, else 1
     weight = surf * e3t * tmask  # (1, z, lat, lon) or (time, z, lat, lon)
@@ -82,11 +78,12 @@ def extract_ltl_data(file_pattern, varname, meshfile,
         data = data.isel(z=idepth)
 
     tdim, zdim, ydim, xdim = data[varname].dims
+    print(data)
     
     # integrate spatially and vertically the LTL concentrations
     data = (data[varname] * weight).sum(dim=(zdim, ydim, xdim))  # time
     if compute_mean:
-        data /= np.sum(weight, axis=(1, 2, 3))
+        data /= weight.sum(dim=(zdim, ydim, zdim))
 
     return data
 
@@ -227,6 +224,25 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True, compute_
         data /= np.sum(weight, axis=(1, 2)) 
     
     return data
+
+
+def _squeeze_variable(variable):
+    
+    r'''
+    If a variable which is supposed to be 2D (dims=['x', 'y']) but
+    is in fact 3D, we remove the spurious dimensions.
+
+    :return: A data array with the given time mean
+    '''
+    
+    dims = variable.dims
+    dictout = {}
+    for d in dims:
+        if d not in ['x', 'y']:
+            dictout[d] = 0
+        else:
+            dictout[d] = slice(None, None)
+    return variable.isel(**dictout)
 
 # if __name__ == '__main__':
 #
