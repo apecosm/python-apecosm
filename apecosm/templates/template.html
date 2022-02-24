@@ -93,6 +93,15 @@
     </br>
 {% endfor %}
 
+<h2> Weights </h2>
+
+{% for item in weight_figs %}
+    Weight for community {{ item }}: 
+    <br>
+    <img src={{ weight_figs[item] }} class="center">
+    </br>
+{% endfor %}
+
 
 </body>
 </html>
