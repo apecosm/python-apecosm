@@ -9,7 +9,7 @@ from .domains import DOMAINS, inpolygon
 
 
 def extract_ltl_data(file_pattern, varname, meshfile,
-                     domain_name, compute_mean=False, depth_max=None):
+                     domain_name, compute_mean=False, depth_max=None, replace_dims={}):
 
     '''
     Extraction of LTL values on a given domain.
@@ -22,6 +22,7 @@ def extract_ltl_data(file_pattern, varname, meshfile,
     :param str domain_name: Name of the domain to extract
     :param bool vvl: True if VVL is on, else False
     :param bool compute_mean: If True, mean is computed. If False, integral is provided.
+    :param dict replace_dims: Replacement of the dimensions names, should be consistent with mesh_mask dimensions.
 
     :return: A xarray dataset
 
@@ -29,33 +30,30 @@ def extract_ltl_data(file_pattern, varname, meshfile,
 
     # open the dataset
     data = xr.open_mfdataset(file_pattern)
+    data = data.rename_dims(replace_dims)
 
     # open the mesh file, extract tmask, lonT and latT
     mesh = xr.open_dataset(meshfile)
-    surf = mesh['e2t'] * mesh['e1t'] # 1, lat, lon
-    surf = surf.values[np.newaxis, :, :, :] # 1, 1, lat, lon
+    surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
 
     if 'e3t' in data.variables:
         # if VVL, e3t should be read from data
         e3t = data['e3t']  # time, z, lat, lon
     else:
-        e3t = mesh['e3t_0'].values  # 1, z, lat, lon
-
-    if(e3t.ndim == 2):
-        # if e3t is 2D (1, z), it is retiled
-        e3t = e3t[:, :, np.newaxis, np.newaxis]
+        e3t = mesh['e3t_0']  # 1, z, lat, lon
     
-    tmask = mesh['tmask'].values
+    tmask = mesh['tmask']
     
     if('tmaskutil' in mesh.variables):
-        tmask *= mesh['tmaskutil'].values[np.newaxis, :, :, :]  # 1, z, lat, lon
+        tmask *= mesh['tmaskutil']
     
-    lon = np.squeeze(mesh['glamt'].values)
-    lat = np.squeeze(mesh['gphit'].values)
+    lon = _squeeze_variable(mesh['glamt']).values
+    lat = _squeeze_variable(mesh['glamt']).values
+    nlat, nlon = lat.shape
 
     # extract the domain coordinates
     if domain_name == 'global':
-        maskdom = 1
+        maskdom = np.ones(lat.shape)
     else:
 
         if isinstance(domain_name, str):
@@ -64,11 +62,9 @@ def extract_ltl_data(file_pattern, varname, meshfile,
             domain = domain_name
 
         # generate the domain mask
-        maskdom = inpolygon(lon, lat, domain['lon'], domain['lat'])
+        maskdom = inpolygon(lon, lat, domain['lon'], domain['lat']).astype(int)
 
-        # add virtual dimensions to domain mask and
-        # correct landsea mask
-        maskdom = maskdom[np.newaxis, np.newaxis, :, :]  # time, depth, lat, lon
+    maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
 
     tmask = tmask * maskdom  #  0 if land or out of domain, else 1
     weight = surf * e3t * tmask  # (1, z, lat, lon) or (time, z, lat, lon)
@@ -82,11 +78,11 @@ def extract_ltl_data(file_pattern, varname, meshfile,
         data = data.isel(z=idepth)
 
     tdim, zdim, ydim, xdim = data[varname].dims
-    
+
     # integrate spatially and vertically the LTL concentrations
     data = (data[varname] * weight).sum(dim=(zdim, ydim, xdim))  # time
     if compute_mean:
-        data /= np.sum(weight, axis=(1, 2, 3))
+        data /= weight.sum(dim=(zdim, ydim, zdim))
 
     return data
 
@@ -121,7 +117,7 @@ def extract_time_means(data, time=None):
 
     return climatology
 
-def extract_apecosm_constants(input_dir):
+def extract_apecosm_constants(const_file, replace_dims={}):
 
     ''' Extracts APECOSM constant fields
 
@@ -130,23 +126,13 @@ def extract_apecosm_constants(input_dir):
 
      '''
 
-    fileconst = glob('%s/*ConstantFields.nc' %input_dir)
-
-    if len(fileconst) == 0:
-        message = 'No ConstantFields file found in directory.'
-        print(message)
-        sys.exit(1)
-
-    if len(fileconst) > 1:
-        message = 'More than  one ConstantFields file found in directory.'
-        print(message)
-        sys.exit(1)
-
-    constants = xr.open_dataset(fileconst[0])
+    constants = xr.open_dataset(const_file)
+    constants = constants.rename(replace_dims)
     return constants
 
 
-def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True, compute_mean=True):
+def extract_oope_data(file_pattern, meshfile, domain_name, constant_file=None, 
+                      use_wstep=True, compute_mean=True, replace_dims={}, replace_const_dims={}):
 
     '''
     Extraction of OOPE values on a given domain.
@@ -165,35 +151,29 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True, compute_
 
     # Extract constant fields and extract weight_step
     if use_wstep:
-        const = extract_apecosm_constants(input_dir)
-        wstep = const['weight_step'].values   # weight or (comm, weight)
-
-        # if wstep is 1d, we tile it along the community dimension
-        if wstep.ndim == 1:
-            wstep = wstep[np.newaxis, :]
-
-        wstep = wstep[np.newaxis, np.newaxis, np.newaxis, :, :]  # time, lat, lon, comm, weight
+        const = extract_apecosm_constants(constant_file, replace_dims=replace_const_dims)
+        wstep = const['weight_step']
     else:
         wstep = 1
 
     # extract the list of OOPE files
-    filelist = np.sort(glob("%s/*OOPE*nc" %(input_dir)))
+    filelist = np.sort(glob(file_pattern))
 
     # open the mesh file, extract tmask, lonT and latT
     mesh = xr.open_dataset(meshfile)
-    surf = mesh['e2t'].values * mesh['e1t'].values
-    surf = surf[:, :, :, np.newaxis, np.newaxis]  # time, lat, lon, comm, weight
-
-    tmask = mesh['tmask'].values  # time, depth, lat, lon
+    surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
+    
 
     if('tmaskutil' in mesh.variables):
-        tmask = mesh['tmaskutil'].values[:, :, :, np.newaxis, np.newaxis]  # time, lat, lon, comm, weight 
-
+        tmask = mesh['tmaskutil']
     else:
-        tmask = mesh['tmask'].values[:, 0, :, :, np.newaxis, np.newaxis]   # time, lat, lon
+        tmask = mesh['tmask']
+        
+    tmask = _squeeze_variable(tmask)
 
-    lon = np.squeeze(mesh['glamt'].values)
-    lat = np.squeeze(mesh['gphit'].values)
+    lon = _squeeze_variable(mesh['glamt']).values
+    lat = _squeeze_variable(mesh['gphit']).values
+    nlat, nlon = lat.shape
 
     # extract the domain coordinates
     if isinstance(domain_name, str):
@@ -206,16 +186,17 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True, compute_
         # generate the domain mask
         maskdom = inpolygon(lon, lat, domain['lon'], domain['lat'])
     else:
-        maskdom = 1.
+        maskdom = np.ones(lat.shape)
+
+    maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
 
     # add virtual dimensions to domain mask and
     # correct landsea mask
-    maskdom = maskdom[np.newaxis, :, :, np.newaxis, np.newaxis]  # time, lat, lon, comm, w
     tmask = tmask * maskdom
     weight = tmask * surf  # time, lat, lon, comm, w
 
-
     data = xr.open_mfdataset(filelist)
+    data = data.rename(replace_dims)
     data = data['OOPE']
 
     if use_wstep:
@@ -224,9 +205,28 @@ def extract_oope_data(input_dir, meshfile, domain_name, use_wstep=True, compute_
     data = data.sum(dim=('x', 'y'))  # time, com, w
 
     if compute_mean:
-        data /= np.sum(weight, axis=(1, 2)) 
+        data /= weight.sum(dim=['x', 'y'])
     
     return data
+
+
+def _squeeze_variable(variable):
+    
+    r'''
+    If a variable which is supposed to be 2D (dims=['x', 'y']) but
+    is in fact 3D, we remove the spurious dimensions.
+
+    :return: A data array with the given time mean
+    '''
+    
+    dims = variable.dims
+    dictout = {}
+    for d in dims:
+        if d not in ['x', 'y']:
+            dictout[d] = 0
+        else:
+            dictout[d] = slice(None, None)
+    return variable.isel(**dictout)
 
 # if __name__ == '__main__':
 #
