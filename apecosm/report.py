@@ -1,7 +1,7 @@
-from traitlets.config import Config
-from jupyter_core.command import main as jupymain
-from nbconvert.exporters import HTMLExporter, PDFExporter
-from nbconvert.preprocessors import TagRemovePreprocessor
+# from traitlets.config import Config
+# from jupyter_core.command import main as jupymain
+# from nbconvert.exporters import HTMLExporter, PDFExporter
+# from nbconvert.preprocessors import TagRemovePreprocessor
 import subprocess
 import nbformat as nbf
 from .extract import extract_oope_data, extract_time_means, extract_apecosm_constants
@@ -10,51 +10,65 @@ import numpy as np
 import matplotlib.pyplot as plt
 import xarray as xr
 import cartopy.crs as ccrs
-import papermill as pm
+# import papermill as pm
 import pkg_resources
 import os
-import cartopy.feature as cfeature
+import jinja2
 
-def report(input_dir, meshfile, output):
+
+def report(input_dir, mesh_file, output_file='report.html'):
+    
+    env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
+    template = env.get_template("template.html")
+    
+    a_variable = 'toto'
+    arguments = {}
+            
+    render = template.render(**arguments)
+    
+    with open(output_file, "w") as f:
+        f.write(render)
+
+# def report(input_dir, meshfile, output):
+
+#     suffindex = output.rfind(".")
+#     fmt = output[suffindex + 1:]
+    
+#     tempfile = output.replace(fmt, "ipynb")
+    
+#     if fmt not in ['pdf', 'html']:
+#         message = "The output format must be 'html' or 'pdf'. The program will stop"
+#         print(message)
+#         sys.exit(1)
+
+#     template_file = pkg_resources.resource_filename('apecosm', 'resources/report_template.ipynb')
+#     param = dict(input_dir=input_dir, input_mesh=meshfile)
+#     pm.execute_notebook(template_file, tempfile, parameters=param)
+
+#     c = Config()
+
+#     c.TagRemovePreprocessor.remove_cell_tags = ("remove_cell",)
+#     c.TagRemovePreprocessor.remove_all_outputs_tags = ('remove_output',)
+#     c.TagRemovePreprocessor.remove_input_tags = ('remove_input',)    
+#     c.TagRemovePreprocessor.enabled = True
+
+#     if(fmt == 'html'):
+#         c.HTMLExporter.preprocessors = ["nbconvert.preprocessors.TagRemovePreprocessor"]
+#         exporter = HTMLExporter(config=c)
+#     else:
+#         c.PDFExporter.preprocessors = ["nbconvert.preprocessors.TagRemovePreprocessor"]
+#         exporter = PDFExporter(config=c)
+    
+#     strout, objout = exporter.from_filename(tempfile)
+#     if(type(strout) == bytes):
+#         wmode = "wb"
+#     else:
+#         wmode = "w"
+    
+#     with open(output, wmode) as fout:
+#         fout.write(strout)
         
-    suffindex = output.rfind(".")
-    fmt = output[suffindex + 1:]
-    
-    tempfile = output.replace(fmt, "ipynb")
-    
-    if fmt not in ['pdf', 'html']:
-        message = "The output format must be 'html' or 'pdf'. The program will stop"
-        print(message)
-        sys.exit(1)
-
-    template_file = pkg_resources.resource_filename('apecosm', 'resources/report_template.ipynb')
-    param = dict(input_dir=input_dir, input_mesh=meshfile)
-    pm.execute_notebook(template_file, tempfile, parameters=param)
-
-    c = Config()
-
-    c.TagRemovePreprocessor.remove_cell_tags = ("remove_cell",)
-    c.TagRemovePreprocessor.remove_all_outputs_tags = ('remove_output',)
-    c.TagRemovePreprocessor.remove_input_tags = ('remove_input',)    
-    c.TagRemovePreprocessor.enabled = True
-
-    if(fmt == 'html'):
-        c.HTMLExporter.preprocessors = ["nbconvert.preprocessors.TagRemovePreprocessor"]
-        exporter = HTMLExporter(config=c)
-    else:
-        c.PDFExporter.preprocessors = ["nbconvert.preprocessors.TagRemovePreprocessor"]
-        exporter = PDFExporter(config=c)
-    
-    strout, objout = exporter.from_filename(tempfile)
-    if(type(strout) == bytes):
-        wmode = "wb"
-    else:
-        wmode = "w"
-    
-    with open(output, wmode) as fout:
-        fout.write(strout)
-        
-    os.remove(tempfile)
+#     os.remove(tempfile)
     
 def plot_report_ts(input_dir, input_mesh):
 
@@ -195,6 +209,5 @@ def plot_report_size_spectra(input_dir, input_mesh):
 
 if __name__ == '__main__':
 
-    print('++++++++++++++++++++++++ processing')
-    report('output dir', 'mesh file', 'html')
-    report('output dir', 'mesh file', 'pdf')
+    #pkg_resources.resource_filename('apecosm', 'resources/report_template.ipynb')
+    print("toto")
