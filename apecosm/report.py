@@ -14,6 +14,7 @@ import cartopy.crs as ccrs
 import pkg_resources
 import os
 import jinja2
+import os 
 
 
 def report(input_dir, mesh_file, output_file='report.html'):
@@ -23,11 +24,21 @@ def report(input_dir, mesh_file, output_file='report.html'):
     
     a_variable = 'toto'
     arguments = {}
-            
+        
+    data = xr.open_mfdataset(os.path.join(input_dir, '*.nc'))
+    dims = data.dims
+    list_dims = [d for d in data.dims if 'prey' not in d]
+    
+    arguments['dims'] = dims
+    arguments['list_dims'] = list_dims
+    arguments['start_date'] = data['time'][0].values
+    arguments['end_date'] = data['time'][-1].values
+
     render = template.render(**arguments)
     
     with open(output_file, "w") as f:
         f.write(render)
+    
 
 # def report(input_dir, meshfile, output):
 
