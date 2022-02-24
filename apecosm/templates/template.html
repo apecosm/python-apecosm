@@ -5,22 +5,80 @@
     <title>Apecosm report</title>
 
     <style>
+    
     .center {
         display: block;
         margin-left: auto;
         margin-right: auto;
-        width: 1s%;
-      }
+        width: 10%;
+    }
+            
+    body {
+        margin-left: auto;
+        margin-right: auto;
+        font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+        color: #606c71;
+        width: 80%;
+        text-align:justify;
+    }
+    
+    table,
+    td {
+        border: 1px solid #333;
+    }
+
+    thead,
+    tfoot {
+        background-color: #333;
+        color: #fff;
+    }
+    
+      
     </style>
     
 </head>
 <body>
   
-    <img src="https://apecosm.org/wp-content/uploads/2020/10/cropped-logo_apecosm_sanstexte_rvb_300dpi-2.png" class="center">
+<img src="https://apecosm.org/wp-content/uploads/2020/10/cropped-logo_apecosm_sanstexte_rvb_300dpi-2.png" class="center">
+
+<h1>Apecosm Simulation report </h1>
+
+<h2>Simulation description </h2>
+
+<h3>Duration</h3>
+
+<table>
     
-    <h1>Apecosm Simulation report </h1>
+    <tbody>
+    <tr>
+    <td>Beginning</td>
+    <td>{{ start_date }}</td>
+    </tr>
+    <tr>
+        <td>End</td>
+        <td>{{ end_date }}</td>
+    </tr>
     
-    <h2>Simulation description </h2>
+</table>
+
+<h3>Dimensions</h3>
+
+<table>
+    <tbody>
+        
+    
+    {% for item in list_dims %}
+    <tr>
+    <td>{{ item }}</td>
+    <td>{{ dims[item] }}</td>
+    </tr>
+    {% endfor %}
+
+</tbody>
+
+<table>
     
 
 </body>
