@@ -15,6 +15,8 @@ import pkg_resources
 import os
 import jinja2
 import os 
+import io
+import tempfile
 
 
 def report(input_dir, mesh_file, output_file='report.html'):
@@ -34,11 +36,40 @@ def report(input_dir, mesh_file, output_file='report.html'):
     arguments['start_date'] = data['time'][0].values
     arguments['end_date'] = data['time'][-1].values
 
+    arguments['length_figs'] = _plot_length_community(data, arguments)
+
     render = template.render(**arguments)
     
     with open(output_file, "w") as f:
         f.write(render)
+  
+def _plot_length_community(data, arguments):
     
+    output = {}
+    for c in range(data.dims['c']):
+        
+        length = data['length'].isel(c=c)
+    
+        fig = plt.figure()
+        plt.plot(length.values)
+        plt.xlim(0, length.shape[0] - 1)
+        plt.ylabel('Meters')
+        plt.title('Community ' + str(c))
+        buf = io.BytesIO()
+        plt.savefig(buf, format="svg")
+        plt.close(fig)
+        
+        fp = tempfile.NamedTemporaryFile() 
+      
+        with open(f"{fp.name}.svg", 'wb') as ff:
+            ff.write(buf.getvalue()) 
+
+        buf.close()
+        output[c] = f"{fp.name}.svg"
+        
+    return output
+
+        
 
 # def report(input_dir, meshfile, output):
 

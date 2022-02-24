@@ -10,7 +10,6 @@
         display: block;
         margin-left: auto;
         margin-right: auto;
-        width: 10%;
     }
             
     body {
@@ -41,7 +40,7 @@
 </head>
 <body>
   
-<img src="https://apecosm.org/wp-content/uploads/2020/10/cropped-logo_apecosm_sanstexte_rvb_300dpi-2.png" class="center">
+<img src="https://apecosm.org/wp-content/uploads/2020/10/cropped-logo_apecosm_sanstexte_rvb_300dpi-2.png" class="center" width="20%">
 
 <h1>Apecosm Simulation report </h1>
 
@@ -68,7 +67,6 @@
 <table>
     <tbody>
         
-    
     {% for item in list_dims %}
     <tr>
     <td>{{ item }}</td>
@@ -79,7 +77,16 @@
 </tbody>
 
 <table>
-    
+
+<h2> Lengths </h2>
+
+{% for item in length_figs %}
+    Length for community {{ item }}: 
+    <br>
+    <img src={{ length_figs[item] }} class="center">
+    </br>
+{% endfor %}
+
 
 </body>
 </html>
