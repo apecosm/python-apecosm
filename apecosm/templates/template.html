@@ -26,6 +26,8 @@
     table,
     td {
         border: 1px solid #333;
+        padding: 15px;
+        
     }
 
     thead,
@@ -67,12 +69,16 @@
 <table>
     <tbody>
         
-    {% for item in list_dims %}
     <tr>
-    <td>{{ item }}</td>
-    <td>{{ dims[item] }}</td>
+    {% for item in list_dims %}
+        <td>{{ item }}</td>
+    {% endfor %}        
     </tr>
-    {% endfor %}
+    <tr>
+    {% for item in list_dims %}
+        <td>{{ dims[item] }}</td>
+        {% endfor %}
+    </tr>
 
 </tbody>
 
