@@ -29,8 +29,8 @@ def report(input_dir, mesh_file, output_file='report.html', filecss='default'):
             css = fin.read()
     
     elif filecss.startswith('http'):
-        fin = urllib.request.urlopen(filecss)
-        css = fin.read()
+        with urllib.request.urlopen(filecss) as fin:
+            css = fin.read().decode('utf-8')
     
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("template.html")
