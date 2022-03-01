@@ -6,37 +6,8 @@
 
     <style>
     
-    .center {
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
-    }
-            
-    body {
-        margin-left: auto;
-        margin-right: auto;
-        font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
-        font-size: 16px;
-        line-height: 1.5;
-        color: #606c71;
-        width: 80%;
-        text-align:justify;
-    }
-    
-    table,
-    td {
-        border: 1px solid #333;
-        padding: 15px;
+        {{ css }}
         
-    }
-
-    thead,
-    tfoot {
-        background-color: #333;
-        color: #fff;
-    }
-    
-      
     </style>
     
 </head>
@@ -82,7 +53,7 @@
 
 </tbody>
 
-<table>
+</table>
 
 <h2> Lengths </h2>
 
@@ -101,7 +72,6 @@
     <img src={{ weight_figs[item] }} class="center">
     </br>
 {% endfor %}
-
 
 </body>
 </html>
