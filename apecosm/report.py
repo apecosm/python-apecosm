@@ -17,15 +17,26 @@ import jinja2
 import os 
 import io
 import tempfile
+import urllib
 
 
-def report(input_dir, mesh_file, output_file='report.html'):
+def report(input_dir, mesh_file, output_file='report.html', filecss='default'):
+    
+    if(filecss == 'default'):
+        filecss = pkg_resources.resource_filename('apecosm', os.path.join('templates', 'styles.css'))
+        with open(filecss) as fin:
+            css = fin.read()
+    
+    elif filecss.startswith('http'):
+        fin = urllib.request.urlopen(filecss)
+        css = fin.read()
     
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("template.html")
     
-    a_variable = 'toto'
     arguments = {}
+    
+    arguments['css'] = css
         
     data = xr.open_mfdataset(os.path.join(input_dir, '*.nc'))
     dims = data.dims
