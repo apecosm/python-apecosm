@@ -73,5 +73,14 @@
     </br>
 {% endfor %}
 
+<h2> Selectivities </h2>
+
+{% for item in select_figs %}
+    Weight for community {{ item }}: 
+    <br>
+    <img src={{ select_figs[item] }} class="center">
+    </br>
+{% endfor %}
+
 </body>
 </html>

@@ -18,6 +18,7 @@ import os
 import io
 import tempfile
 import urllib
+plt.rcParams['text.usetex'] = False
 
 
 def report(input_dir, mesh_file, output_file='report.html', filecss='default'):
@@ -49,11 +50,44 @@ def report(input_dir, mesh_file, output_file='report.html', filecss='default'):
 
     arguments['length_figs'] = _plot_wl_community(data, 'length', 'meters')
     arguments['weight_figs'] = _plot_wl_community(data, 'weight', 'kilograms')
+    arguments['select_figs'] = _plot_ltl_selectivity(data)
 
     render = template.render(**arguments)
     
     with open(output_file, "w") as f:
         f.write(render)
+        
+        
+def _plot_ltl_selectivity(data):
+    
+    output = {}
+    for c in range(data.dims['c']):
+        
+        length = data['length'].isel(c=c)
+        varlist = [v for v in data.variables if v.startswith('select_')]
+        
+        fig = plt.figure()
+        ax = plt.gca()
+        for v in varlist:
+            temp = data[v].isel(c=0)
+            plt.plot(length, temp, label=v)
+        plt.legend()
+        plt.xlim(length.min(), length.max())
+        ax.set_xscale('log')
+        plt.title('Community ' + str(c))
+        buf = io.BytesIO()
+        plt.savefig(buf, format="svg")
+        plt.close(fig)
+        
+        fp = tempfile.NamedTemporaryFile() 
+      
+        with open(f"{fp.name}.svg", 'wb') as ff:
+            ff.write(buf.getvalue()) 
+
+        buf.close()
+        output[c] = f"{fp.name}.svg"
+        
+    return output
   
 def _plot_wl_community(data, varname, units):
     
