@@ -15,22 +15,38 @@
     </div>
         
 <h1>Simulation results </h1>
+
+<h2> Time series </h2>
  
-{% for item in ts_figs %}
-    Time-series ({{ item }}):  
-    <br>
-    <img src={{ ts_figs[item] }} >
-    </br>
-{% endfor %}
+<table >
+    <tbody>
+        {% for item in ts_figs %}
+            <tr>
+                <td id="tdfigs">
+                    <div style="text-align: center">
+                <img src={{ ts_figs[item] }} width="80%">
+            </div>
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
 <h2> Maps </h2>
 
-{% for item in maps_figs %}
-    Mean maps ({{ item }}):  
-    <br>
-    <img src={{ maps_figs[item] }} >
-    </br>
-{% endfor %}
+<table >
+    <tbody>
+        {% for item in maps_figs %}
+            <tr>
+                <td id="tdfigs">
+                    <div style="text-align: center">
+                <img src={{ maps_figs[item] }} width="80%">
+            </div>
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
 </section>
 
