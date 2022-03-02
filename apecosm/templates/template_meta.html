@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <title>Apecosm report</title>
+    <link href="../css/styles.css" rel="stylesheet" type="text/css">
+    
+</head>
+<body>
+    
+<section class="main-content">
+
+    <div style="text-align: center">
+<img src="https://apecosm.org/wp-content/uploads/2020/10/cropped-logo_apecosm_sanstexte_rvb_300dpi-2.png" width="20%">
+    </div>
+
+<h1>Simulation metadata </h2>
+
+<h3>Duration</h3>
+
+<table>
+    
+    <tbody>
+    <tr>
+    <td>Beginning</td>
+    <td>{{ start_date }}</td>
+    </tr>
+    <tr>
+        <td>End</td>
+        <td>{{ end_date }}</td>
+    </tr>
+    
+</table>
+
+<h3>Dimensions</h3>
+
+<table>
+    <tbody>
+        
+    <tr>
+    {% for item in list_dims %}
+        <td>{{ item }}</td>
+    {% endfor %}        
+    </tr>
+    <tr>
+    {% for item in list_dims %}
+        <td>{{ dims[item] }}</td>
+        {% endfor %}
+    </tr>
+
+</tbody>
+
+</table>
+
+</section>
+
+</body>
+</html>
