@@ -27,6 +27,7 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='', filecss=
     
     mesh = xr.open_dataset(mesh_file)
     data = xr.open_mfdataset(os.path.join(input_dir, '*.nc'), **xarray_args)
+    const = xr.open_mfdataset(os.path.join(input_dir, '*Const*nc'), **xarray_args)
     
     filebanner = pkg_resources.resource_filename('apecosm', os.path.join('templates', 'banner.html'))
     shutil.copyfile(filebanner, os.path.join(output_dir, 'html', 'banner.html'))
@@ -62,7 +63,7 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='', filecss=
     with open(os.path.join(css_dir, 'styles.css'), 'w') as fout:
         fout.write(css)
 
-    _make_meta_template(output_dir, css, data)                        
+    _make_meta_template(output_dir, css, data, const)                        
     _make_config_template(output_dir, css, data)
     _make_result_template(output_dir, css, data, mesh, crs)
     
@@ -85,8 +86,9 @@ def _make_result_template(output_dir, css, data, mesh, crs):
     outputs = {}
     outputs['css'] = css
     
-    outputs['ts_figs'] = _plot_time_series(data)
+    outputs['ts_figs'] = _plot_time_series(mesh, data)
     outputs['maps_figs'] = _plot_mean_maps(mesh, data, crs)
+    
             
     render = template.render(**outputs)
     
@@ -94,10 +96,15 @@ def _make_result_template(output_dir, css, data, mesh, crs):
     with open(output_file, "w") as f:
         f.write(render)
         
-def _make_meta_template(output_dir, css, data):
+def _make_meta_template(output_dir, css, data, const):
     
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("template_meta.html")
+    
+    comnames = {}
+    attrlist = [v for v in const.attrs if v.startswith('Community_')]
+    for v in attrlist:
+        comnames[v.replace('_', ' ')] = const.attrs[v]
     
     outputs = {}
     
@@ -106,6 +113,7 @@ def _make_meta_template(output_dir, css, data):
     dims = data.dims
     list_dims = [d for d in data.dims if 'prey' not in d]
     
+    outputs['comnames'] = comnames
     outputs['dims'] = dims
     outputs['list_dims'] = list_dims
     outputs['start_date'] = data['time'][0].values
@@ -116,6 +124,27 @@ def _make_meta_template(output_dir, css, data):
     output_file = os.path.join(output_dir, 'html', 'config_meta.html')
     with open(output_file, "w") as f:
         f.write(render)
+        
+def _plot_trophic_interactions(data):
+    
+    trophic_interact = data['troph_interaction'].values
+    trophic_interact.shape
+
+    fig = plt.figure()
+    nd, npred, nprey = trophic_interact.shape
+    title = ['Day', 'Night']
+    for d in range(2):
+        ax = plt.subplot(1, 2, d + 1)
+        cs = plt.imshow(trophic_interact[d], origin='lower', interpolation='none')
+        plt.title(title[d])
+        cs.set_clim(0, 1)
+        plt.xlabel('Prey')
+        plt.ylabel('Predator')
+        ax.set_xticks(np.arange(nprey))
+        ax.set_yticks(np.arange(npred))
+        ax.set_aspect('equal', 'box')
+    output = _savefig()
+    return output
         
 def _make_config_template(output_dir, css, data):
     
@@ -138,6 +167,8 @@ def _make_config_template(output_dir, css, data):
     outputs['weight_figs'] = _plot_wl_community(data, 'weight', 'kilograms')
     outputs['select_figs'] = _plot_ltl_selectivity(data)
     
+    outputs['trophic_figs'] = _plot_trophic_interactions(data)
+    
     render = template.render(**outputs)
     
     output_file = os.path.join(output_dir, 'html', 'config_report.html')
@@ -145,23 +176,25 @@ def _make_config_template(output_dir, css, data):
         f.write(render)
     
     
-def _plot_time_series(data):
+def _plot_time_series(mesh, data):
     
     filenames = {}
     
-    output = (data['OOPE'] * data['weight_step']).sum(dim=['w', 'x', 'y'])
+    output = (data['OOPE'] * data['weight_step'] * mesh['e1t'] * mesh['e2t']).sum(dim=['w', 'x', 'y'])
     total = output.sum(dim='c')
     
     fig = plt.figure()
     total.plot()
     plt.title('Total')
     filenames['Total'] = _savefig()
+    plt.ylabel('J')
     plt.close(fig)
     
     for c in range(data.dims['c']):
         fig = plt.figure()
         output.isel(c=c).plot()
         plt.title('Community ' + str(c))
+        plt.ylabel('J')
         filenames['Community ' + str(c)] = _savefig()
         plt.close(fig)
     
@@ -176,11 +209,13 @@ def _plot_mean_maps(mesh, data, crs):
     output = (data['OOPE'] * data['weight_step']).mean(dim='time').sum(dim=['w'])
     output = output.where(output > 0)
     total = output.sum(dim='c')
+    total = total.where(total > 0)
   
     fig = plt.figure()
     ax = plt.axes(projection=crs)
     cs = plt.pcolormesh(lonf, latf, total.isel(y=slice(1, None), x=slice(1, None)))
-    plt.colorbar(cs)
+    cb = plt.colorbar(cs)
+    cb.set_label('J/m2')
     plt.title("Total")
     ax.add_feature(cfeature.LAND)
     ax.add_feature(cfeature.COASTLINE)
@@ -193,7 +228,8 @@ def _plot_mean_maps(mesh, data, crs):
         cs = plt.pcolormesh(lonf, latf, output.isel(c=c, y=slice(1, None), x=slice(1, None)))
         ax.add_feature(cfeature.LAND)
         ax.add_feature(cfeature.COASTLINE)
-        plt.colorbar(cs)
+        cb = plt.colorbar(cs)
+        cb.set_label('J/m2')
         plt.title('Community ' + str(c))
         filenames['Community ' + str(c)] = _savefig()
         plt.close(fig)
@@ -204,7 +240,7 @@ def _plot_mean_maps(mesh, data, crs):
 def _savefig():
     
     buf = io.BytesIO()
-    plt.savefig(buf, format="svg")
+    plt.savefig(buf, format="svg", bbox_inches='tight')
     fp = tempfile.NamedTemporaryFile() 
     with open(f"{fp.name}.svg", 'wb') as ff:
         ff.write(buf.getvalue()) 

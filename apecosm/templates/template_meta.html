@@ -14,9 +14,9 @@
 <img src="https://apecosm.org/wp-content/uploads/2020/10/cropped-logo_apecosm_sanstexte_rvb_300dpi-2.png" width="20%">
     </div>
 
-<h1>Simulation metadata </h2>
+<h1>Simulation description </h2>
 
-<h3>Duration</h3>
+<h2>Duration</h2>
 
 <table>
     
@@ -32,11 +32,10 @@
     
 </table>
 
-<h3>Dimensions</h3>
+<h2>Dimensions</h2>
 
 <table>
-    <tbody>
-        
+    <tbody>    
     <tr>
     {% for item in list_dims %}
         <td>{{ item }}</td>
@@ -47,9 +46,25 @@
         <td>{{ dims[item] }}</td>
         {% endfor %}
     </tr>
-
 </tbody>
 
+</table>
+
+<h2> Communities </h2>
+
+<table>
+    <tbody>    
+    <tr>
+    {% for item in comnames %}
+        <td>{{ item }}</td>
+    {% endfor %}        
+    </tr>
+    <tr>
+    {% for item in comnames %}
+        <td>{{ comnames[item] }}</td>
+        {% endfor %}
+    </tr>
+</tbody>
 </table>
 
 </section>
