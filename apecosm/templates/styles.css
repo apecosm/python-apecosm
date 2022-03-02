@@ -36,11 +36,18 @@ fieldset {
 
 }
 
-table,
 td {
     border: 1px solid #333;
     padding: 15px;
+}
 
+#tdfigs {
+    padding: 0px;
+    border-style: none;
+}
+
+table {
+    padding: 15px;
 }
 
 thead,
@@ -110,4 +117,3 @@ font-size: 1.1rem; } }
     .main-content {
         padding: 1rem 1rem;
 font-size: 1rem; } }
-

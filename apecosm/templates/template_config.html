@@ -18,21 +18,36 @@
 
 <h2> Lengths </h2>
 
-{% for item in length_figs %}
-    Length for community {{ item }}: 
-    <br>
-    <img src={{ length_figs[item] }} >
-    </br>
-{% endfor %}
+<table >
+    <tbody>
+        {% for item in length_figs %}
+            <tr>
+                <td id="tdfigs">
+                    <div style="text-align: center">
+                <img src={{ length_figs[item] }} width="80%">
+            </div>
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
 <h2> Weights </h2>
 
-{% for item in weight_figs %}
-    Weight for community {{ item }}: 
-    <br>
-    <img src={{ weight_figs[item] }} >
-    </br>
-{% endfor %}
+<table>
+    <tbody>
+            {% for item in weight_figs %}
+                <tr>
+                    <td id="tdfigs">
+                        <div style="text-align: center">
+                    <img src={{ weight_figs[item] }} width="80%">
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tr>
+    </tbody>
+</table>
 
 </section>
 
