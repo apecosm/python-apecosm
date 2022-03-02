@@ -19,18 +19,30 @@ import io
 import tempfile
 import urllib
 plt.rcParams['text.usetex'] = False
+import cartopy.feature as cfeature
 
 
 def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_file='report.html', filecss='default', xarray_args={}):
     
-    if(filecss == 'default'):
+    mesh = xr.open_dataset(mesh_file)
+    
+    if filecss is None:
+        css = ''
+     
+    # load default value (one in package)   
+    elif filecss == 'default':
         filecss = pkg_resources.resource_filename('apecosm', os.path.join('templates', 'styles.css'))
         with open(filecss) as fin:
             css = fin.read()
     
+    # load web resource
     elif filecss.startswith('http'):
         with urllib.request.urlopen(filecss) as fin:
             css = fin.read().decode('utf-8')
+            
+    else: 
+        with open(filecss) as fin:
+            css = fin.read()
     
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("template.html")
@@ -53,7 +65,8 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_file='report.htm
     outputs['select_figs'] = _plot_ltl_selectivity(data)
     
     outputs['ts_figs'] = _plot_time_series(data)
-
+    outputs['maps_figs'] = _plot_mean_maps(mesh, data, crs)
+    
     render = template.render(**outputs)
     
     with open(output_file, "w") as f:
@@ -65,7 +78,6 @@ def _plot_time_series(data):
     
     output = (data['OOPE'] * data['weight_step']).sum(dim=['w', 'x', 'y'])
     total = output.sum(dim='c')
-    print(total)
     
     fig = plt.figure()
     total.plot()
@@ -73,7 +85,48 @@ def _plot_time_series(data):
     filenames['Total'] = _savefig()
     plt.close(fig)
     
+    for c in range(data.dims['c']):
+        fig = plt.figure()
+        output.isel(c=c).plot()
+        plt.title('Community ' + str(c))
+        filenames['Community ' + str(c)] = _savefig()
+        plt.close(fig)
+    
     return filenames
+
+def _plot_mean_maps(mesh, data, crs):
+    
+    filenames = {}
+    lonf = np.squeeze(mesh['glamf'].values)
+    latf = np.squeeze(mesh['gphif'].values)
+    
+    output = (data['OOPE'] * data['weight_step']).mean(dim='time').sum(dim=['w'])
+    output = output.where(output > 0)
+    total = output.sum(dim='c')
+  
+    fig = plt.figure()
+    ax = plt.axes(projection=crs)
+    cs = plt.pcolormesh(lonf, latf, total.isel(y=slice(1, None), x=slice(1, None)))
+    plt.colorbar(cs)
+    plt.title("Total")
+    ax.add_feature(cfeature.LAND)
+    ax.add_feature(cfeature.COASTLINE)
+    filenames['Total'] = _savefig()
+    plt.close(fig)
+    
+    for c in range(data.dims['c']):
+        fig = plt.figure()
+        ax = plt.axes(projection=crs)
+        cs = plt.pcolormesh(lonf, latf, output.isel(c=c, y=slice(1, None), x=slice(1, None)))
+        ax.add_feature(cfeature.LAND)
+        ax.add_feature(cfeature.COASTLINE)
+        plt.colorbar(cs)
+        plt.title('Community ' + str(c))
+        filenames['Community ' + str(c)] = _savefig()
+        plt.close(fig)
+    
+    return filenames
+    
     
 def _savefig():
     

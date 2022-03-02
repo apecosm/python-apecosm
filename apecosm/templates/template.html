@@ -91,5 +91,14 @@
     </br>
 {% endfor %}
 
+<h2> Maps </h2>
+
+{% for item in maps_figs %}
+    Mean maps ({{ item }}):  
+    <br>
+    <img src={{ maps_figs[item] }} >
+    </br>
+{% endfor %}
+
 </body>
 </html>
