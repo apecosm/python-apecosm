@@ -20,11 +20,26 @@ import tempfile
 import urllib
 plt.rcParams['text.usetex'] = False
 import cartopy.feature as cfeature
+import shutil
 
 
-def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_file='report.html', filecss='default', xarray_args={}):
+def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='', filecss='default', xarray_args={}):
     
     mesh = xr.open_dataset(mesh_file)
+    data = xr.open_mfdataset(os.path.join(input_dir, '*.nc'), **xarray_args)
+    
+    filebanner = pkg_resources.resource_filename('apecosm', os.path.join('templates', 'banner.html'))
+    shutil.copyfile(filebanner, os.path.join(output_dir, 'html', 'banner.html'))
+    
+    # create the output architecture
+    
+    # first create html folder
+    html_dir = os.path.join(output_dir, 'html')
+    os.makedirs(html_dir, exist_ok=True)
+    
+    # create css folder
+    css_dir = os.path.join(output_dir, 'css')
+    os.makedirs(css_dir, exist_ok=True)   
     
     if filecss is None:
         css = ''
@@ -44,14 +59,73 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_file='report.htm
         with open(filecss) as fin:
             css = fin.read()
     
+    with open(os.path.join(css_dir, 'styles.css'), 'w') as fout:
+        fout.write(css)
+
+    _make_meta_template(output_dir, css, data)                        
+    _make_config_template(output_dir, css, data)
+    _make_result_template(output_dir, css, data, mesh, crs)
+    
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("template.html")
     
     outputs = {}
+    outputs['css'] = css
+    
+    render = template.render(**outputs)
+    
+    with open('index.html', "w") as f:
+        f.write(render)
+        
+def _make_result_template(output_dir, css, data, mesh, crs):
+    
+    env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
+    template = env.get_template("template_results.html")
+    
+    outputs = {}
+    outputs['css'] = css
+    
+    outputs['ts_figs'] = _plot_time_series(data)
+    outputs['maps_figs'] = _plot_mean_maps(mesh, data, crs)
+            
+    render = template.render(**outputs)
+    
+    output_file = os.path.join(output_dir, 'html', 'results_report.html')
+    with open(output_file, "w") as f:
+        f.write(render)
+        
+def _make_meta_template(output_dir, css, data):
+    
+    env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
+    template = env.get_template("template_meta.html")
+    
+    outputs = {}
     
     outputs['css'] = css
+    
+    dims = data.dims
+    list_dims = [d for d in data.dims if 'prey' not in d]
+    
+    outputs['dims'] = dims
+    outputs['list_dims'] = list_dims
+    outputs['start_date'] = data['time'][0].values
+    outputs['end_date'] = data['time'][-1].values
+    
+    render = template.render(**outputs)
+    
+    output_file = os.path.join(output_dir, 'html', 'config_meta.html')
+    with open(output_file, "w") as f:
+        f.write(render)
         
-    data = xr.open_mfdataset(os.path.join(input_dir, '*.nc'), **xarray_args)
+def _make_config_template(output_dir, css, data):
+    
+    env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
+    template = env.get_template("template_config.html")
+    
+    outputs = {}
+    
+    outputs['css'] = css
+    
     dims = data.dims
     list_dims = [d for d in data.dims if 'prey' not in d]
     
@@ -64,13 +138,12 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_file='report.htm
     outputs['weight_figs'] = _plot_wl_community(data, 'weight', 'kilograms')
     outputs['select_figs'] = _plot_ltl_selectivity(data)
     
-    outputs['ts_figs'] = _plot_time_series(data)
-    outputs['maps_figs'] = _plot_mean_maps(mesh, data, crs)
-    
     render = template.render(**outputs)
     
+    output_file = os.path.join(output_dir, 'html', 'config_report.html')
     with open(output_file, "w") as f:
         f.write(render)
+    
     
 def _plot_time_series(data):
     

@@ -3,102 +3,14 @@
 <head>
     
     <title>Apecosm report</title>
+    <link href="css/styles.css" rel="stylesheet" type="text/css">
 
-    <style>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <link href="css/styles.css" type=text/css rel=stylesheet>
     
-        {{ css }}
-        
-    </style>
+    <frameset rows="75px,100%" border=0> 
+        <frame src="html/banner.html" scrolling=no noresize="noresize">
+        <frame name=MAIN-WINDOW src="html/config_report.html" scrolling=yes>
+    </frameset>
     
 </head>
-<body>
-  
-<img src="https://apecosm.org/wp-content/uploads/2020/10/cropped-logo_apecosm_sanstexte_rvb_300dpi-2.png" class="center" width="20%">
-
-<h1>Apecosm Simulation report </h1>
-
-<h2>Simulation description </h2>
-
-<h3>Duration</h3>
-
-<table>
-    
-    <tbody>
-    <tr>
-    <td>Beginning</td>
-    <td>{{ start_date }}</td>
-    </tr>
-    <tr>
-        <td>End</td>
-        <td>{{ end_date }}</td>
-    </tr>
-    
-</table>
-
-<h3>Dimensions</h3>
-
-<table>
-    <tbody>
-        
-    <tr>
-    {% for item in list_dims %}
-        <td>{{ item }}</td>
-    {% endfor %}        
-    </tr>
-    <tr>
-    {% for item in list_dims %}
-        <td>{{ dims[item] }}</td>
-        {% endfor %}
-    </tr>
-
-</tbody>
-
-</table>
-
-<h2> Lengths </h2>
-
-{% for item in length_figs %}
-    Length for community {{ item }}: 
-    <br>
-    <img src={{ length_figs[item] }} >
-    </br>
-{% endfor %}
-
-<h2> Weights </h2>
-
-{% for item in weight_figs %}
-    Weight for community {{ item }}: 
-    <br>
-    <img src={{ weight_figs[item] }} >
-    </br>
-{% endfor %}
-
-<h2> Selectivities </h2>
-
-{% for item in select_figs %}
-    Weight for community {{ item }}: 
-    <br>
-    <img src={{ select_figs[item] }} >
-    </br>
-{% endfor %}
-
-<h2> Time-series </h2>
-
-{% for item in ts_figs %}
-    Time-series ({{ item }}):  
-    <br>
-    <img src={{ ts_figs[item] }} >
-    </br>
-{% endfor %}
-
-<h2> Maps </h2>
-
-{% for item in maps_figs %}
-    Mean maps ({{ item }}):  
-    <br>
-    <img src={{ maps_figs[item] }} >
-    </br>
-{% endfor %}
-
-</body>
-</html>
