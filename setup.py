@@ -36,7 +36,8 @@ setup(
                       'netCDF4>=1.1', 
                       'matplotlib>=1.4',
                       'cartopy',
-                      'pandas'
+                      'pandas',
+                      'nc-time-axis'
                      ],
 
     long_description = long_description,
