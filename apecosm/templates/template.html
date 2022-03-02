@@ -60,7 +60,7 @@
 {% for item in length_figs %}
     Length for community {{ item }}: 
     <br>
-    <img src={{ length_figs[item] }} class="center">
+    <img src={{ length_figs[item] }} >
     </br>
 {% endfor %}
 
@@ -69,7 +69,7 @@
 {% for item in weight_figs %}
     Weight for community {{ item }}: 
     <br>
-    <img src={{ weight_figs[item] }} class="center">
+    <img src={{ weight_figs[item] }} >
     </br>
 {% endfor %}
 
@@ -78,7 +78,16 @@
 {% for item in select_figs %}
     Weight for community {{ item }}: 
     <br>
-    <img src={{ select_figs[item] }} class="center">
+    <img src={{ select_figs[item] }} >
+    </br>
+{% endfor %}
+
+<h2> Time-series </h2>
+
+{% for item in ts_figs %}
+    Time-series ({{ item }}):  
+    <br>
+    <img src={{ ts_figs[item] }} >
     </br>
 {% endfor %}
 
