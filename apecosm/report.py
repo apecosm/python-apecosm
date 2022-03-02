@@ -21,7 +21,7 @@ import urllib
 plt.rcParams['text.usetex'] = False
 
 
-def report(input_dir, mesh_file, output_file='report.html', filecss='default'):
+def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_file='report.html', filecss='default', xarray_args={}):
     
     if(filecss == 'default'):
         filecss = pkg_resources.resource_filename('apecosm', os.path.join('templates', 'styles.css'))
@@ -35,28 +35,58 @@ def report(input_dir, mesh_file, output_file='report.html', filecss='default'):
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("template.html")
     
-    arguments = {}
+    outputs = {}
     
-    arguments['css'] = css
+    outputs['css'] = css
         
-    data = xr.open_mfdataset(os.path.join(input_dir, '*.nc'))
+    data = xr.open_mfdataset(os.path.join(input_dir, '*.nc'), **xarray_args)
     dims = data.dims
     list_dims = [d for d in data.dims if 'prey' not in d]
     
-    arguments['dims'] = dims
-    arguments['list_dims'] = list_dims
-    arguments['start_date'] = data['time'][0].values
-    arguments['end_date'] = data['time'][-1].values
+    outputs['dims'] = dims
+    outputs['list_dims'] = list_dims
+    outputs['start_date'] = data['time'][0].values
+    outputs['end_date'] = data['time'][-1].values
 
-    arguments['length_figs'] = _plot_wl_community(data, 'length', 'meters')
-    arguments['weight_figs'] = _plot_wl_community(data, 'weight', 'kilograms')
-    arguments['select_figs'] = _plot_ltl_selectivity(data)
+    outputs['length_figs'] = _plot_wl_community(data, 'length', 'meters')
+    outputs['weight_figs'] = _plot_wl_community(data, 'weight', 'kilograms')
+    outputs['select_figs'] = _plot_ltl_selectivity(data)
+    
+    outputs['ts_figs'] = _plot_time_series(data)
 
-    render = template.render(**arguments)
+    render = template.render(**outputs)
     
     with open(output_file, "w") as f:
         f.write(render)
-        
+    
+def _plot_time_series(data):
+    
+    filenames = {}
+    
+    output = (data['OOPE'] * data['weight_step']).sum(dim=['w', 'x', 'y'])
+    total = output.sum(dim='c')
+    print(total)
+    
+    fig = plt.figure()
+    total.plot()
+    plt.title('Total')
+    filenames['Total'] = _savefig()
+    plt.close(fig)
+    
+    return filenames
+    
+def _savefig():
+    
+    buf = io.BytesIO()
+    plt.savefig(buf, format="svg")
+    fp = tempfile.NamedTemporaryFile() 
+    with open(f"{fp.name}.svg", 'wb') as ff:
+        ff.write(buf.getvalue()) 
+
+    buf.close()
+    
+    return f"{fp.name}.svg"
+    
         
 def _plot_ltl_selectivity(data):
     
@@ -75,23 +105,15 @@ def _plot_ltl_selectivity(data):
         plt.xlim(length.min(), length.max())
         ax.set_xscale('log')
         plt.title('Community ' + str(c))
-        buf = io.BytesIO()
-        plt.savefig(buf, format="svg")
+        output[c] = _savefig()
         plt.close(fig)
-        
-        fp = tempfile.NamedTemporaryFile() 
-      
-        with open(f"{fp.name}.svg", 'wb') as ff:
-            ff.write(buf.getvalue()) 
-
-        buf.close()
-        output[c] = f"{fp.name}.svg"
         
     return output
   
 def _plot_wl_community(data, varname, units):
     
     output = {}
+    
     for c in range(data.dims['c']):
         
         length = data[varname].isel(c=c)
@@ -101,17 +123,8 @@ def _plot_wl_community(data, varname, units):
         plt.xlim(0, length.shape[0] - 1)
         plt.ylabel('[%s]' %units)
         plt.title('Community ' + str(c))
-        buf = io.BytesIO()
-        plt.savefig(buf, format="svg")
+        output[c] = _savefig()
         plt.close(fig)
-        
-        fp = tempfile.NamedTemporaryFile() 
-      
-        with open(f"{fp.name}.svg", 'wb') as ff:
-            ff.write(buf.getvalue()) 
-
-        buf.close()
-        output[c] = f"{fp.name}.svg"
         
     return output
 
