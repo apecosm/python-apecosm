@@ -36,6 +36,9 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='', filecss=
     html_dir = os.path.join(output_dir, 'html')
     os.makedirs(html_dir, exist_ok=True)
     
+    images_dir = os.path.join(output_dir, 'html/images')
+    os.makedirs(images_dir, exist_ok=True)
+    
     # create css folder
     css_dir = os.path.join(output_dir, 'css')
     os.makedirs(css_dir, exist_ok=True)   
@@ -87,10 +90,9 @@ def _make_result_template(output_dir, css, data, mesh, crs):
     outputs = {}
     outputs['css'] = css
     
-    outputs['ts_figs'] = _plot_time_series(mesh, data)
-    outputs['maps_figs'] = _plot_mean_maps(mesh, data, crs)
-    
-            
+    outputs['ts_figs'] = _plot_time_series(output_dir, mesh, data)
+    outputs['maps_figs'] = _plot_mean_maps(output_dir, mesh, data, crs)
+           
     render = template.render(**outputs)
     
     output_file = os.path.join(output_dir, 'html', 'results_report.html')
@@ -126,7 +128,7 @@ def _make_meta_template(output_dir, css, data, const):
     with open(output_file, "w") as f:
         f.write(render)
         
-def _plot_trophic_interactions(data):
+def _plot_trophic_interactions(output_dir, data):
     
     trophic_interact = data['troph_interaction'].values
     trophic_interact.shape
@@ -136,7 +138,10 @@ def _plot_trophic_interactions(data):
     title = ['Day', 'Night']
     for d in range(2):
         ax = plt.subplot(1, 2, d + 1)
-        cs = plt.imshow(trophic_interact[d], origin='lower', interpolation='none')
+        cs = plt.imshow(trophic_interact[d], origin='lower', interpolation='none', cmap=plt.cm.jet)
+        for i in range(nprey + 1):
+            plt.axvline(i - 0.5, linestyle='--', linewidth=1, color='w')
+            plt.axhline(i - 0.5, linestyle='--', linewidth=1, color='w')
         plt.title(title[d])
         cs.set_clim(0, 1)
         plt.xlabel('Prey')
@@ -144,7 +149,8 @@ def _plot_trophic_interactions(data):
         ax.set_xticks(np.arange(nprey))
         ax.set_yticks(np.arange(npred))
         ax.set_aspect('equal', 'box')
-    output = _savefig()
+    output = _savefig(output_dir, 'trophic_interactions.svg')
+    plt.close(fig)
     return output
         
 def _make_config_template(output_dir, css, data):
@@ -164,11 +170,11 @@ def _make_config_template(output_dir, css, data):
     outputs['start_date'] = data['time'][0].values
     outputs['end_date'] = data['time'][-1].values
 
-    outputs['length_figs'] = _plot_wl_community(data, 'length', 'meters')
-    outputs['weight_figs'] = _plot_wl_community(data, 'weight', 'kilograms')
-    outputs['select_figs'] = _plot_ltl_selectivity(data)
+    outputs['length_figs'] = _plot_wl_community(output_dir, data, 'length', 'meters')
+    outputs['weight_figs'] = _plot_wl_community(output_dir, data, 'weight', 'kilograms')
+    outputs['select_figs'] = _plot_ltl_selectivity(output_dir, data)
     
-    outputs['trophic_figs'] = _plot_trophic_interactions(data)
+    outputs['trophic_figs'] = _plot_trophic_interactions(output_dir, data)
     
     render = template.render(**outputs)
     
@@ -177,7 +183,7 @@ def _make_config_template(output_dir, css, data):
         f.write(render)
     
     
-def _plot_time_series(mesh, data):
+def _plot_time_series(output_dir, mesh, data):
     
     filenames = {}
     
@@ -187,8 +193,8 @@ def _plot_time_series(mesh, data):
     fig = plt.figure()
     total.plot()
     plt.title('Total')
-    filenames['Total'] = _savefig()
     plt.ylabel('J')
+    filenames['Total'] = _savefig(output_dir, 'time_series_total.svg')
     plt.close(fig)
     
     for c in range(data.dims['c']):
@@ -196,12 +202,12 @@ def _plot_time_series(mesh, data):
         output.isel(c=c).plot()
         plt.title('Community ' + str(c))
         plt.ylabel('J')
-        filenames['Community ' + str(c)] = _savefig()
+        filenames['Community ' + str(c)] = _savefig(output_dir, 'time_series_com_%d.svg' %c)
         plt.close(fig)
     
     return filenames
 
-def _plot_mean_maps(mesh, data, crs):
+def _plot_mean_maps(output_dir, mesh, data, crs):
     
     filenames = {}
     lonf = np.squeeze(mesh['glamf'].values)
@@ -220,7 +226,7 @@ def _plot_mean_maps(mesh, data, crs):
     plt.title("Total")
     ax.add_feature(cfeature.LAND)
     ax.add_feature(cfeature.COASTLINE)
-    filenames['Total'] = _savefig()
+    filenames['Total'] = _savefig(output_dir, 'mean_maps_total.svg')
     plt.close(fig)
     
     for c in range(data.dims['c']):
@@ -232,26 +238,19 @@ def _plot_mean_maps(mesh, data, crs):
         cb = plt.colorbar(cs)
         cb.set_label('J/m2')
         plt.title('Community ' + str(c))
-        filenames['Community ' + str(c)] = _savefig()
+        filenames['Community ' + str(c)] = _savefig(output_dir, 'mean_maps_com_%d.svg' %c)
         plt.close(fig)
     
     return filenames
     
     
-def _savefig():
+def _savefig(output_dir, figname):
     
-    buf = io.BytesIO()
-    plt.savefig(buf, format="svg", bbox_inches='tight')
-    fp = tempfile.NamedTemporaryFile() 
-    with open(f"{fp.name}.svg", 'wb') as ff:
-        ff.write(buf.getvalue()) 
-
-    buf.close()
-    
-    return f"{fp.name}.svg"
-    
+    img_file = os.path.join(output_dir, 'html', 'images', figname)
+    plt.savefig(img_file, format="svg", bbox_inches='tight')
+    return os.path.join(output_dir, 'images', figname)
         
-def _plot_ltl_selectivity(data):
+def _plot_ltl_selectivity(output_dir, data):
     
     output = {}
     for c in range(data.dims['c']):
@@ -268,12 +267,12 @@ def _plot_ltl_selectivity(data):
         plt.xlim(length.min(), length.max())
         ax.set_xscale('log')
         plt.title('Community ' + str(c))
-        output[c] = _savefig()
+        output[c] = _savefig(output_dir, 'selectivity_com_%d.svg' %c)
         plt.close(fig)
         
     return output
   
-def _plot_wl_community(data, varname, units):
+def _plot_wl_community(output_dir, data, varname, units):
     
     output = {}
     
@@ -286,7 +285,7 @@ def _plot_wl_community(data, varname, units):
         plt.xlim(0, length.shape[0] - 1)
         plt.ylabel('[%s]' %units)
         plt.title('Community ' + str(c))
-        output[c] = _savefig()
+        output[c] = _savefig(output_dir, varname + '.svg')
         plt.close(fig)
         
     return output
