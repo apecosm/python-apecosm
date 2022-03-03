@@ -247,7 +247,7 @@ def _plot_mean_maps(output_dir, mesh, data, crs):
 def _savefig(output_dir, figname):
     
     img_file = os.path.join(output_dir, 'html', 'images', figname)
-    plt.savefig(img_file, format="svg", bbox_inches='tight')
+    plt.savefig(img_file, format="svg")
     return os.path.join(output_dir, 'images', figname)
         
 def _plot_ltl_selectivity(output_dir, data):
