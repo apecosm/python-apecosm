@@ -193,7 +193,10 @@ def _plot_time_series(output_dir, mesh, data):
     fig = plt.figure()
     total.plot()
     plt.title('Total')
-    plt.ylabel('J')
+    plt.ylabel('Joules  ')
+    plt.xticks(rotation=30, ha='right')
+    plt.grid()
+    plt.xlabel('')
     filenames['Total'] = _savefig(output_dir, 'time_series_total.svg')
     plt.close(fig)
     
@@ -201,7 +204,10 @@ def _plot_time_series(output_dir, mesh, data):
         fig = plt.figure()
         output.isel(c=c).plot()
         plt.title('Community ' + str(c))
-        plt.ylabel('J')
+        plt.ylabel('Joules')
+        plt.xticks(rotation=30, ha='right')
+        plt.xlabel('')
+        plt.grid()
         filenames['Community ' + str(c)] = _savefig(output_dir, 'time_series_com_%d.svg' %c)
         plt.close(fig)
     
@@ -236,7 +242,7 @@ def _plot_mean_maps(output_dir, mesh, data, crs):
         ax.add_feature(cfeature.LAND)
         ax.add_feature(cfeature.COASTLINE)
         cb = plt.colorbar(cs)
-        cb.set_label('J/m2')
+        cb.set_label('Joules/m2')
         plt.title('Community ' + str(c))
         filenames['Community ' + str(c)] = _savefig(output_dir, 'mean_maps_com_%d.svg' %c)
         plt.close(fig)
@@ -247,7 +253,7 @@ def _plot_mean_maps(output_dir, mesh, data, crs):
 def _savefig(output_dir, figname):
     
     img_file = os.path.join(output_dir, 'html', 'images', figname)
-    plt.savefig(img_file, format="svg")
+    plt.savefig(img_file, format="svg", bbox_inches='tight')
     return os.path.join(output_dir, 'images', figname)
         
 def _plot_ltl_selectivity(output_dir, data):
@@ -267,6 +273,7 @@ def _plot_ltl_selectivity(output_dir, data):
         plt.xlim(length.min(), length.max())
         ax.set_xscale('log')
         plt.title('Community ' + str(c))
+        plt.grid()
         output[c] = _savefig(output_dir, 'selectivity_com_%d.svg' %c)
         plt.close(fig)
         
@@ -283,9 +290,10 @@ def _plot_wl_community(output_dir, data, varname, units):
         fig = plt.figure()
         plt.plot(length.values)
         plt.xlim(0, length.shape[0] - 1)
-        plt.ylabel('[%s]' %units)
+        plt.ylabel('%s' %units)
         plt.title('Community ' + str(c))
-        output[c] = _savefig(output_dir, varname + '.svg')
+        plt.grid()
+        output[c] = _savefig(output_dir, '%s_com_%d.svg' %(varname, c))
         plt.close(fig)
         
     return output
