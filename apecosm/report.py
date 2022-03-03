@@ -29,8 +29,6 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='', filecss=
     data = xr.open_mfdataset(os.path.join(input_dir, '*.nc'), **xarray_args)
     const = xr.open_mfdataset(os.path.join(input_dir, '*Const*nc'), **xarray_args)
     
-    filebanner = pkg_resources.resource_filename('apecosm', os.path.join('templates', 'banner.html'))
-    shutil.copyfile(filebanner, os.path.join(output_dir, 'html', 'banner.html'))
     
     # create the output architecture
     
@@ -41,6 +39,9 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='', filecss=
     # create css folder
     css_dir = os.path.join(output_dir, 'css')
     os.makedirs(css_dir, exist_ok=True)   
+
+    filebanner = pkg_resources.resource_filename('apecosm', os.path.join('templates', 'banner.html'))
+    shutil.copyfile(filebanner, os.path.join(output_dir, 'html', 'banner.html'))
     
     if filecss is None:
         css = ''
