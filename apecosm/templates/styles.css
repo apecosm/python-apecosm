@@ -50,6 +50,12 @@ table {
     padding: 15px;
 }
 
+#tablefigs {
+    padding: 0px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 thead,
 tfoot {
     background-color: #333;
@@ -117,3 +123,11 @@ font-size: 1.1rem; } }
     .main-content {
         padding: 1rem 1rem;
 font-size: 1rem; } }
+
+h1 {
+    font-size: 2rem;
+}
+
+h2 {
+    font-size: 1.5rem;
+}
