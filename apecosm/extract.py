@@ -140,7 +140,7 @@ def extract_apecosm_constants(const_file, replace_dims={}):
 
 
 def extract_oope_data(file_pattern, meshfile, maskdom=None, constant_file=None, 
-                      use_wstep=True, compute_mean=True, replace_dims={}, replace_const_dims={}):
+                      use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={}):
 
     '''
     Extraction of OOPE values on a given domain.
