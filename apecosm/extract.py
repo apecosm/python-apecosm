@@ -9,7 +9,7 @@ from .domains import DOMAINS, inpolygon
 
 
 def extract_ltl_data(file_pattern, varname, meshfile,
-                     domain_name, compute_mean=False, depth_max=None, replace_dims={}):
+                     maskdom=None, compute_mean=False, depth_max=None, replace_dims={}):
 
     '''
     Extraction of LTL values on a given domain.
@@ -29,40 +29,42 @@ def extract_ltl_data(file_pattern, varname, meshfile,
     '''
 
     # open the dataset
-    data = xr.open_mfdataset(file_pattern)
-    data = data.rename_dims(replace_dims)
+    data = xr.open_mfdataset(file_pattern, compat='override')
 
     # open the mesh file, extract tmask, lonT and latT
     mesh = xr.open_dataset(meshfile)
+    if 't' in mesh.dims:
+        mesh = mesh.isel(t=0)
     surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
 
     if 'e3t' in data.variables:
         # if VVL, e3t should be read from data
         e3t = data['e3t']  # time, z, lat, lon
-    else:
+    elif 'e3t_0' in mesh.variables:
         e3t = mesh['e3t_0']  # 1, z, lat, lon
+    else:
+        e3t = mesh['e3t_1d'] 
+        
+    data = data[varname]
+    data = _rename_z_dim(data)
+        
+    if 'gdept_0' in mesh.variables:
+        depth = mesh['gdept_0']  # 1, z, lat, lon
+    else:
+        depth = mesh['gdept_1d'] 
     
     tmask = mesh['tmask']
     
     if('tmaskutil' in mesh.variables):
         tmask *= mesh['tmaskutil']
     
-    lon = _squeeze_variable(mesh['glamt']).values
-    lat = _squeeze_variable(mesh['glamt']).values
+    lon = _squeeze_variable(mesh['glamt'])
+    lat = _squeeze_variable(mesh['gphit'])
     nlat, nlon = lat.shape
 
     # extract the domain coordinates
-    if domain_name == 'global':
+    if maskdom == None:
         maskdom = np.ones(lat.shape)
-    else:
-
-        if isinstance(domain_name, str):
-            domain = DOMAINS[domain_name]
-        else:
-            domain = domain_name
-
-        # generate the domain mask
-        maskdom = inpolygon(lon, lat, domain['lon'], domain['lat']).astype(int)
 
     maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
 
@@ -73,18 +75,24 @@ def extract_ltl_data(file_pattern, varname, meshfile,
     del(surf, e3t, tmask, maskdom)
 
     if depth_max is not None:
-        idepth = np.nonzero(np.squeeze(mesh['gdept_1d'].values) < depth_max)[0]
-        weight = weight[:, idepth, :, :]
-        data = data.isel(z=idepth)
+        weight = weight.where(depth <= depth_max)
 
-    tdim, zdim, ydim, xdim = data[varname].dims
+    tdim, zdim, ydim, xdim = data.dims
 
     # integrate spatially and vertically the LTL concentrations
-    data = (data[varname] * weight).sum(dim=(zdim, ydim, xdim))  # time
+    data = (data * weight).sum(dim=(zdim, ydim, xdim))  # time
     if compute_mean:
         data /= weight.sum(dim=(zdim, ydim, zdim))
 
     return data
+
+
+def _rename_z_dim(var):
+    
+    for t in ['olevel', 'depth', 'deptht', 'depthu', 'depthv']:
+        if t in var.dims:
+            var = var.rename({t : 'z'})
+    return var
 
 
 def extract_time_means(data, time=None):
