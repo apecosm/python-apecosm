@@ -111,7 +111,7 @@ def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight'):
         return lvec2d, rhoL
 
 
-def plot_oope_spectra(data, constant_file, output_var='length', config=None, **kwargs):
+def plot_oope_spectra(data, constant_file, output_var='weight', config=None, **kwargs):
 
     r'''
     Plots the OOPE size spectra. Since OOPE data are
