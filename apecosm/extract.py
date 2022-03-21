@@ -139,7 +139,7 @@ def extract_apecosm_constants(const_file, replace_dims={}):
     return constants
 
 
-def extract_oope_data(file_pattern, meshfile, domain_name, constant_file=None, 
+def extract_oope_data(file_pattern, meshfile, maskdom=None, constant_file=None, 
                       use_wstep=True, compute_mean=True, replace_dims={}, replace_const_dims={}):
 
     '''
@@ -169,9 +169,10 @@ def extract_oope_data(file_pattern, meshfile, domain_name, constant_file=None,
 
     # open the mesh file, extract tmask, lonT and latT
     mesh = xr.open_dataset(meshfile)
+    if 't' in mesh.dims:
+        mesh = mesh.isel(t=0, z=0)
     surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
     
-
     if('tmaskutil' in mesh.variables):
         tmask = mesh['tmaskutil']
     else:
@@ -179,21 +180,12 @@ def extract_oope_data(file_pattern, meshfile, domain_name, constant_file=None,
         
     tmask = _squeeze_variable(tmask)
 
-    lon = _squeeze_variable(mesh['glamt']).values
-    lat = _squeeze_variable(mesh['gphit']).values
+    lon = _squeeze_variable(mesh['glamt'])
+    lat = _squeeze_variable(mesh['gphit'])
     nlat, nlon = lat.shape
 
     # extract the domain coordinates
-    if isinstance(domain_name, str):
-        if domain_name != 'global':
-            domain = DOMAINS[domain_name]
-    else:
-        domain = domain_name
-
-    if domain_name != 'global':
-        # generate the domain mask
-        maskdom = inpolygon(lon, lat, domain['lon'], domain['lat'])
-    else:
+    if maskdom is None:
         maskdom = np.ones(lat.shape)
 
     maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
@@ -210,7 +202,7 @@ def extract_oope_data(file_pattern, meshfile, domain_name, constant_file=None,
     if use_wstep:
         data = data * wstep
 
-    data = data.sum(dim=('x', 'y'))  # time, com, w
+    data = (data * weight).sum(dim=('x', 'y'))  # time, com, w
 
     if compute_mean:
         data /= weight.sum(dim=['x', 'y'])
