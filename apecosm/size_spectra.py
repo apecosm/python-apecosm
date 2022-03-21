@@ -111,7 +111,7 @@ def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight'):
         return lvec2d, rhoL
 
 
-def plot_oope_spectra(data, output_var='length', config=None, **kwargs):
+def plot_oope_spectra(data, constant_file, output_var='length', config=None, **kwargs):
 
     r'''
     Plots the OOPE size spectra. Since OOPE data are
@@ -142,39 +142,40 @@ def plot_oope_spectra(data, output_var='length', config=None, **kwargs):
     message = 'The input dataset must be have two dimensions '
     message += '(community, weight)'
 
-    if data['OOPE'].ndim != 2:
+    if data.ndim != 2:
         print(message)
         sys.exit(0)
 
-    if 'community' not in data['OOPE'].dims:
+    if 'c' not in data.dims:
         print(message)
         sys.exit(0)
 
-    if 'weight' not in data['OOPE'].dims:
+    if 'w' not in data.dims:
         print(message)
         sys.exit(0)
 
     # recovers the default cmap
     cmap = getattr(plt.cm, plt.rcParams['image.cmap'])
 
-    oope = data['OOPE'].values
-    weight = data['weight'].values
-    length = data['length'].values
-    commnames = apecosm.misc.extract_community_names(data)
-    comm = data['community'].values.astype(np.int)
+    const = xr.open_dataset(constant_file)
+    weight = const['weight']
+    length = const['length']
 
     if output_var == 'length':
-        wstep, lstep = apecosm.grid.extract_weight_grid(config)
-        oope = oope * wstep[np.newaxis, :] / lstep[np.newaxis, :]
+        wstep = const['weight_step']
+        lstep = const['length_step']
+        data = data * wstep / lstep 
         xvar = length
     else:
         xvar = weight
 
     ax = plt.gca()
-    for icom in comm:
-        color = cmap(float(icom) / len(comm))
-        ax.scatter(xvar, oope[icom], c=color, label=commnames[icom], **kwargs)
-
+    for icom in data['c']:
+        color = cmap(float(icom) / len(data['c']))
+        ax.plot(xvar.isel(c=icom), data.isel(c=icom), color=color, label='Community %d' %icom, **kwargs)
+    plt.legend(loc=0)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
 
 def set_plot_lim():
 
