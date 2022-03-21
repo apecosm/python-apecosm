@@ -21,15 +21,18 @@ import urllib
 plt.rcParams['text.usetex'] = False
 import cartopy.feature as cfeature
 import shutil
+from glob import glob
 
 
 def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='', filecss='default', xarray_args={}):
     
     mesh = xr.open_dataset(mesh_file)
-    data = xr.open_mfdataset(os.path.join(input_dir, '*.nc'), **xarray_args)
+    filelist = glob(os.path.join(input_dir, '*.nc'))
     const = xr.open_mfdataset(os.path.join(input_dir, '*Const*nc'), **xarray_args)
-    
-    
+    if len(filelist) > 1:
+        data = xr.open_mfdataset(os.path.join(input_dir, '*.nc'), **xarray_args)
+    else:
+        data = xr.open_mfdataset(os.path.join(input_dir, '*.nc.*'), **xarray_args)
     # create the output architecture
     
     # first create html folder
@@ -68,8 +71,8 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='', filecss=
         fout.write(css)
 
     _make_meta_template(output_dir, css, data, const)                        
-    _make_config_template(output_dir, css, data)
-    _make_result_template(output_dir, css, data, mesh, crs)
+    _make_config_template(output_dir, css, data, const)
+    _make_result_template(output_dir, css, data, const, mesh, crs)
     
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("template.html")
@@ -82,7 +85,7 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='', filecss=
     with open('index.html', "w") as f:
         f.write(render)
         
-def _make_result_template(output_dir, css, data, mesh, crs):
+def _make_result_template(output_dir, css, data, const, mesh, crs):
     
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("template_results.html")
@@ -90,8 +93,8 @@ def _make_result_template(output_dir, css, data, mesh, crs):
     outputs = {}
     outputs['css'] = css
     
-    outputs['ts_figs'] = _plot_time_series(output_dir, mesh, data)
-    outputs['maps_figs'] = _plot_mean_maps(output_dir, mesh, data, crs)
+    outputs['ts_figs'] = _plot_time_series(output_dir, mesh, data, const)
+    outputs['maps_figs'] = _plot_mean_maps(output_dir, mesh, data, const, crs)
            
     render = template.render(**outputs)
     
@@ -153,7 +156,7 @@ def _plot_trophic_interactions(output_dir, data):
     plt.close(fig)
     return output
         
-def _make_config_template(output_dir, css, data):
+def _make_config_template(output_dir, css, data, const):
     
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("template_config.html")
@@ -170,11 +173,11 @@ def _make_config_template(output_dir, css, data):
     outputs['start_date'] = data['time'][0].values
     outputs['end_date'] = data['time'][-1].values
 
-    outputs['length_figs'] = _plot_wl_community(output_dir, data, 'length', 'meters')
-    outputs['weight_figs'] = _plot_wl_community(output_dir, data, 'weight', 'kilograms')
-    outputs['select_figs'] = _plot_ltl_selectivity(output_dir, data)
+    outputs['length_figs'] = _plot_wl_community(output_dir, const, 'length', 'meters')
+    outputs['weight_figs'] = _plot_wl_community(output_dir, const, 'weight', 'kilograms')
+    outputs['select_figs'] = _plot_ltl_selectivity(output_dir, const)
     
-    outputs['trophic_figs'] = _plot_trophic_interactions(output_dir, data)
+    outputs['trophic_figs'] = _plot_trophic_interactions(output_dir, const)
     
     render = template.render(**outputs)
     
@@ -183,11 +186,11 @@ def _make_config_template(output_dir, css, data):
         f.write(render)
     
     
-def _plot_time_series(output_dir, mesh, data):
+def _plot_time_series(output_dir, mesh, data, const):
     
     filenames = {}
     
-    output = (data['OOPE'] * data['weight_step'] * mesh['e1t'] * mesh['e2t']).sum(dim=['w', 'x', 'y'])
+    output = (data['OOPE'] * const['weight_step'] * mesh['e1t'] * mesh['e2t']).sum(dim=['w', 'x', 'y'])
     total = output.sum(dim='c')
     
     fig = plt.figure()
@@ -213,13 +216,13 @@ def _plot_time_series(output_dir, mesh, data):
     
     return filenames
 
-def _plot_mean_maps(output_dir, mesh, data, crs):
+def _plot_mean_maps(output_dir, mesh, data, const, crs):
     
     filenames = {}
     lonf = np.squeeze(mesh['glamf'].values)
     latf = np.squeeze(mesh['gphif'].values)
     
-    output = (data['OOPE'] * data['weight_step']).mean(dim='time').sum(dim=['w'])
+    output = (data['OOPE'] * const['weight_step']).mean(dim='time').sum(dim=['w'])
     output = output.where(output > 0)
     total = output.sum(dim='c')
     total = total.where(total > 0)
