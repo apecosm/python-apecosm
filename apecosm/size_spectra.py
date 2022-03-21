@@ -173,9 +173,6 @@ def plot_oope_spectra(data, constant_file, output_var='length', config=None, **k
     for icom in data['c']:
         color = cmap(float(icom) / len(data['c']))
         ax.plot(xvar.isel(c=icom), data.isel(c=icom), color=color, label='Community %d' %icom, **kwargs)
-    plt.legend(loc=0)
-    ax.set_xscale('log')
-    ax.set_yscale('log')
 
 def set_plot_lim():
 
