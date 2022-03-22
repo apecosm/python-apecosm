@@ -139,12 +139,7 @@ def plot_oope_spectra(data, constant_file, output_var='weight', config=None, **k
 
     '''
 
-    message = 'The input dataset must be have two dimensions '
-    message += '(community, weight)'
-
-    if data.ndim != 2:
-        print(message)
-        sys.exit(0)
+    message = 'The input dataset must be have (community, weight) dimensions '
 
     if 'c' not in data.dims:
         print(message)
@@ -170,10 +165,13 @@ def plot_oope_spectra(data, constant_file, output_var='weight', config=None, **k
         xvar = weight
 
     ax = plt.gca()
+    l = []
     for icom in data['c']:
         color = cmap(float(icom) / len(data['c']))
-        ax.plot(xvar.isel(c=icom), data.isel(c=icom), color=color, label='Community %d' %icom, **kwargs)
-
+        lll = ax.plot(xvar.isel(c=icom), data.isel(c=icom).T, color=color, label='Community %d' %icom, **kwargs)
+        l.append(lll[0])
+    return l
+    
 def set_plot_lim():
 
     '''
