@@ -17,7 +17,7 @@ import apecosm.misc
 import apecosm.conf
 
 
-def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight'):
+def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight', **kwargs):
 
     r'''
     Computes the size/weight spectra for lower trophic levels
@@ -67,11 +67,11 @@ def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight'):
     conv *= co.C_E_CONVERT
     data = data * conv
 
-    if isinstance(data, xr.DataArray):
-        print('Data is converted into a numpy array')
-        data = data.values
-        data = np.ma.masked_where(np.isnan(data), data)
-        data = np.atleast_1d(data)
+    # if isinstance(data, xr.DataArray):
+    #     print('Data is converted into a numpy array')
+    #     data = data.values
+    #     data = np.ma.masked_where(np.isnan(data), data)
+    #     data = np.atleast_1d(data)
 
     # L is a 2d array
     L = np.sort(L)
@@ -80,35 +80,32 @@ def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight'):
         print(message)
         sys.exit(0)
 
-    # if float provided, converted into array for calculation convenience.
-    if isinstance(data, np.float64):
-        data = np.atleast_1d(data)
-
-    if data.ndim != 1:
-        message = 'Number of dimensions must be one.'
-        print(message)
-        sys.exit(0)
-
     # Convert L into W using allometric formulae
     W = apecosm.misc.size_to_weight(L)
 
     # generate a vector of weights and length
-    wvec = np.linspace(W[0], W[1], N)
-    lvec = np.linspace(L[0], L[1], N)
+    wvec = xr.DataArray(data=np.linspace(W[0], W[1], N), dims='l')
+    lvec = xr.DataArray(data=np.linspace(L[0], L[1], N), dims='l')
 
-    # Convert W, L and data into consistent arrays
-    data2d, wvec2d = np.meshgrid(data, wvec)
-    data2d, lvec2d = np.meshgrid(data, lvec)
+    # broadcast arrays
+    data, lvec2 = xr.broadcast(data, lvec)
+    data, wvec2 = xr.broadcast(data, wvec)
 
-    alpha = data2d / np.log(W[1] / W[0])
-    beta = data2d / np.log(L[1] / L[0])
-    rho = alpha * np.power(wvec2d, -1)
-    rhoL = beta * np.power(lvec2d, -1)
-
+    alpha = data / np.log(W[1] / W[0])
+    beta = data / np.log(L[1] / L[0])
+    rho = alpha * np.power(wvec2, -1)
+    rhoL = beta * np.power(lvec2, -1)
+    
     if output_var == 'weight':
-        return wvec2d, rho
+        x = wvec
+        y = rho
     else:
-        return lvec2d, rhoL
+        x = lvec
+        y = rhoL
+        
+    ax = plt.gca()
+    l = plt.plot(x, y.T, **kwargs)
+    return l[0]
 
 
 def plot_oope_spectra(data, constant_file, output_var='weight', config=None, **kwargs):
