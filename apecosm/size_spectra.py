@@ -65,7 +65,7 @@ def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight'):
 
     # multiply conversion factor from C to E
     conv *= co.C_E_CONVERT
-    data *= conv
+    data = data * conv
 
     if isinstance(data, xr.DataArray):
         print('Data is converted into a numpy array')
