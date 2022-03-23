@@ -139,6 +139,38 @@ def extract_apecosm_constants(const_file, replace_dims={}):
     return constants
 
 
+def extract_biomass_weighted_data(file_pattern, meshfile, varname, maskdom=None, constant_file=None, 
+                      use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={}):
+    
+    # open the mesh file, extract tmask, lonT and latT
+    mesh = xr.open_dataset(meshfile)
+    if 't' in mesh.dims:
+        mesh = mesh.isel(t=0, z=0)
+    surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
+    
+    if('tmaskutil' in mesh.variables):
+        tmask = mesh['tmaskutil']
+    else:
+        tmask = mesh['tmask']
+        
+    tmask = _squeeze_variable(tmask)
+    
+    # extract the domain coordinates
+    if maskdom is None:
+        maskdom = np.ones(tmask.shape)
+
+    maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
+
+    # extract the list of OOPE files
+    filelist = np.sort(glob(file_pattern))
+
+    data = xr.open_mfdataset(filelist)
+    data = data.rename(replace_dims)
+    data = data['OOPE']
+    
+    weight = tmask * surf * data['OOPE']  # time, lat, lon, comm, w
+
+
 def extract_oope_data(file_pattern, meshfile, maskdom=None, constant_file=None, 
                       use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={}):
 
