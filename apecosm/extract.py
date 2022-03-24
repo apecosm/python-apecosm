@@ -139,8 +139,7 @@ def extract_apecosm_constants(const_file, replace_dims={}):
     return constants
 
 
-def extract_biomass_weighted_data(file_pattern, meshfile, varname, maskdom=None, constant_file=None, 
-                      use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={}):
+def extract_weighted_data(file_pattern, meshfile, varname, maskdom=None, replace_dims={}):
     
     # open the mesh file, extract tmask, lonT and latT
     mesh = xr.open_dataset(meshfile)
@@ -169,6 +168,9 @@ def extract_biomass_weighted_data(file_pattern, meshfile, varname, maskdom=None,
     data = data['OOPE']
     
     weight = tmask * surf * data['OOPE']  # time, lat, lon, comm, w
+    
+    output = (data[varname] * weight).sum(dim=['time', 'y', 'x']) /  weight.sum(dim=['time', 'y', 'x'])
+    return output
 
 
 def extract_oope_data(file_pattern, meshfile, maskdom=None, constant_file=None, 
