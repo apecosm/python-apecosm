@@ -165,11 +165,11 @@ def extract_weighted_data(file_pattern, meshfile, varname, maskdom=None, replace
 
     data = xr.open_mfdataset(filelist)
     data = data.rename(replace_dims)
-    data = data['OOPE']
+    oope = data['OOPE']
     
-    weight = tmask * surf * data['OOPE']  # time, lat, lon, comm, w
+    weight = tmask * surf * oope  # time, lat, lon, comm, w
     
-    output = (data[varname] * weight).sum(dim=['time', 'y', 'x']) /  weight.sum(dim=['time', 'y', 'x'])
+    output = (data[varname] * weight).sum(dim=['y', 'x']) /  weight.sum(dim=['y', 'x'])
     return output
 
 
