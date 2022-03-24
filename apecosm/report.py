@@ -4,7 +4,7 @@
 # from nbconvert.preprocessors import TagRemovePreprocessor
 import subprocess
 import nbformat as nbf
-from .extract import extract_oope_data, extract_time_means, extract_apecosm_constants
+from .extract import extract_oope_data, extract_time_means, open_constants
 from .misc import find_percentile
 import numpy as np
 import matplotlib.pyplot as plt
@@ -400,7 +400,7 @@ def plot_report_ts(input_dir, input_mesh):
 
 def plot_report_map(input_dir, input_mesh, draw_features=True):
     
-    constants = extract_apecosm_constants(input_dir)
+    constants = open_constants(input_dir)
     wstep = constants['weight_step'].values
     wstep = wstep[np.newaxis, np.newaxis, :]
     
