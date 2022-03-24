@@ -167,7 +167,7 @@ def extract_weighted_data(data, mesh, varname, maskdom=None, replace_dims={}):
         tmask = mesh['tmask']
         
     tmask = _squeeze_variable(tmask)
-    surf = _squeeze_variable(data['e1t'] * data['e2t']) 
+    surf = _squeeze_variable(mesh['e1t'] * mesh['e2t']) 
     
     # extract the domain coordinates
     if maskdom is None:
