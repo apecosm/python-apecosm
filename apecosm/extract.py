@@ -6,9 +6,47 @@ from glob import glob
 import xarray as xr
 import numpy as np
 from .domains import DOMAINS, inpolygon
+import os
 
+def open_mesh_mask(meshfile):
+    
+    # open the mesh file, extract tmask, lonT and latT
+    mesh = xr.open_dataset(meshfile)
+    if 't' in mesh.dims:
+        mesh = mesh.isel(t=0)
+    
+    return mesh
 
-def extract_ltl_data(file_pattern, varname, meshfile,
+def open_constants(dirin):
+    
+    path = os.path.join(dirin, '*Constant*.nc')
+    constant = xr.open_mfdataset(path)
+    return constant
+
+def open_apecosm_data(dirin, **kwargs):
+    
+    pattern = os.path.join(dirin, '*.nc.*')
+    filelist = glob(pattern)
+    if len(filelist) == 0:
+        pattern = os.path.join(dirin, '*.nc')
+        filelist = glob(pattern)
+        filelist = [f for f in filelist if 'Constant' not in f]
+        
+    # open the dataset
+    filelist.sort()
+    data = xr.open_mfdataset(filelist, **kwargs)
+    return data
+
+def open_ltl_data(dirin, **kwargs):
+    
+    pattern = os.path.join(dirin, '*.nc')
+    filelist = glob(pattern)
+    filelist.sort()
+    
+    data = xr.open_mfdataset(filelist, **kwargs)
+    return data
+    
+def extract_ltl_data(data, varname, mesh,
                      maskdom=None, compute_mean=False, depth_max=None, replace_dims={}):
 
     '''
@@ -27,15 +65,6 @@ def extract_ltl_data(file_pattern, varname, meshfile,
     :return: A xarray dataset
 
     '''
-
-    # open the dataset
-    data = xr.open_mfdataset(file_pattern, compat='override')
-
-    # open the mesh file, extract tmask, lonT and latT
-    mesh = xr.open_dataset(meshfile)
-    if 't' in mesh.dims:
-        mesh = mesh.isel(t=0)
-    surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
 
     if 'e3t' in data.variables:
         # if VVL, e3t should be read from data
@@ -139,14 +168,8 @@ def extract_apecosm_constants(const_file, replace_dims={}):
     return constants
 
 
-def extract_weighted_data(file_pattern, meshfile, varname, maskdom=None, replace_dims={}):
-    
-    # open the mesh file, extract tmask, lonT and latT
-    mesh = xr.open_dataset(meshfile)
-    if 't' in mesh.dims:
-        mesh = mesh.isel(t=0, z=0)
-    surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
-    
+def extract_weighted_data(file_pattern, mesh, varname, maskdom=None, replace_dims={}):
+        
     if('tmaskutil' in mesh.variables):
         tmask = mesh['tmaskutil']
     else:
