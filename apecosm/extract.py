@@ -8,22 +8,24 @@ import numpy as np
 from .domains import DOMAINS, inpolygon
 import os
 
-def open_mesh_mask(meshfile):
+def open_mesh_mask(meshfile, replace_dims={}):
     
     # open the mesh file, extract tmask, lonT and latT
     mesh = xr.open_dataset(meshfile)
+    mesh = mesh.rename(replace_dims)
     if 't' in mesh.dims:
         mesh = mesh.isel(t=0)
     
     return mesh
 
-def open_constants(dirin):
+def open_constants(dirin, replace_dims={}):
     
     path = os.path.join(dirin, '*Constant*.nc')
     constant = xr.open_mfdataset(path)
+    constant = constant.rename(replace_dims)
     return constant
 
-def open_apecosm_data(dirin, **kwargs):
+def open_apecosm_data(dirin, replace_dims={}, **kwargs):
     
     pattern = os.path.join(dirin, '*.nc.*')
     filelist = glob(pattern)
@@ -35,15 +37,17 @@ def open_apecosm_data(dirin, **kwargs):
     # open the dataset
     filelist.sort()
     data = xr.open_mfdataset(filelist, **kwargs)
+    data = data.rename(replace_dims)
     return data
 
-def open_ltl_data(dirin, **kwargs):
+def open_ltl_data(dirin, replace_dims={}, **kwargs):
     
     pattern = os.path.join(dirin, '*.nc')
     filelist = glob(pattern)
     filelist.sort()
     
     data = xr.open_mfdataset(filelist, **kwargs)
+    data = data.rename(replace_dims)
     return data
     
 def extract_ltl_data(data, varname, mesh,
@@ -153,19 +157,6 @@ def extract_time_means(data, time=None):
         climatology = data.groupby('time.%s' % time).mean(dimname)
 
     return climatology
-
-def extract_apecosm_constants(const_file, replace_dims={}):
-
-    ''' Extracts APECOSM constant fields
-
-    :param str input_dir: Directory containing Apecosm outputs
-    :return: A dataset containing the outputs
-
-     '''
-
-    constants = xr.open_dataset(const_file)
-    constants = constants.rename(replace_dims)
-    return constants
 
 
 def extract_weighted_data(file_pattern, mesh, varname, maskdom=None, replace_dims={}):
