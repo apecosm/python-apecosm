@@ -159,7 +159,7 @@ def extract_time_means(data, time=None):
     return climatology
 
 
-def extract_weighted_data(file_pattern, mesh, varname, maskdom=None, replace_dims={}):
+def extract_weighted_data(data, mesh, varname, maskdom=None, replace_dims={}):
         
     if('tmaskutil' in mesh.variables):
         tmask = mesh['tmaskutil']
@@ -167,6 +167,7 @@ def extract_weighted_data(file_pattern, mesh, varname, maskdom=None, replace_dim
         tmask = mesh['tmask']
         
     tmask = _squeeze_variable(tmask)
+    surf = _squeeze_variable(data['e1t'] * data['e2t']) 
     
     # extract the domain coordinates
     if maskdom is None:
@@ -174,11 +175,6 @@ def extract_weighted_data(file_pattern, mesh, varname, maskdom=None, replace_dim
 
     maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
 
-    # extract the list of OOPE files
-    filelist = np.sort(glob(file_pattern))
-
-    data = xr.open_mfdataset(filelist)
-    data = data.rename(replace_dims)
     oope = data['OOPE']
     
     weight = tmask * surf * oope  # time, lat, lon, comm, w
@@ -187,7 +183,7 @@ def extract_weighted_data(file_pattern, mesh, varname, maskdom=None, replace_dim
     return output
 
 
-def extract_oope_data(file_pattern, meshfile, maskdom=None, constant_file=None, 
+def extract_oope_data(data, mesh, const, maskdom=None, 
                       use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={}):
 
     '''
@@ -207,18 +203,10 @@ def extract_oope_data(file_pattern, meshfile, maskdom=None, constant_file=None,
 
     # Extract constant fields and extract weight_step
     if use_wstep:
-        const = extract_apecosm_constants(constant_file, replace_dims=replace_const_dims)
         wstep = const['weight_step']
     else:
         wstep = 1
 
-    # extract the list of OOPE files
-    filelist = np.sort(glob(file_pattern))
-
-    # open the mesh file, extract tmask, lonT and latT
-    mesh = xr.open_dataset(meshfile)
-    if 't' in mesh.dims:
-        mesh = mesh.isel(t=0, z=0)
     surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
     
     if('tmaskutil' in mesh.variables):
@@ -243,8 +231,6 @@ def extract_oope_data(file_pattern, meshfile, maskdom=None, constant_file=None,
     tmask = tmask * maskdom
     weight = tmask * surf  # time, lat, lon, comm, w
 
-    data = xr.open_mfdataset(filelist)
-    data = data.rename(replace_dims)
     data = data['OOPE']
 
     if use_wstep:
