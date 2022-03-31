@@ -32,6 +32,23 @@
     </tbody>
 </table>
 
+<h2> Cumulated biomass </h2>
+
+<table id="tablefigs">
+    <tbody>
+        {% for item in cumbiom_figs %}
+            <tr>
+                <td id="tdfigs">
+                    <div style="text-align: center">
+                <img src={{ cumbiom_figs[item] }} width="80%">
+            </div>
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+
 <h2> Maps </h2>
 
 <table id="tablefigs">
