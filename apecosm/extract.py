@@ -216,13 +216,11 @@ def extract_oope_data(data, mesh, const, maskdom=None,
         
     tmask = _squeeze_variable(tmask)
 
-    lon = _squeeze_variable(mesh['glamt'])
-    lat = _squeeze_variable(mesh['gphit'])
-    nlat, nlon = lat.shape
+    nlat, nlon = tmask.shape
 
     # extract the domain coordinates
     if maskdom is None:
-        maskdom = np.ones(lat.shape)
+        maskdom = np.ones(tmask.shape)
 
     maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
 
