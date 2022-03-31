@@ -82,10 +82,11 @@ def extract_community_names(const):
     :return: The list of community names
     '''
 
+    comnames = {}
     attrlist = [v for v in const.attrs if v.startswith('Community_')]
     for v in attrlist:
         comnames[v.replace('_', ' ')] = const.attrs[v]
-
+    return comnames
 
 def size_to_weight(size):
 
