@@ -4,6 +4,7 @@
 # from nbconvert.preprocessors import TagRemovePreprocessor
 import subprocess
 import nbformat as nbf
+from .diags import compute_size_cumprop
 from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask
 from .misc import extract_community_names, find_percentile
 import numpy as np
@@ -91,6 +92,7 @@ def _make_result_template(output_dir, css, data, const, mesh, crs):
     outputs['css'] = css
     
     outputs['ts_figs'] = _plot_time_series(output_dir, mesh, data, const)
+    outputs['cumbiom_figs'] = _plot_integrated_time_series(output_dir, mesh, data, const)
     outputs['maps_figs'] = _plot_mean_maps(output_dir, mesh, data, const, crs)
            
     render = template.render(**outputs)
@@ -179,6 +181,23 @@ def _make_config_template(output_dir, css, data, const):
     with open(output_file, "w") as f:
         f.write(render)
     
+def _plot_integrated_time_series(output_dir, mesh, data, const):
+    
+    filenames = {}
+    size_prop = compute_size_cumprop(mesh, data, const, maskdom=None)
+    size_prop = extract_time_means(size_prop)
+    print(size_prop)
+    for c in range(data.dims['c']):
+        fig = plt.figure()
+        ax = plt.gca()
+        l = const['length'].isel(c=c)
+        toplot = size_prop.isel(c=c)
+        plt.fill_between(l, 0, toplot, edgecolor='k', facecolor='lightgray')
+        ax.set_xscale('log')
+        plt.xlim(l.min(), l.max())
+        filenames['Community ' + str(c)] = _savefig(output_dir, 'biomass_cumsum_com_%d.svg' %c)
+        plt.close(fig)
+                                
     
 def _plot_time_series(output_dir, mesh, data, const):
     
