@@ -152,8 +152,6 @@ def plot_season_oope(file_pattern, figname, percentage=1):
         outfile = '%s/%s_%s' % (fig_dir, s, fig_name)
         plot_oope_map(temp, outfile, percentage=percentage)
 
-    Ngl.end()
-
 
 if __name__ == '__main__':
 
