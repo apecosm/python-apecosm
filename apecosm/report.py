@@ -4,8 +4,8 @@
 # from nbconvert.preprocessors import TagRemovePreprocessor
 import subprocess
 import nbformat as nbf
-from .extract import extract_oope_data, extract_time_means, open_constants
-from .misc import find_percentile
+from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask
+from .misc import extract_community_names, find_percentile
 import numpy as np
 import matplotlib.pyplot as plt
 import xarray as xr
@@ -26,13 +26,10 @@ from glob import glob
 
 def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='', filecss='default', xarray_args={}):
     
-    mesh = xr.open_dataset(mesh_file)
-    filelist = glob(os.path.join(input_dir, '*.nc'))
-    const = xr.open_mfdataset(os.path.join(input_dir, '*Const*nc'), **xarray_args)
-    if len(filelist) > 1:
-        data = xr.open_mfdataset(os.path.join(input_dir, '*.nc'), **xarray_args)
-    else:
-        data = xr.open_mfdataset(os.path.join(input_dir, '*.nc.*'), **xarray_args)
+    mesh = open_mesh_mask(mesh_file)
+    const = open_constants(input_dir)
+    data = open_apecosm_data(input_dir)
+
     # create the output architecture
     
     # first create html folder
@@ -107,10 +104,7 @@ def _make_meta_template(output_dir, css, data, const):
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("template_meta.html")
     
-    comnames = {}
-    attrlist = [v for v in const.attrs if v.startswith('Community_')]
-    for v in attrlist:
-        comnames[v.replace('_', ' ')] = const.attrs[v]
+    comnames = extract_community_names(const)
     
     outputs = {}
     
@@ -191,6 +185,8 @@ def _plot_time_series(output_dir, mesh, data, const):
     filenames = {}
     
     output = (data['OOPE'] * const['weight_step'] * mesh['e1t'] * mesh['e2t']).sum(dim=['w', 'x', 'y'])
+    output = extract_oope_data(data, mesh, const, maskdom=None, use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={})
+    output = output.sum(dim='w')
     total = output.sum(dim='c')
     
     fig = plt.figure()
