@@ -25,7 +25,7 @@ import shutil
 from glob import glob
 
 
-def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='', filecss='default', xarray_args={}):
+def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='report', filecss='default', xarray_args={}):
     
     mesh = open_mesh_mask(mesh_file)
     const = open_constants(input_dir)
@@ -80,7 +80,7 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='', filecss=
     
     render = template.render(**outputs)
     
-    with open('index.html', "w") as f:
+    with open(os.path.join(output_dir, 'index.html'), "w") as f:
         f.write(render)
         
 def _make_result_template(output_dir, css, data, const, mesh, crs):
@@ -186,7 +186,6 @@ def _plot_integrated_time_series(output_dir, mesh, data, const):
     filenames = {}
     size_prop = compute_size_cumprop(mesh, data, const, maskdom=None)
     size_prop = extract_time_means(size_prop)
-    print(size_prop)
     for c in range(data.dims['c']):
         fig = plt.figure()
         ax = plt.gca()
@@ -195,9 +194,12 @@ def _plot_integrated_time_series(output_dir, mesh, data, const):
         plt.fill_between(l, 0, toplot, edgecolor='k', facecolor='lightgray')
         ax.set_xscale('log')
         plt.xlim(l.min(), l.max())
+        plt.title('Community ' + str(c))
+        plt.xlabel('Length (log-scale)')
+        plt.ylabel('Proportion (%)')
         filenames['Community ' + str(c)] = _savefig(output_dir, 'biomass_cumsum_com_%d.svg' %c)
         plt.close(fig)
-                                
+    return filenames                 
     
 def _plot_time_series(output_dir, mesh, data, const):
     
@@ -272,7 +274,7 @@ def _savefig(output_dir, figname):
     
     img_file = os.path.join(output_dir, 'html', 'images', figname)
     plt.savefig(img_file, format="svg", bbox_inches='tight')
-    return os.path.join(output_dir, 'images', figname)
+    return os.path.join('images', figname)
         
 def _plot_ltl_selectivity(output_dir, data):
     
