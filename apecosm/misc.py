@@ -67,7 +67,7 @@ def compute_daylength(lat, nlon=None):
     return daylength
 
 
-def extract_community_names(data):
+def extract_community_names(const):
 
     '''
     Extracts community names from the units attribute in
@@ -82,20 +82,9 @@ def extract_community_names(data):
     :return: The list of community names
     '''
 
-    # extract community and reconstruct community name
-    # from community units
-    comm = data['community']
-    units = comm.units
-    comm = comm.values.astype(np.int)
-    comm_string = []
-    for p in comm:
-        pattern = '.*%d=([a-z]+).*' % p
-        regexp = re.compile(pattern)
-        test = regexp.match(units)
-        if test:
-            comm_string.append(str(test.groups()[0]))
-
-    return comm_string
+    attrlist = [v for v in const.attrs if v.startswith('Community_')]
+    for v in attrlist:
+        comnames[v.replace('_', ' ')] = const.attrs[v]
 
 
 def size_to_weight(size):
