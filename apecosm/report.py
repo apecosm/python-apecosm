@@ -3,6 +3,7 @@
 # from nbconvert.exporters import HTMLExporter, PDFExporter
 # from nbconvert.preprocessors import TagRemovePreprocessor
 import subprocess
+from apecosm.constants import LTL_NAMES
 import nbformat as nbf
 from .diags import compute_size_cumprop
 from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data
@@ -101,14 +102,48 @@ def _make_result_template(output_dir, css, data, const, mesh, crs):
     if 'mort_day' in data.variables:
         outputs['mort_figs'] = _plot_weighted_values(output_dir, mesh, data, const, 'mort_day')
         
-    #if 'community_diet_values' in data.variables:
-    #    outputs['diet_figs'] = _plot_diet_values(output_dir, mesh, data, const)
+    if 'community_diet_values' in data.variables:
+        outputs['diet_figs'] = _plot_diet_values(output_dir, mesh, data, const)
                                           
     render = template.render(**outputs)
     
     output_file = os.path.join(output_dir, 'html', 'results_report.html')
     with open(output_file, "w") as f:
         f.write(render)
+        
+def _plot_diet_values(output_dir, mesh, data, const):
+    
+    if 'community' in data.dims:
+        data = data.rename({'community' : 'c'})
+        
+    print('processing diets')
+    diet = extract_weighted_data(data, mesh, 'community_diet_values', maskdom=None, replace_dims={})
+    diet = extract_time_means(diet)
+    
+    repf = extract_weighted_data(data, mesh, 'repfonct_day', maskdom=None, replace_dims={})
+    repf = extract_time_means(repf)
+    
+    legend = LTL_NAMES.copy()
+    for c in range(data.dims['c']):
+        legend.append('Community ' + str(c))
+    
+    filenames = {}
+    for c in range(data.dims['c']):
+        fig = plt.figure()
+        ax = plt.gca()
+        l = const['length'].isel(c=c)
+        toplot = diet.isel(c=c)
+        plt.stackplot(l, toplot.T)
+        plt.plot(l, repf.isel(c=0))
+        ax.set_xscale('log')
+        plt.xlim(l.min(), l.max())
+        plt.title('Community ' + str(c))
+        plt.legend(legend)
+
+        filenames['Community ' + str(c)] = _savefig(output_dir, 'diets_com_%d.svg' %(c))
+        plt.close(fig)
+
+    return filenames
         
 def _make_meta_template(output_dir, css, data, const):
     
