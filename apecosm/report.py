@@ -5,7 +5,7 @@
 import subprocess
 import nbformat as nbf
 from .diags import compute_size_cumprop
-from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask
+from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data
 from .misc import extract_community_names, find_percentile
 import numpy as np
 import matplotlib.pyplot as plt
@@ -94,7 +94,16 @@ def _make_result_template(output_dir, css, data, const, mesh, crs):
     outputs['ts_figs'] = _plot_time_series(output_dir, mesh, data, const)
     outputs['cumbiom_figs'] = _plot_integrated_time_series(output_dir, mesh, data, const)
     outputs['maps_figs'] = _plot_mean_maps(output_dir, mesh, data, const, crs)
-           
+    
+    if 'repfonct_day' in data.variables:
+        outputs['repfonct_figs'] = _plot_weighted_values(output_dir, mesh, data, const, 'repfonct_day')
+    
+    if 'mort_day' in data.variables:
+        outputs['mort_figs'] = _plot_weighted_values(output_dir, mesh, data, const, 'mort_day')
+        
+    #if 'community_diet_values' in data.variables:
+    #    outputs['diet_figs'] = _plot_diet_values(output_dir, mesh, data, const)
+                                          
     render = template.render(**outputs)
     
     output_file = os.path.join(output_dir, 'html', 'results_report.html')
@@ -180,6 +189,27 @@ def _make_config_template(output_dir, css, data, const):
     output_file = os.path.join(output_dir, 'html', 'config_report.html')
     with open(output_file, "w") as f:
         f.write(render)
+        
+def _plot_weighted_values(output_dir, mesh, data, const, varname):
+    
+    output = extract_weighted_data(data, mesh, varname)
+    output = extract_time_means(output)
+    filenames = {}
+    for c in range(data.dims['c']):
+        fig = plt.figure()
+        ax = plt.gca()
+        l = const['length'].isel(c=c)
+        toplot = output.isel(c=c)
+        plt.plot(l, toplot, color='k')
+        ax.set_xscale('log')
+        plt.xlim(l.min(), l.max())
+        plt.title('Community ' + str(c))
+        plt.xlabel('Length (log-scale)')
+        plt.ylabel(varname)
+        filenames['Community ' + str(c)] = _savefig(output_dir, 'weighted_%s_com_%d.svg' %(varname, c))
+        plt.close(fig)
+    return filenames  
+    
     
 def _plot_integrated_time_series(output_dir, mesh, data, const):
     
@@ -197,6 +227,7 @@ def _plot_integrated_time_series(output_dir, mesh, data, const):
         plt.title('Community ' + str(c))
         plt.xlabel('Length (log-scale)')
         plt.ylabel('Proportion (%)')
+        plt.ylim(0, 100)
         filenames['Community ' + str(c)] = _savefig(output_dir, 'biomass_cumsum_com_%d.svg' %c)
         plt.close(fig)
     return filenames                 
