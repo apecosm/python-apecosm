@@ -88,6 +88,26 @@
 
 {% endif %}
 
+{% if diet_figs is defined %}
+
+<h2> Diets </h2>
+
+<table id="tablefigs">
+    <tbody>
+        {% for item in diet_figs %}
+        <tr>
+            <td id="tdfigs">
+                <div style="text-align: center">
+                    <img src={{ diet_figs[item] }} width="80%">
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endif %}
+
 <h2> Maps </h2>
 
 <table id="tablefigs">
