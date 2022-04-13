@@ -134,7 +134,7 @@ def _plot_diet_values(output_dir, mesh, data, const):
         l = const['length'].isel(c=c)
         toplot = diet.isel(c=c)
         plt.stackplot(l, toplot.T)
-        plt.plot(l, repf.isel(c=0))
+        plt.plot(l, repf.isel(c=c))
         ax.set_xscale('log')
         plt.xlim(l.min(), l.max())
         plt.title('Community ' + str(c))
