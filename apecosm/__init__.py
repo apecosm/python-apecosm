@@ -27,6 +27,6 @@ from .misc import find_percentile, compute_daylength, extract_community_names, s
 from .netcdf import rebuild_restart
 from .size_spectra import compute_spectra_ltl, plot_oope_spectra, set_plot_lim
 from .mplot import plot_oope_map, plot_season_oope
-from .report import  plot_report_map, plot_report_ts, plot_report_size_spectra, report
+from .report import  plot_report_map, plot_report_ts, report
 from .grid import extract_weight_grid, read_ape_grid, plot_grid_nemo_ape, partial_step_ape
 from .habitat import get_tcor, compute_o2, compute_tpref, compute_tlim, compute_lightpref

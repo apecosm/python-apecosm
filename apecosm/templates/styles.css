@@ -56,6 +56,12 @@ table {
     margin-right: auto;
 }
 
+center {
+    padding: 0px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 thead,
 tfoot {
     background-color: #333;

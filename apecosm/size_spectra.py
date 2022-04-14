@@ -108,7 +108,7 @@ def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight', **kwargs
     return l[0]
 
 
-def plot_oope_spectra(data, constant_file, output_var='weight', config=None, **kwargs):
+def plot_oope_spectra(data, const, output_var='weight', config=None, **kwargs):
 
     r'''
     Plots the OOPE size spectra. Since OOPE data are
@@ -149,7 +149,6 @@ def plot_oope_spectra(data, constant_file, output_var='weight', config=None, **k
     # recovers the default cmap
     cmap = getattr(plt.cm, plt.rcParams['image.cmap'])
 
-    const = xr.open_dataset(constant_file)
     weight = const['weight']
     length = const['length']
 
