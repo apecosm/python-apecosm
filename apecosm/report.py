@@ -115,13 +115,9 @@ def _plot_diet_values(output_dir, mesh, data, const):
     
     if 'community' in data.dims:
         data = data.rename({'community' : 'c'})
-        
-    print('processing diets')
+
     diet = extract_weighted_data(data, mesh, 'community_diet_values', maskdom=None, replace_dims={})
     diet = extract_time_means(diet)
-    
-    repf = extract_weighted_data(data, mesh, 'repfonct_day', maskdom=None, replace_dims={})
-    repf = extract_time_means(repf)
     
     legend = LTL_NAMES.copy()
     for c in range(data.dims['c']):
@@ -133,10 +129,12 @@ def _plot_diet_values(output_dir, mesh, data, const):
         ax = plt.gca()
         l = const['length'].isel(c=c)
         toplot = diet.isel(c=c)
-        plt.stackplot(l, toplot.T)
-        plt.plot(l, repf.isel(c=c))
-        ax.set_xscale('log')
+        repf = toplot.sum(dim='prey_group')
+        plt.stackplot(l, toplot.T, edgecolor='k', linewidth=0.5)
+        plt.plot(l, repf, color='k')
+        plt.ylim(0, repf.max())
         plt.xlim(l.min(), l.max())
+        ax.set_xscale('log')
         plt.title('Community ' + str(c))
         plt.legend(legend)
 
@@ -241,6 +239,7 @@ def _plot_weighted_values(output_dir, mesh, data, const, varname):
         plt.title('Community ' + str(c))
         plt.xlabel('Length (log-scale)')
         plt.ylabel(varname)
+        plt.ylim(0, toplot.max())
         filenames['Community ' + str(c)] = _savefig(output_dir, 'weighted_%s_com_%d.svg' %(varname, c))
         plt.close(fig)
     return filenames  
@@ -384,49 +383,7 @@ def _plot_wl_community(output_dir, data, varname, units):
         
     return output
 
-        
 
-# def report(input_dir, meshfile, output):
-
-#     suffindex = output.rfind(".")
-#     fmt = output[suffindex + 1:]
-    
-#     tempfile = output.replace(fmt, "ipynb")
-    
-#     if fmt not in ['pdf', 'html']:
-#         message = "The output format must be 'html' or 'pdf'. The program will stop"
-#         print(message)
-#         sys.exit(1)
-
-#     template_file = pkg_resources.resource_filename('apecosm', 'resources/report_template.ipynb')
-#     param = dict(input_dir=input_dir, input_mesh=meshfile)
-#     pm.execute_notebook(template_file, tempfile, parameters=param)
-
-#     c = Config()
-
-#     c.TagRemovePreprocessor.remove_cell_tags = ("remove_cell",)
-#     c.TagRemovePreprocessor.remove_all_outputs_tags = ('remove_output',)
-#     c.TagRemovePreprocessor.remove_input_tags = ('remove_input',)    
-#     c.TagRemovePreprocessor.enabled = True
-
-#     if(fmt == 'html'):
-#         c.HTMLExporter.preprocessors = ["nbconvert.preprocessors.TagRemovePreprocessor"]
-#         exporter = HTMLExporter(config=c)
-#     else:
-#         c.PDFExporter.preprocessors = ["nbconvert.preprocessors.TagRemovePreprocessor"]
-#         exporter = PDFExporter(config=c)
-    
-#     strout, objout = exporter.from_filename(tempfile)
-#     if(type(strout) == bytes):
-#         wmode = "wb"
-#     else:
-#         wmode = "w"
-    
-#     with open(output, wmode) as fout:
-#         fout.write(strout)
-        
-#     os.remove(tempfile)
-    
 def plot_report_ts(input_dir, input_mesh):
 
     # extract data in the entire domain, integrates over space
