@@ -8,6 +8,7 @@ import nbformat as nbf
 from .diags import compute_size_cumprop
 from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data
 from .misc import extract_community_names, find_percentile
+from .size_spectra import plot_oope_spectra
 import numpy as np
 import matplotlib.pyplot as plt
 import xarray as xr
@@ -104,6 +105,8 @@ def _make_result_template(output_dir, css, data, const, mesh, crs):
         
     if 'community_diet_values' in data.variables:
         outputs['diet_figs'] = _plot_diet_values(output_dir, mesh, data, const)
+        
+    outputs['spectra_figs'] = _plot_size_spectra(output_dir, mesh, data, const)
                                           
     render = template.render(**outputs)
     
@@ -487,38 +490,23 @@ def plot_report_map(input_dir, input_mesh, draw_features=True):
         plt.show()
         plt.close(fig)   
 
-def plot_report_size_spectra(input_dir, input_mesh):
+def _plot_size_spectra(output_dir, mesh, data, const):
     
      # extract data in the entire domain, integrates over space
-    data = extract_oope_data(input_dir, input_mesh, domain_name='global', use_wstep=False)
+    data = extract_oope_data(data, mesh, const, maskdom=None, use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={})
     data = extract_time_means(data)
-    data = data['OOPE']  # community, w
-    ncom, nw = data.shape
-    
-    const = extract_apecosm_constants(input_dir)
-    weight = const['weight'].values
-    length = const['length'].values
-
-    if(weight.ndim == 1):
-        weight = np.tile(weight, (ncom, 1))
-        length = np.tile(length, (ncom, 1))
-    
-    ncom, nweight = data.shape
-    
-    cmap = getattr(plt.cm, plt.rcParams['image.cmap'])
     
     fig = plt.figure()
-    ax = plt.gca()
-    for icom in range(ncom):
-        color = cmap(icom / (ncom - 1))
-        ax.plot(weight[icom], data[icom], marker='o', linestyle='none', color=color, label='Community %d' %(icom + 1))
-    ax.loglog()
-    plt.legend()
-    plt.xlabel('Weight (g)')
+    plot_oope_spectra(data, const, output_var='length')
+    plt.gca().set_xscale('log')
+    plt.gca().set_yscale('log')
+    plt.xlabel('Length (m)')
     plt.ylabel('OOPE (J/kg)')
-    plt.show()
-    plt.close(fig)
+    plt.legend()
+    figname = _savefig(output_dir, 'size_spectra.svg')
+    plt.close(figname)
     
+    return figname
 
 
 if __name__ == '__main__':
