@@ -30,7 +30,7 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='report', fi
     
     mesh = open_mesh_mask(mesh_file)
     const = open_constants(input_dir)
-    data = open_apecosm_data(input_dir)
+    data = open_apecosm_data(input_dir, **xarray_args)
 
     # create the output architecture
     
