@@ -177,14 +177,14 @@ def extract_mean_size(data, const, mesh, varname, maskdom=None, replace_dims={})
     maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
     tmask = tmask * maskdom
     
-    weight = tmask * surf * oope  # time, lat, lon, comm, w
+    weight = tmask * surf * oope * const['weight_step'] # time, lat, lon, comm, w
 
     variable = (const[varname] * weight).sum(dim=['x', 'y', 'w'])
     variable /= weight.sum(dim=['x', 'y', 'w'])
     
     return variable
 
-def extract_weighted_data(data, mesh, varname, maskdom=None, replace_dims={}):
+def extract_weighted_data(data, const, mesh, varname, maskdom=None, replace_dims={}):
         
     if('tmaskutil' in mesh.variables):
         tmask = mesh['tmaskutil']
@@ -203,7 +203,7 @@ def extract_weighted_data(data, mesh, varname, maskdom=None, replace_dims={}):
 
     oope = data['OOPE']
     
-    weight = tmask * surf * oope  # time, lat, lon, comm, w
+    weight = tmask * surf * oope * const['weight_step']  # time, lat, lon, comm, w
     
     output = (data[varname] * weight).sum(dim=['y', 'x']) /  weight.sum(dim=['y', 'x'])
     return output
