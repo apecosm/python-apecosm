@@ -154,9 +154,11 @@ def _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, varname):
     filenames = {}
     
     if varname == 'weight':
-        ylabel = 'Weight (kg)'
+        mean_size *= 1000
+        ylabel = 'Weight (g)'
     else:
-        ylabel = 'Length (m)'
+        ylabel = 'Length (cm)'
+        mean_size *= 100  # conversion in cm
     
     for c in range(data.dims['c']):
         fig = plt.figure()
@@ -175,7 +177,7 @@ def _plot_diet_values(output_dir, mesh, data, const, maskdom, domname):
     if 'community' in data.dims:
         data = data.rename({'community' : 'c'})
 
-    diet = extract_weighted_data(data, mesh, 'community_diet_values', maskdom=maskdom, replace_dims={})
+    diet = extract_weighted_data(data, const, mesh, 'community_diet_values', maskdom=maskdom, replace_dims={})
     diet = extract_time_means(diet)
     
     legend = LTL_NAMES.copy()
@@ -284,7 +286,7 @@ def _make_config_template(output_dir, css, data, const):
         
 def _plot_weighted_values(output_dir, mesh, data, const, varname, maskdom, domname):
     
-    output = extract_weighted_data(data, mesh, varname, maskdom)
+    output = extract_weighted_data(data, const, mesh, varname, maskdom)
     output = extract_time_means(output)
     filenames = {}
     for c in range(data.dims['c']):
