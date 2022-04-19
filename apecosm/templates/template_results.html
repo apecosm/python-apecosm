@@ -40,6 +40,41 @@
     </tbody>
 </table>
 
+<h2> Mean size/weight </h2>
+
+<h3> Size </h3>
+ 
+<table id="tablefigs">
+    <tbody>
+        {% for item in mean_length_figs %}
+            <tr>
+                <td id="tdfigs">
+                    <div style="text-align: center">
+                <img src={{ mean_length_figs[item] }} width="80%">
+            </div>
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3> Weights </h3>
+ 
+<table id="tablefigs">
+    <tbody>
+        {% for item in mean_weight_figs %}
+            <tr>
+                <td id="tdfigs">
+                    <div style="text-align: center">
+                <img src={{ mean_weight_figs[item] }} width="80%">
+            </div>
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+
 <h2> Size spectra </h2>
  
 <div style="text-align: center">

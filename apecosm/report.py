@@ -6,7 +6,7 @@ import subprocess
 from apecosm.constants import LTL_NAMES
 import nbformat as nbf
 from .diags import compute_size_cumprop
-from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data
+from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data, extract_mean_size
 from .misc import extract_community_names, find_percentile
 from .size_spectra import plot_oope_spectra
 import numpy as np
@@ -127,6 +127,9 @@ def _make_result_template(output_dir, css, data, const, mesh, crs, domains=None,
     outputs['cumbiom_figs'] = _plot_integrated_time_series(output_dir, mesh, data, const, maskdom, domname)
     outputs['maps_figs'] = _plot_mean_maps(output_dir, mesh, data, const, crs, maskdom, domname)
     
+    outputs['mean_length_figs'] = _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, 'length')
+    outputs['mean_weight_figs'] = _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, 'weight')
+    
     if 'repfonct_day' in data.variables:
         outputs['repfonct_figs'] = _plot_weighted_values(output_dir, mesh, data, const, 'repfonct_day', maskdom, domname)
     
@@ -143,6 +146,29 @@ def _make_result_template(output_dir, css, data, const, mesh, crs, domains=None,
     output_file = os.path.join(output_dir, 'html', 'results_report_%s.html' %domname)
     with open(output_file, "w") as f:
         f.write(render)
+        
+def _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, varname):
+    
+    mean_size = extract_mean_size(data, const, mesh, varname, maskdom=maskdom, replace_dims={})
+    
+    filenames = {}
+    
+    if varname == 'weight':
+        ylabel = 'Weight (kg)'
+    else:
+        ylabel = 'Length (m)'
+    
+    for c in range(data.dims['c']):
+        fig = plt.figure()
+        ax = plt.gca()
+        toplot = mean_size.isel(c=c)
+        toplot.plot()
+        plt.title('Community ' + str(c))
+        plt.ylabel(ylabel)
+        filenames['Community ' + str(c)] = _savefig(output_dir, 'mean_%s_com_%d_%s.svg' %(varname, c, domname))
+        plt.close(fig)
+        
+    return filenames
         
 def _plot_diet_values(output_dir, mesh, data, const, maskdom, domname):
     

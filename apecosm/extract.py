@@ -158,6 +158,31 @@ def extract_time_means(data, time=None):
 
     return climatology
 
+def extract_mean_size(data, const, mesh, varname, maskdom=None, replace_dims={}):
+    
+    if('tmaskutil' in mesh.variables):
+        tmask = mesh['tmaskutil']
+    else:
+        tmask = mesh['tmask']
+        
+    tmask = _squeeze_variable(tmask)
+    surf = _squeeze_variable(mesh['e1t'] * mesh['e2t']) 
+    
+    # extract the domain coordinates
+    if maskdom is None:
+        maskdom = np.ones(tmask.shape)
+    
+    oope = data['OOPE']
+
+    maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
+    tmask = tmask * maskdom
+    
+    weight = tmask * surf * oope  # time, lat, lon, comm, w
+
+    variable = (const[varname] * weight).sum(dim=['x', 'y', 'w'])
+    variable /= weight.sum(dim=['x', 'y', 'w'])
+    
+    return variable
 
 def extract_weighted_data(data, mesh, varname, maskdom=None, replace_dims={}):
         
