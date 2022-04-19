@@ -249,7 +249,6 @@ def _make_meta_template(output_dir, css, data, const):
 def _plot_trophic_interactions(output_dir, data):
     
     trophic_interact = data['troph_interaction'].values
-    print(trophic_interact.shape)
     
     comnames = extract_community_names(data)
     xlabel = []
