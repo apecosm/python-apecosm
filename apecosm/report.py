@@ -493,7 +493,7 @@ def plot_report_map(input_dir, input_mesh, draw_features=True):
 def _plot_size_spectra(output_dir, mesh, data, const):
     
      # extract data in the entire domain, integrates over space
-    data = extract_oope_data(data, mesh, const, maskdom=None, use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={})
+    data = extract_oope_data(data, mesh, const, maskdom=None, use_wstep=False, compute_mean=False, replace_dims={}, replace_const_dims={})
     data = extract_time_means(data)
     
     fig = plt.figure()
@@ -501,7 +501,7 @@ def _plot_size_spectra(output_dir, mesh, data, const):
     plt.gca().set_xscale('log')
     plt.gca().set_yscale('log')
     plt.xlabel('Length (m)')
-    plt.ylabel('OOPE (J/kg)')
+    plt.ylabel('OOPE (J/m)')
     plt.legend()
     figname = _savefig(output_dir, 'size_spectra.svg')
     plt.close(figname)
