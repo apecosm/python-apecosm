@@ -15,6 +15,7 @@ import xarray as xr
 import apecosm.constants as co
 import apecosm.misc
 import apecosm.conf
+from .misc import extract_community_names
 
 
 def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight', **kwargs):
@@ -159,12 +160,14 @@ def plot_oope_spectra(data, const, output_var='weight', config=None, **kwargs):
         xvar = length
     else:
         xvar = weight
-
+        
+    comnames = extract_community_names(const)
+    
     ax = plt.gca()
     l = []
     for icom in data['c']:
         color = cmap(float(icom) / len(data['c']))
-        lll = ax.plot(xvar.isel(c=icom), data.isel(c=icom).T, color=color, label='Community %d' %icom, **kwargs)
+        lll = ax.plot(xvar.isel(c=icom), data.isel(c=icom).T, color=color, label=comnames['Community %d' %icom], **kwargs)
         l.append(lll[0])
     return l
     

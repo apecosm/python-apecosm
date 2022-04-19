@@ -172,12 +172,14 @@ def _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, varname):
     filenames['Total'] = _savefig(output_dir, 'mean_%s_tot_%s.svg' %(varname, domname))
     plt.close(fig)
     
+    community_names = extract_community_names(const)
+    
     for c in range(data.dims['c']):
         fig = plt.figure()
         ax = plt.gca()
         toplot = mean_size.isel(c=c)
         toplot.plot()
-        plt.title('Community ' + str(c))
+        plt.title(community_names['Community ' + str(c)])
         plt.ylabel(ylabel)
         filenames['Community ' + str(c)] = _savefig(output_dir, 'mean_%s_com_%d_%s.svg' %(varname, c, domname))
         plt.close(fig)
@@ -192,9 +194,11 @@ def _plot_diet_values(output_dir, mesh, data, const, maskdom, domname):
     diet = extract_weighted_data(data, const, mesh, 'community_diet_values', maskdom=maskdom, replace_dims={})
     diet = extract_time_means(diet)
     
+    community_names = extract_community_names(const)
+    
     legend = LTL_NAMES.copy()
     for c in range(data.dims['c']):
-        legend.append('Community ' + str(c))
+        legend.append(community_names['Community ' + str(c)])
     
     filenames = {}
     for c in range(data.dims['c']):
@@ -208,7 +212,7 @@ def _plot_diet_values(output_dir, mesh, data, const, maskdom, domname):
         plt.ylim(0, repf.max())
         plt.xlim(l.min(), l.max())
         ax.set_xscale('log')
-        plt.title('Community ' + str(c))
+        plt.title(community_names['Community ' + str(c)])
         plt.legend(legend)
 
         filenames['Community ' + str(c)] = _savefig(output_dir, 'diets_com_%d_%s.svg' %(c, domname))
@@ -245,9 +249,15 @@ def _make_meta_template(output_dir, css, data, const):
 def _plot_trophic_interactions(output_dir, data):
     
     trophic_interact = data['troph_interaction'].values
-    trophic_interact.shape
+    print(trophic_interact.shape)
+    
+    comnames = extract_community_names(data)
+    xlabel = []
+    for c in range(0, trophic_interact[0][0].shape[0]):
+        xlabel.append(comnames['Community ' + str(c)])
 
     fig = plt.figure()
+    plt.subplots_adjust(wspace=0.8)
     nd, npred, nprey = trophic_interact.shape
     title = ['Day', 'Night']
     for d in range(2):
@@ -262,6 +272,8 @@ def _plot_trophic_interactions(output_dir, data):
         plt.ylabel('Predator')
         ax.set_xticks(np.arange(nprey))
         ax.set_yticks(np.arange(npred))
+        ax.set_xticklabels(xlabel, rotation=45)
+        ax.set_yticklabels(xlabel, rotation=45)
         ax.set_aspect('equal', 'box')
     output = _savefig(output_dir, 'trophic_interactions.svg')
     plt.close(fig)
@@ -323,6 +335,9 @@ def _plot_integrated_time_series(output_dir, mesh, data, const, maskdom, domname
     filenames = {}
     size_prop = compute_size_cumprop(mesh, data, const, maskdom=maskdom)
     size_prop = extract_time_means(size_prop)
+    
+    comnames = extract_community_names(const)
+    
     for c in range(data.dims['c']):
         fig = plt.figure()
         ax = plt.gca()
@@ -331,7 +346,7 @@ def _plot_integrated_time_series(output_dir, mesh, data, const, maskdom, domname
         plt.fill_between(l, 0, toplot, edgecolor='k', facecolor='lightgray')
         ax.set_xscale('log')
         plt.xlim(l.min(), l.max())
-        plt.title('Community ' + str(c))
+        plt.title(comnames['Community ' + str(c)])
         plt.xlabel('Length (log-scale)')
         plt.ylabel('Proportion (%)')
         plt.ylim(0, 100)
@@ -346,6 +361,7 @@ def _plot_time_series(output_dir, mesh, data, const, maskdom, domname):
     output = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={})
     output = output.sum(dim='w')
     total = output.sum(dim='c')
+    comnames = extract_community_names(const)
     
     fig = plt.figure()
     total.plot()
@@ -360,7 +376,7 @@ def _plot_time_series(output_dir, mesh, data, const, maskdom, domname):
     for c in range(data.dims['c']):
         fig = plt.figure()
         output.isel(c=c).plot()
-        plt.title('Community ' + str(c))
+        plt.title(comnames['Community ' + str(c)])
         plt.ylabel('Joules')
         plt.xticks(rotation=30, ha='right')
         plt.xlabel('')
@@ -449,6 +465,8 @@ def _savefig(output_dir, figname):
         
 def _plot_ltl_selectivity(output_dir, data):
     
+    comnames = extract_community_names(data)
+    
     output = {}
     for c in range(data.dims['c']):
         
@@ -463,7 +481,7 @@ def _plot_ltl_selectivity(output_dir, data):
         plt.legend()
         plt.xlim(length.min(), length.max())
         ax.set_xscale('log')
-        plt.title('Community ' + str(c))
+        plt.title(comnames['Community ' + str(c)])
         plt.grid()
         output[c] = _savefig(output_dir, 'selectivity_com_%d.svg' %c)
         plt.close(fig)
@@ -474,6 +492,8 @@ def _plot_wl_community(output_dir, data, varname, units):
     
     output = {}
     
+    comnames = extract_community_names(data)
+    
     for c in range(data.dims['c']):
         
         length = data[varname].isel(c=c)
@@ -482,7 +502,7 @@ def _plot_wl_community(output_dir, data, varname, units):
         plt.plot(length.values)
         plt.xlim(0, length.shape[0] - 1)
         plt.ylabel('%s' %units)
-        plt.title('Community ' + str(c))
+        plt.title(comnames['Community ' + str(c)])
         plt.grid()
         output[c] = _savefig(output_dir, '%s_com_%d.svg' %(varname, c))
         plt.close(fig)
