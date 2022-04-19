@@ -27,12 +27,22 @@ import shutil
 from glob import glob
 
 
-def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='report', filecss='default', xarray_args={}):
+def report(input_dir, mesh_file, domain_file=None, crs=ccrs.PlateCarree(), output_dir='report', filecss='default', xarray_args={}):
     
     mesh = open_mesh_mask(mesh_file)
     const = open_constants(input_dir)
     data = open_apecosm_data(input_dir, **xarray_args)
-
+    
+    # If a domain file is provided, extracts it and 
+    # store it into a dictionnary
+    if domain_file is None:
+        domains = {}
+    else:
+        domains = {}
+        nc_domains = xr.open_dataset(domain_file)
+        for v in nc_domains.variables:
+            domains[v] = nc_domains[v]
+            
     # create the output architecture
     
     # first create html folder
@@ -46,8 +56,15 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='report', fi
     css_dir = os.path.join(output_dir, 'css')
     os.makedirs(css_dir, exist_ok=True)   
 
-    filebanner = pkg_resources.resource_filename('apecosm', os.path.join('templates', 'banner.html'))
-    shutil.copyfile(filebanner, os.path.join(output_dir, 'html', 'banner.html'))
+    # process the banner file, by adding as many tabs as do,ains    
+    env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
+    template = env.get_template("banner.html")
+    
+    outputs = {'domains': domains}
+    render = template.render(**outputs)
+    output_file = os.path.join(output_dir, 'html', 'banner.html')
+    with open(output_file, "w") as f:
+        f.write(render)
     
     if filecss is None:
         css = ''
@@ -73,6 +90,9 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='report', fi
     _make_meta_template(output_dir, css, data, const)                        
     _make_config_template(output_dir, css, data, const)
     _make_result_template(output_dir, css, data, const, mesh, crs)
+    for domname in domains:
+        _make_result_template(output_dir, css, data, const, mesh, crs, domains, domname)
+        
     
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("template.html")
@@ -85,41 +105,51 @@ def report(input_dir, mesh_file, crs=ccrs.PlateCarree(), output_dir='report', fi
     with open(os.path.join(output_dir, 'index.html'), "w") as f:
         f.write(render)
         
-def _make_result_template(output_dir, css, data, const, mesh, crs):
+def _make_result_template(output_dir, css, data, const, mesh, crs, domains=None, domname=None):
     
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("template_results.html")
     
+    if domains is not None:
+        maskdom = domains[domname]
+    else:
+        maskdom = np.ones(mesh['nav_lon'].shape)
+        domname = 'global'
+
+    maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])    
+    
     outputs = {}
     outputs['css'] = css
     
-    outputs['ts_figs'] = _plot_time_series(output_dir, mesh, data, const)
-    outputs['cumbiom_figs'] = _plot_integrated_time_series(output_dir, mesh, data, const)
-    outputs['maps_figs'] = _plot_mean_maps(output_dir, mesh, data, const, crs)
+    outputs['domain_figs'] = _plot_domain_maps(output_dir, mesh, crs, maskdom, domname)
+    
+    outputs['ts_figs'] = _plot_time_series(output_dir, mesh, data, const, maskdom, domname)
+    outputs['cumbiom_figs'] = _plot_integrated_time_series(output_dir, mesh, data, const, maskdom, domname)
+    outputs['maps_figs'] = _plot_mean_maps(output_dir, mesh, data, const, crs, maskdom, domname)
     
     if 'repfonct_day' in data.variables:
-        outputs['repfonct_figs'] = _plot_weighted_values(output_dir, mesh, data, const, 'repfonct_day')
+        outputs['repfonct_figs'] = _plot_weighted_values(output_dir, mesh, data, const, 'repfonct_day', maskdom, domname)
     
     if 'mort_day' in data.variables:
-        outputs['mort_figs'] = _plot_weighted_values(output_dir, mesh, data, const, 'mort_day')
+        outputs['mort_figs'] = _plot_weighted_values(output_dir, mesh, data, const, 'mort_day', maskdom, domname)
         
     if 'community_diet_values' in data.variables:
-        outputs['diet_figs'] = _plot_diet_values(output_dir, mesh, data, const)
+        outputs['diet_figs'] = _plot_diet_values(output_dir, mesh, data, const, maskdom, domname)
         
-    outputs['spectra_figs'] = _plot_size_spectra(output_dir, mesh, data, const)
+    outputs['spectra_figs'] = _plot_size_spectra(output_dir, mesh, data, const, maskdom, domname)
                                           
     render = template.render(**outputs)
     
-    output_file = os.path.join(output_dir, 'html', 'results_report.html')
+    output_file = os.path.join(output_dir, 'html', 'results_report_%s.html' %domname)
     with open(output_file, "w") as f:
         f.write(render)
         
-def _plot_diet_values(output_dir, mesh, data, const):
+def _plot_diet_values(output_dir, mesh, data, const, maskdom, domname):
     
     if 'community' in data.dims:
         data = data.rename({'community' : 'c'})
 
-    diet = extract_weighted_data(data, mesh, 'community_diet_values', maskdom=None, replace_dims={})
+    diet = extract_weighted_data(data, mesh, 'community_diet_values', maskdom=maskdom, replace_dims={})
     diet = extract_time_means(diet)
     
     legend = LTL_NAMES.copy()
@@ -141,7 +171,7 @@ def _plot_diet_values(output_dir, mesh, data, const):
         plt.title('Community ' + str(c))
         plt.legend(legend)
 
-        filenames['Community ' + str(c)] = _savefig(output_dir, 'diets_com_%d.svg' %(c))
+        filenames['Community ' + str(c)] = _savefig(output_dir, 'diets_com_%d_%s.svg' %(c, domname))
         plt.close(fig)
 
     return filenames
@@ -226,9 +256,9 @@ def _make_config_template(output_dir, css, data, const):
     with open(output_file, "w") as f:
         f.write(render)
         
-def _plot_weighted_values(output_dir, mesh, data, const, varname):
+def _plot_weighted_values(output_dir, mesh, data, const, varname, maskdom, domname):
     
-    output = extract_weighted_data(data, mesh, varname)
+    output = extract_weighted_data(data, mesh, varname, maskdom)
     output = extract_time_means(output)
     filenames = {}
     for c in range(data.dims['c']):
@@ -243,15 +273,15 @@ def _plot_weighted_values(output_dir, mesh, data, const, varname):
         plt.xlabel('Length (log-scale)')
         plt.ylabel(varname)
         plt.ylim(0, toplot.max())
-        filenames['Community ' + str(c)] = _savefig(output_dir, 'weighted_%s_com_%d.svg' %(varname, c))
+        filenames['Community ' + str(c)] = _savefig(output_dir, 'weighted_%s_com_%d_%s.svg' %(varname, c, domname))
         plt.close(fig)
     return filenames  
     
     
-def _plot_integrated_time_series(output_dir, mesh, data, const):
+def _plot_integrated_time_series(output_dir, mesh, data, const, maskdom, domname):
     
     filenames = {}
-    size_prop = compute_size_cumprop(mesh, data, const, maskdom=None)
+    size_prop = compute_size_cumprop(mesh, data, const, maskdom=maskdom)
     size_prop = extract_time_means(size_prop)
     for c in range(data.dims['c']):
         fig = plt.figure()
@@ -265,16 +295,15 @@ def _plot_integrated_time_series(output_dir, mesh, data, const):
         plt.xlabel('Length (log-scale)')
         plt.ylabel('Proportion (%)')
         plt.ylim(0, 100)
-        filenames['Community ' + str(c)] = _savefig(output_dir, 'biomass_cumsum_com_%d.svg' %c)
+        filenames['Community ' + str(c)] = _savefig(output_dir, 'biomass_cumsum_com_%d_%s.svg' %(c, domname))
         plt.close(fig)
     return filenames                 
     
-def _plot_time_series(output_dir, mesh, data, const):
+def _plot_time_series(output_dir, mesh, data, const, maskdom, domname):
     
     filenames = {}
     
-    output = (data['OOPE'] * const['weight_step'] * mesh['e1t'] * mesh['e2t']).sum(dim=['w', 'x', 'y'])
-    output = extract_oope_data(data, mesh, const, maskdom=None, use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={})
+    output = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={})
     output = output.sum(dim='w')
     total = output.sum(dim='c')
     
@@ -296,19 +325,49 @@ def _plot_time_series(output_dir, mesh, data, const):
         plt.xticks(rotation=30, ha='right')
         plt.xlabel('')
         plt.grid()
-        filenames['Community ' + str(c)] = _savefig(output_dir, 'time_series_com_%d.svg' %c)
+        filenames['Community ' + str(c)] = _savefig(output_dir, 'time_series_com_%d_%s.svg' %(c, domname))
         plt.close(fig)
     
     return filenames
 
-def _plot_mean_maps(output_dir, mesh, data, const, crs):
+def _plot_domain_maps(output_dir, mesh, crs, maskdom, domname):
+    
+    lonf = np.squeeze(mesh['glamf'].values)
+    latf = np.squeeze(mesh['gphif'].values)
+    if 'tmaskutil' in mesh.variables:
+        tmask = mesh['tmaskutil']
+    else:
+        tmask = mesh['tmask'].isel(z=0)
+            
+    tmask = tmask.values
+    test = (tmask == 1) & (maskdom.values == 1)
+    tmask[test == True] = 2
+    
+    fig = plt.figure()
+    ax = plt.axes(projection=crs)
+    cs = plt.pcolormesh(lonf, latf, tmask[1:, 1:])
+    cb = plt.colorbar(cs)
+    plt.title('%s mask' %domname)
+    ax.add_feature(cfeature.LAND)
+    ax.add_feature(cfeature.COASTLINE)
+    fileout = _savefig(output_dir, 'domain_map_%s.svg' %domname)
+    plt.close(fig)
+    return fileout
+
+def _plot_mean_maps(output_dir, mesh, data, const, crs, maskdom, domname):
     
     filenames = {}
     lonf = np.squeeze(mesh['glamf'].values)
     latf = np.squeeze(mesh['gphif'].values)
     
+    if maskdom is None:
+        maskdom = np.ones(lonf.shape)
+
+    maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])      
+
     output = (data['OOPE'] * const['weight_step']).mean(dim='time').sum(dim=['w'])
     output = output.where(output > 0)
+    output = output.where(maskdom > 0, drop=True)
     total = output.sum(dim='c')
     total = total.where(total > 0)
   
@@ -320,7 +379,7 @@ def _plot_mean_maps(output_dir, mesh, data, const, crs):
     plt.title("Total")
     ax.add_feature(cfeature.LAND)
     ax.add_feature(cfeature.COASTLINE)
-    filenames['Total'] = _savefig(output_dir, 'mean_maps_total.svg')
+    filenames['Total'] = _savefig(output_dir, 'mean_maps_total_%s.svg' %domname)
     plt.close(fig)
     
     for c in range(data.dims['c']):
@@ -332,7 +391,7 @@ def _plot_mean_maps(output_dir, mesh, data, const, crs):
         cb = plt.colorbar(cs)
         cb.set_label('Joules/m2')
         plt.title('Community ' + str(c))
-        filenames['Community ' + str(c)] = _savefig(output_dir, 'mean_maps_com_%d.svg' %c)
+        filenames['Community ' + str(c)] = _savefig(output_dir, 'mean_maps_com_%d_%s.svg' %(c, domname))
         plt.close(fig)
     
     return filenames
@@ -387,113 +446,10 @@ def _plot_wl_community(output_dir, data, varname, units):
     return output
 
 
-def plot_report_ts(input_dir, input_mesh):
-
-    # extract data in the entire domain, integrates over space
-    data = extract_oope_data(input_dir, input_mesh, domain_name='global')
-    time = data['time'].values
-    comm = data['community'].values.astype(np.int)
-    weight = data['weight'].values
-    oope = data['OOPE'].values
-    
-    try:
-        date = [d.strftime("%Y-%m") for d in time]
-        date = np.array(date)
-        rotation = 45
-        ha = 'right'
-    except:
-        date = time
-        rotation = 0
-        ha = 'center'
-
-    ntime = len(time)
-    stride = ntime // 20
-    stride = max(1, stride)
-    labelindex = np.arange(0, ntime, stride)
-
-    # move time back into time
-    time = np.arange(ntime)
-
-    print('Mean total biomass, all communities: %e J' %(np.mean(np.sum(oope, axis=(1, 2)), axis=0)))
-    for i in range(0, len(comm)):
-        print('Mean total biomass, community %d: %e J' %(i + 1, np.mean(np.sum(oope[:, i, :], axis=(-1)), axis=0)))
-    
-    # plot total biomass
-    fig = plt.figure()
-    plt.plot(time, np.sum(oope, axis=(1, 2)))
-    plt.title('Total biomass, all communities')
-    plt.xlabel('Time')
-    plt.ylabel('OOPE (J)')
-    plt.gca().set_xticks(time[labelindex])
-    plt.gca().set_xticklabels(date[labelindex], rotation=rotation, ha=ha)
-    plt.show()
-    plt.close(fig)
-        
-    for i in range(0, len(comm)):
-        fig = plt.figure()
-        plt.plot(time, np.sum(oope[:, i, :], axis=(1)))
-        plt.title('Total biomass, community %d' %(i + 1))
-        plt.xlabel('Time')
-        plt.ylabel('OOPE (J)')
-        plt.gca().set_xticks(time[labelindex])
-        plt.gca().set_xticklabels(date[labelindex], rotation=rotation, ha=ha)
-        plt.show()
-        plt.close(fig)
-    
-
-def plot_report_map(input_dir, input_mesh, draw_features=True):
-    
-    constants = open_constants(input_dir)
-    wstep = constants['weight_step'].values
-    wstep = wstep[np.newaxis, np.newaxis, :]
-    
-    dataset = xr.open_mfdataset("%s/*OOPE*nc" %input_dir, combine='by_coords')
-    dataset = extract_time_means(dataset)
-    oope = dataset['OOPE'] * wstep   #  conversion in J/m2  (lat, lon, comm, weight)
-    oope = oope.sum(dim=('w')).to_masked_array()   # sum over all weight classes: (lat, lon, com)
-    
-    mesh = xr.open_dataset(input_mesh)
-    lon = mesh['glamf'].values[0]
-    lat = mesh['gphif'].values[0]
-    tmask = mesh['tmask'].values[0, 0]
-    
-    projection = ccrs.PlateCarree()
-    
-    fig = plt.figure()
-    ax = plt.axes(projection=projection)
-    if(draw_features):
-        ax.add_feature(cfeature.LAND, zorder=1000)
-        ax.add_feature(cfeature.COASTLINE, zorder=1001)
-    temp = np.sum(oope, axis=-1)
-    temp = np.log10(temp, where=(temp > 0))
-    cmin, cmax = find_percentile(temp)
-    cs = plt.pcolormesh(lon, lat, temp[1:, 1:], transform=projection)
-    cs.set_clim(cmin, cmax)
-    cb = plt.colorbar(cs, orientation='horizontal')
-    cb.set_label('LOG10 OOPE (J/m2), all communities')
-    plt.show()
-    plt.close(fig)   
-    
-    for i in range(oope.shape[-1]):
-        fig = plt.figure()
-        ax = plt.axes(projection=projection)
-        if(draw_features):
-            ax.add_feature(cfeature.LAND, zorder=1000)
-            ax.add_feature(cfeature.COASTLINE, zorder=1001)
-        temp = oope[:, :, i]
-        temp = np.log10(temp, where=(temp > 0))
-        cmin, cmax = find_percentile(temp)
-        cs = plt.pcolormesh(lon, lat, temp[1:, 1:], transform=projection)
-        cs.set_clim(cmin, cmax)
-        cb = plt.colorbar(cs, orientation='horizontal')
-        cb.set_label('LOG10 OOPE (J/m2), community %d' %(i + 1))
-        plt.show()
-        plt.close(fig)   
-
-def _plot_size_spectra(output_dir, mesh, data, const):
+def _plot_size_spectra(output_dir, mesh, data, const, maskdom, domname):
     
      # extract data in the entire domain, integrates over space
-    data = extract_oope_data(data, mesh, const, maskdom=None, use_wstep=False, compute_mean=False, replace_dims={}, replace_const_dims={})
+    data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False, replace_dims={}, replace_const_dims={})
     data = extract_time_means(data)
     
     fig = plt.figure()
@@ -503,7 +459,7 @@ def _plot_size_spectra(output_dir, mesh, data, const):
     plt.xlabel('Length (m)')
     plt.ylabel('OOPE (J/m)')
     plt.legend()
-    figname = _savefig(output_dir, 'size_spectra.svg')
+    figname = _savefig(output_dir, 'size_spectra_%s.svg' %domname)
     plt.close(figname)
     
     return figname
