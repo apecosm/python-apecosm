@@ -153,8 +153,8 @@ def plot_oope_spectra(data, const, output_var='weight', config=None, **kwargs):
     length = const['length']
 
     if output_var == 'length':
-        wstep = const['weight_step']
-        lstep = const['length_step']
+        wstep = const['weight_step']  # kg
+        lstep = const['length_step']  # l
         data = data * wstep / lstep 
         xvar = length
     else:
