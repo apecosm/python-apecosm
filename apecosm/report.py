@@ -339,13 +339,15 @@ def _plot_domain_maps(output_dir, mesh, crs, maskdom, domname):
     else:
         tmask = mesh['tmask'].isel(z=0)
             
-    tmask = tmask.values
+    tmask = tmask.values.copy()
+    tmask = np.ma.masked_where(tmask == 0, tmask)
     test = (tmask == 1) & (maskdom.values == 1)
-    tmask[test == True] = 2
+    tmask[~test] -= 1
     
     fig = plt.figure()
     ax = plt.axes(projection=crs)
-    cs = plt.pcolormesh(lonf, latf, tmask[1:, 1:])
+    cs = plt.pcolormesh(lonf, latf, tmask[1:, 1:].astype(int), cmap=plt.cm.jet)
+    cs.set_clim(0, 1)
     cb = plt.colorbar(cs)
     plt.title('%s mask' %domname)
     ax.add_feature(cfeature.LAND)
@@ -357,13 +359,17 @@ def _plot_domain_maps(output_dir, mesh, crs, maskdom, domname):
 def _plot_mean_maps(output_dir, mesh, data, const, crs, maskdom, domname):
     
     filenames = {}
-    lonf = np.squeeze(mesh['glamf'].values)
-    latf = np.squeeze(mesh['gphif'].values)
+    
+    
     
     if maskdom is None:
         maskdom = np.ones(lonf.shape)
 
     maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])      
+    
+    mesh = mesh.where(maskdom > 0, drop=True)
+    lonf = np.squeeze(mesh['glamf'].values)
+    latf = np.squeeze(mesh['gphif'].values)
 
     output = (data['OOPE'] * const['weight_step']).mean(dim='time').sum(dim=['w'])
     output = output.where(output > 0)
