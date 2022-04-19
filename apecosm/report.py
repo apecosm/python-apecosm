@@ -399,9 +399,7 @@ def _plot_domain_maps(output_dir, mesh, crs, maskdom, domname):
 def _plot_mean_maps(output_dir, mesh, data, const, crs, maskdom, domname):
     
     filenames = {}
-    
-    
-    
+
     if maskdom is None:
         maskdom = np.ones(lonf.shape)
 
