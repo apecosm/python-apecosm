@@ -174,6 +174,7 @@ def extract_weighted_data(data, mesh, varname, maskdom=None, replace_dims={}):
         maskdom = np.ones(tmask.shape)
 
     maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
+    tmask = tmask * maskdom
 
     oope = data['OOPE']
     
