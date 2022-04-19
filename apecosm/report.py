@@ -2,6 +2,7 @@
 # from jupyter_core.command import main as jupymain
 # from nbconvert.exporters import HTMLExporter, PDFExporter
 # from nbconvert.preprocessors import TagRemovePreprocessor
+from functools import total_ordering
 import subprocess
 from apecosm.constants import LTL_NAMES
 import nbformat as nbf
@@ -149,16 +150,27 @@ def _make_result_template(output_dir, css, data, const, mesh, crs, domains=None,
         
 def _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, varname):
     
+    mean_size_tot = extract_mean_size(data, const, mesh, varname, maskdom=maskdom, replace_dims={}, aggregate=True)
     mean_size = extract_mean_size(data, const, mesh, varname, maskdom=maskdom, replace_dims={})
     
     filenames = {}
     
     if varname == 'weight':
         mean_size *= 1000
+        mean_size_tot *= 1000
         ylabel = 'Weight (g)'
     else:
         ylabel = 'Length (cm)'
         mean_size *= 100  # conversion in cm
+        mean_size_tot *= 100  # conversion in cm
+        
+    fig = plt.figure()
+    ax = plt.gca()
+    mean_size_tot.plot()
+    plt.title('Total')
+    plt.ylabel(ylabel)
+    filenames['Total'] = _savefig(output_dir, 'mean_%s_tot_%s.svg' %(varname, domname))
+    plt.close(fig)
     
     for c in range(data.dims['c']):
         fig = plt.figure()
@@ -300,7 +312,7 @@ def _plot_weighted_values(output_dir, mesh, data, const, varname, maskdom, domna
         plt.title('Community ' + str(c))
         plt.xlabel('Length (log-scale)')
         plt.ylabel(varname)
-        plt.ylim(0, toplot.max())
+        plt.ylim(toplot.min(), toplot.max())
         filenames['Community ' + str(c)] = _savefig(output_dir, 'weighted_%s_com_%d_%s.svg' %(varname, c, domname))
         plt.close(fig)
     return filenames  
