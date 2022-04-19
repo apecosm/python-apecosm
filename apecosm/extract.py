@@ -158,7 +158,7 @@ def extract_time_means(data, time=None):
 
     return climatology
 
-def extract_mean_size(data, const, mesh, varname, maskdom=None, replace_dims={}):
+def extract_mean_size(data, const, mesh, varname, maskdom=None, replace_dims={}, aggregate=False):
     
     if('tmaskutil' in mesh.variables):
         tmask = mesh['tmaskutil']
@@ -179,12 +179,16 @@ def extract_mean_size(data, const, mesh, varname, maskdom=None, replace_dims={})
     
     weight = tmask * surf * oope * const['weight_step'] # time, lat, lon, comm, w
 
-    variable = (const[varname] * weight).sum(dim=['x', 'y', 'w'])
-    variable /= weight.sum(dim=['x', 'y', 'w'])
+    dims = ['x', 'y', 'w']
+    if aggregate:
+        dims += ['c']
+
+    variable = (const[varname] * weight).sum(dims)
+    variable /= weight.sum(dims)
     
     return variable
 
-def extract_weighted_data(data, const, mesh, varname, maskdom=None, replace_dims={}):
+def extract_weighted_data(data, const, mesh, varname, maskdom=None, replace_dims={}, aggregate=False):
         
     if('tmaskutil' in mesh.variables):
         tmask = mesh['tmaskutil']
@@ -205,7 +209,9 @@ def extract_weighted_data(data, const, mesh, varname, maskdom=None, replace_dims
     
     weight = tmask * surf * oope * const['weight_step']  # time, lat, lon, comm, w
     
-    output = (data[varname] * weight).sum(dim=['y', 'x']) /  weight.sum(dim=['y', 'x'])
+    dims = ['y', 'x']
+    
+    output = (data[varname] * weight).sum(dims) /  weight.sum(dims)
     return output
 
 
