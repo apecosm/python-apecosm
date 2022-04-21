@@ -311,6 +311,9 @@ def _plot_weighted_values(output_dir, mesh, data, const, varname, maskdom, domna
     
     output = extract_weighted_data(data, const, mesh, varname, maskdom)
     output = extract_time_means(output)
+    
+    comnames = extract_community_names(const)
+    
     filenames = {}
     for c in range(data.dims['c']):
         fig = plt.figure()
@@ -320,7 +323,7 @@ def _plot_weighted_values(output_dir, mesh, data, const, varname, maskdom, domna
         plt.plot(l, toplot, color='k')
         ax.set_xscale('log')
         plt.xlim(l.min(), l.max())
-        plt.title('Community ' + str(c))
+        plt.title(comnames['Community ' + str(c)])
         plt.xlabel('Length (log-scale)')
         plt.ylabel(varname)
         plt.ylim(toplot.min(), toplot.max())
@@ -429,6 +432,8 @@ def _plot_mean_maps(output_dir, mesh, data, const, crs, maskdom, domname):
     output = output.where(maskdom > 0, drop=True)
     total = output.sum(dim='c')
     total = total.where(total > 0)
+    
+    comnames = extract_community_names(const)
   
     fig = plt.figure()
     ax = plt.axes(projection=crs)
@@ -449,7 +454,7 @@ def _plot_mean_maps(output_dir, mesh, data, const, crs, maskdom, domname):
         ax.add_feature(cfeature.COASTLINE)
         cb = plt.colorbar(cs)
         cb.set_label('Joules/m2')
-        plt.title('Community ' + str(c))
+        plt.title(comnames['Community ' + str(c)])
         filenames['Community ' + str(c)] = _savefig(output_dir, 'mean_maps_com_%d_%s.svg' %(c, domname))
         plt.close(fig)
     
