@@ -1,12 +1,13 @@
 ''' Module that contains some miscellaneous functions '''
 
+from ast import excepthandler
 import re
 import numpy as np
 import apecosm.constants as constants
 
 def find_percentile(data, percentage=1):
 
-    ''' 
+    '''
     Extract percentile to saturate the colormaps.
     They are computed from unmasked arrays
 
@@ -82,10 +83,16 @@ def extract_community_names(const):
     :return: The list of community names
     '''
 
-    comnames = {}
-    attrlist = [v for v in const.attrs if v.startswith('Community_')]
-    for v in attrlist:
-        comnames[v.replace('_', ' ')] = const.attrs[v]
+    try:
+        comnames = {}
+        attrlist = [v for v in const.attrs if v.startswith('Community_')]
+        for v in attrlist:
+            comnames[v.replace('_', ' ')] = const.attrs[v]
+    except:
+        comnames = {}
+        for c in range(const.dims['c']):
+            name = 'Community %d' %c
+            comnames[name] = name
     return comnames
 
 def size_to_weight(size):
