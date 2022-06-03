@@ -1,0 +1,139 @@
+
+* {
+    box-sizing: border-box; 
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #606c71;
+    width: 100%;
+    text-align:justify;
+}
+
+div.boundbox {
+    border-color: #2B547E;
+    border-style: solid;
+    margin: 20px 0 20px 0;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+fieldset {
+    display: block;
+    margin-left: 2px;
+    margin-right: 2px;
+    padding-top: 0.35em;
+    padding-bottom: 0.625em;
+    padding-left: 0.75em;
+    padding-right: 0.75em;
+    border-color: #2B547E;
+    border-style: solid;
+    color: #2B547E;
+
+}
+
+td {
+    border: 1px solid #333;
+    padding: 15px;
+}
+
+#tdfigs {
+    padding: 0px;
+    border-style: none;
+}
+
+table {
+    padding: 15px;
+}
+
+#tablefigs {
+    padding: 0px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+center {
+    padding: 0px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+thead,
+tfoot {
+    background-color: #333;
+    color: #fff;
+}
+
+.page-header {
+    color: #fff;
+    text-align: center;
+    background-color: gray;
+}
+
+.btn {
+    font-weight: bold;
+    display: inline-block;
+    color: white;
+    background-color: transparent;
+    border-color: transparent;
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 0.3rem;
+transition: color 0.2s, background-color 0.2s, border-color 0.2s; }
+
+.btn + .btn {
+    margin-left: 1rem; 
+}
+
+.btn:hover {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    background-color: rgba(255, 255, 255, 0.2);
+border-color: rgba(255, 255, 255, 0.3); }
+
+@media screen and (min-width: 64em) {
+    .btn {
+        font-size: 1.2rem;
+padding: 0.5rem 0.5rem; } }
+
+a {
+    color: #1e6bb8;
+text-decoration: none; }
+
+a:hover {
+text-decoration: underline; }
+
+.main-content :first-child {
+margin-top: 0px; }
+
+.main-content img {
+max-width: 100%; }
+
+@media screen and (min-width: 64em) {
+    .main-content {
+        max-width: 64rem;
+        padding: 1rem 6rem;
+        margin: 0 auto;
+font-size: 1.1rem; } }
+
+@media screen and (min-width: 42em) and (max-width: 64em) {
+    .main-content {
+        padding: 1rem 4rem;
+font-size: 1.1rem; } }
+
+@media screen and (max-width: 42em) {
+    .main-content {
+        padding: 1rem 1rem;
+font-size: 1rem; } }
+
+h1 {
+    font-size: 2rem;
+}
+
+h2 {
+    font-size: 1.5rem;
+}
