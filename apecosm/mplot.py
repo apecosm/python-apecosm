@@ -20,7 +20,8 @@ PROJIN = ccrs.PlateCarree()
 
 def plot_oope_map(data, mesh, axis=None, **kwargs):
 
-    ''' Draws 2D OOPE maps.
+    '''
+    Draws 2D OOPE maps.
 
     :param data: Data to plot
     :type data: :class:`xarray.DataArray`
@@ -29,7 +30,7 @@ def plot_oope_map(data, mesh, axis=None, **kwargs):
     :param ax: Axis on which to draw
     :type ax: :class:`matplotlib.axes._subplots.AxesSubplot` or
         :class:`cartopy.mpl.geoaxes.GeoAxesSubplot`, optional
-    :param **kwargs: Additional arguments to the `pcolormesh` function
+    :param \**kwargs: Additional arguments to the `pcolormesh` function
 
     :return: The output quad mesh.
     :rtype: :class:`matplotlib.collections.QuadMesh`
