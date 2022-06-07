@@ -31,6 +31,10 @@ Data extraction
 .. autosummary::
    :toctree: generated
 
+   open_mesh_mask
+   open_ltl_data
+   open_constants
+   open_apecosm_data
    extract_ltl_data
    extract_time_means
    extract_oope_data
