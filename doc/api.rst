@@ -34,6 +34,7 @@ Data extraction
    extract_ltl_data
    extract_time_means
    extract_oope_data
+   generate_mask
 
 Habitat
 -----------------------
