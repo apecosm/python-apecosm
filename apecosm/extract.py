@@ -9,47 +9,47 @@ from .domains import DOMAINS, inpolygon
 import os
 
 def open_mesh_mask(meshfile, replace_dims={}):
-    
+
     # open the mesh file, extract tmask, lonT and latT
     mesh = xr.open_dataset(meshfile)
     mesh = mesh.rename(replace_dims)
     if 't' in mesh.dims:
         mesh = mesh.isel(t=0)
-    
+
     return mesh
 
 def open_constants(dirin, replace_dims={}):
-    
+
     path = os.path.join(dirin, '*Constant*.nc')
     constant = xr.open_mfdataset(path)
     constant = constant.rename(replace_dims)
     return constant
 
 def open_apecosm_data(dirin, replace_dims={}, **kwargs):
-    
+
     pattern = os.path.join(dirin, '*.nc.*')
     filelist = glob(pattern)
     if len(filelist) == 0:
         pattern = os.path.join(dirin, '*.nc')
         filelist = glob(pattern)
         filelist = [f for f in filelist if 'Constant' not in f]
-        
+
     # open the dataset
     filelist.sort()
     data = xr.open_mfdataset(filelist, **kwargs)
     data = data.rename(replace_dims)
     return data
 
-def open_ltl_data(dirin, replace_dims={}, **kwargs):
-    
-    pattern = os.path.join(dirin, '*.nc')
+def open_ltl_data(dirin, pattern, replace_dims={}, **kwargs):
+
+    pattern = os.path.join(dirin, pattern)
     filelist = glob(pattern)
     filelist.sort()
-    
+
     data = xr.open_mfdataset(filelist, **kwargs)
     data = data.rename(replace_dims)
     return data
-    
+
 def extract_ltl_data(data, varname, mesh,
                      maskdom=None, compute_mean=False, depth_max=None, replace_dims={}):
 
@@ -70,27 +70,29 @@ def extract_ltl_data(data, varname, mesh,
 
     '''
 
+    surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
+
     if 'e3t' in data.variables:
         # if VVL, e3t should be read from data
         e3t = data['e3t']  # time, z, lat, lon
     elif 'e3t_0' in mesh.variables:
         e3t = mesh['e3t_0']  # 1, z, lat, lon
     else:
-        e3t = mesh['e3t_1d'] 
-        
+        e3t = mesh['e3t_1d']
+
     data = data[varname]
     data = _rename_z_dim(data)
-        
+
     if 'gdept_0' in mesh.variables:
         depth = mesh['gdept_0']  # 1, z, lat, lon
     else:
-        depth = mesh['gdept_1d'] 
-    
+        depth = mesh['gdept_1d']
+
     tmask = mesh['tmask']
-    
+
     if('tmaskutil' in mesh.variables):
         tmask *= mesh['tmaskutil']
-    
+
     lon = _squeeze_variable(mesh['glamt'])
     lat = _squeeze_variable(mesh['gphit'])
     nlat, nlon = lat.shape
@@ -121,7 +123,7 @@ def extract_ltl_data(data, varname, mesh,
 
 
 def _rename_z_dim(var):
-    
+
     for t in ['olevel', 'depth', 'deptht', 'depthu', 'depthv']:
         if t in var.dims:
             var = var.rename({t : 'z'})
@@ -159,24 +161,24 @@ def extract_time_means(data, time=None):
     return climatology
 
 def extract_mean_size(data, const, mesh, varname, maskdom=None, replace_dims={}, aggregate=False):
-    
+
     if('tmaskutil' in mesh.variables):
         tmask = mesh['tmaskutil']
     else:
         tmask = mesh['tmask']
-        
+
     tmask = _squeeze_variable(tmask)
-    surf = _squeeze_variable(mesh['e1t'] * mesh['e2t']) 
-    
+    surf = _squeeze_variable(mesh['e1t'] * mesh['e2t'])
+
     # extract the domain coordinates
     if maskdom is None:
         maskdom = np.ones(tmask.shape)
-    
+
     oope = data['OOPE']
 
     maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
     tmask = tmask * maskdom
-    
+
     weight = tmask * surf * oope * const['weight_step'] # time, lat, lon, comm, w
 
     dims = ['x', 'y', 'w']
@@ -185,19 +187,19 @@ def extract_mean_size(data, const, mesh, varname, maskdom=None, replace_dims={},
 
     variable = (const[varname] * weight).sum(dims)
     variable /= weight.sum(dims)
-    
+
     return variable
 
 def extract_weighted_data(data, const, mesh, varname, maskdom=None, replace_dims={}, aggregate=False):
-        
+
     if('tmaskutil' in mesh.variables):
         tmask = mesh['tmaskutil']
     else:
         tmask = mesh['tmask']
-        
+
     tmask = _squeeze_variable(tmask)
-    surf = _squeeze_variable(mesh['e1t'] * mesh['e2t']) 
-    
+    surf = _squeeze_variable(mesh['e1t'] * mesh['e2t'])
+
     # extract the domain coordinates
     if maskdom is None:
         maskdom = np.ones(tmask.shape)
@@ -206,16 +208,16 @@ def extract_weighted_data(data, const, mesh, varname, maskdom=None, replace_dims
     tmask = tmask * maskdom
 
     oope = data['OOPE']
-    
+
     weight = tmask * surf * oope * const['weight_step']  # time, lat, lon, comm, w
-    
+
     dims = ['y', 'x']
-    
+
     output = (data[varname] * weight).sum(dims) /  weight.sum(dims)
     return output
 
 
-def extract_oope_data(data, mesh, const, maskdom=None, 
+def extract_oope_data(data, mesh, const, maskdom=None,
                       use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={}):
 
     '''
@@ -240,12 +242,12 @@ def extract_oope_data(data, mesh, const, maskdom=None,
         wstep = 1
 
     surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
-    
+
     if('tmaskutil' in mesh.variables):
         tmask = mesh['tmaskutil']
     else:
         tmask = mesh['tmask']
-        
+
     tmask = _squeeze_variable(tmask)
 
     nlat, nlon = tmask.shape
@@ -270,19 +272,19 @@ def extract_oope_data(data, mesh, const, maskdom=None,
 
     if compute_mean:
         data /= weight.sum(dim=['x', 'y'])
-    
+
     return data
 
 
 def _squeeze_variable(variable):
-    
+
     r'''
     If a variable which is supposed to be 2D (dims=['x', 'y']) but
     is in fact 3D, we remove the spurious dimensions.
 
     :return: A data array with the given time mean
     '''
-    
+
     dims = variable.dims
     dictout = {}
     for d in dims:
