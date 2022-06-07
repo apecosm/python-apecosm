@@ -4,9 +4,11 @@ related to domains
 '''
 
 import numpy as np
-import cartopy.crs as ccrs 
+import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
-    
+import sys
+import os
+
 
 # Defintions of some domains (list to be completed)
 BENGUELA = {'lon': [10, 20, 20, 10, 10], 'lat': [-36, -36, -15, -15, -36]}
@@ -21,6 +23,25 @@ DOMAINS = {'BENGUELA': BENGUELA,
            'ARCTIC': ARCTIC,
            'ANTARCTIC': ANTARCTIC,
            'ETP': ETP}
+
+def generate_mask(mesh, domain):
+
+    lon = mesh['glamt'].values
+    lat = mesh['gphit'].values
+
+    if isinstance(domain, str):
+        domain = DOMAINS[domain]
+    elif not isinstance(domain, dict):
+        message = 'The domain must either be a string or a dict'
+        print(message)
+        sys.exit(1)
+
+    xpol = domain['lon']
+    ypol = domain['lat']
+
+    outmask = inpolygon(lon, lat, xpol, ypol)
+    return outmask
+
 
 
 def inpolygon(xin_2d, yin_2d, x_pol, y_pol):
@@ -102,7 +123,7 @@ def plot_domains(filename='apecosm_domains.pdf', ncol=2, leg_font_size=8):
     '''
 
     cmap = getattr(plt.cm, plt.rcParams['image.cmap'])
-    plt.figure()
+    fig = plt.figure()
     projection = ccrs.PlateCarree()
     ax = plt.axes(projection=projection)
     cpt = 0.0
@@ -114,11 +135,50 @@ def plot_domains(filename='apecosm_domains.pdf', ncol=2, leg_font_size=8):
     ax.coastlines(linewidth=0.5)
     plt.legend(fontsize=leg_font_size, ncol=ncol)
     plt.savefig(filename, bbox_inches='tight')
+    return fig
 
 if __name__ == '__main__':
 
-    plot_domains()
+    import xarray as xr
+    import cartopy.feature as cfeature
+    import cartopy.crs as ccrs
 
+    fig = plot_domains()
+    plt.close(fig)
+
+    dirin = '../doc/_static/example/data/'
+    mesh = xr.open_dataset(os.path.join(dirin, 'mesh_mask.nc')).isel(t=0)
+    print(mesh)
+
+    TEST = {'lon': [10, 20, 20, 10, 10], 'lat': [-36, -36, -15, -15, -36]}
+
+    mask_1 = generate_mask(mesh, TEST)
+    mask_2 = generate_mask(mesh, 'ETP')
+    tmask = mesh['tmask'].isel(z=0).values
+    lonf = mesh['glamf'].values
+    latf = mesh['gphif'].values
+    lon = mesh['glamt'].values
+    lat = mesh['gphit'].values
+
+    projin = ccrs.PlateCarree()
+    projout = ccrs.PlateCarree()
+
+    plt.figure(figsize=(18, 8))
+    ax = plt.subplot(2, 1, 1, projection=projout)
+    cs = plt.pcolormesh(lonf, latf, tmask[1:, 1:], cmap=plt.cm.binary_r, transform=projin)
+    ax.add_feature(cfeature.COASTLINE, color='r')
+    iok = np.nonzero(mask_1 * tmask == 1)
+    plt.plot(lon[iok], lat[iok], marker='.', linestyle='none', transform=projin, color='gold')
+    plt.colorbar(cs)
+
+    ax = plt.subplot(2, 1, 2, projection=projout)
+    ax.add_feature(cfeature.COASTLINE, color='r')
+    iok = np.nonzero((mask_2 * tmask) == 1)
+    plt.plot(lon[iok], lat[iok], marker='.', linestyle='none', transform=projin, color='gold')
+    cs =  plt.pcolormesh(lonf, latf, (mask_2 * tmask)[1:, 1:], cmap=plt.cm.binary_r, transform=projin)
+    plt.colorbar(cs)
+    plt.show()
+    plt.savefig('mask.png', bbox_inches='tight')
 
 
 # if __name__ == '__main__':
