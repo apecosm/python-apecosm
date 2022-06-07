@@ -37,14 +37,16 @@ def generate_mask(mesh, domain):
     '''
     Function that generates a mask, with ones where the
     points are in a given area, 0 elsewhere.
-    :param mesh: Dataset containing the grid definition,.
+
+    :param mesh: Dataset containing the grid definition.
     :type mesh: class:`xarray.Dataset`
     :param domain: Domain to extract. If string is
-     provided, must be a predefined area.
-     If a dict is provided, it must contiain a
-     `lon` and a `lat` key, containing
-     the area coordinates.
+        provided, must be a predefined area.
+        If a dict is provided, it must contain a
+        `lon` and a `lat` key, containing
+        the area coordinates.
     :type domain: dict, str
+
     '''
 
     lon = mesh['glamt'].values
