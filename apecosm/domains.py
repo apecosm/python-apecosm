@@ -3,19 +3,26 @@ Module that contains pre-defined domains and functions
 related to domains
 '''
 
+import sys
+import os
 import numpy as np
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
-import sys
-import os
+from matplotlib import path
+import xarray as xr
 
 
 # Defintions of some domains (list to be completed)
-BENGUELA = {'lon': [10, 20, 20, 10, 10], 'lat': [-36, -36, -15, -15, -36]}
-OMZ_PERU = {'lon': [-90, -70, -70, -90, -90], 'lat': [-20, -20, 5, 5, -20]}
-ARCTIC = {'lon': [-180, 180, 180, -180, -180], 'lat': [66, 66, 90, 90, 66]}
-ANTARCTIC = {'lon': [-180, 180, 180, -180, -180], 'lat': [-55, -55, -90, -90, -55]}
-ETP = {'lon': [-160, -70., -70, -160, -160], 'lat': [-20, -20, 25, 25, -20]}
+BENGUELA = {'lon': [10, 20, 20, 10, 10],
+            'lat': [-36, -36, -15, -15, -36]}
+OMZ_PERU = {'lon': [-90, -70, -70, -90, -90],
+            'lat': [-20, -20, 5, 5, -20]}
+ARCTIC = {'lon': [-180, 180, 180, -180, -180],
+          'lat': [66, 66, 90, 90, 66]}
+ANTARCTIC = {'lon': [-180, 180, 180, -180, -180],
+             'lat': [-55, -55, -90, -90, -55]}
+ETP = {'lon': [-160, -70., -70, -160, -160],
+       'lat': [-20, -20, 25, 25, -20]}
 
 
 DOMAINS = {'BENGUELA': BENGUELA,
@@ -24,12 +31,31 @@ DOMAINS = {'BENGUELA': BENGUELA,
            'ANTARCTIC': ANTARCTIC,
            'ETP': ETP}
 
+
 def generate_mask(mesh, domain):
+
+    '''
+    Function that generates a mask, with ones where the
+    points are in a given area, 0 elsewhere.
+    :param mesh: Dataset containing the grid definition,.
+    :type mesh: class:`xarray.Dataset`
+    :param domain: Domain to extract. If string is
+     provided, must be a predefined area.
+     If a dict is provided, it must contiain a
+     `lon` and a `lat` key, containing
+     the area coordinates.
+    :type domain: dict, str
+    '''
 
     lon = mesh['glamt'].values
     lat = mesh['gphit'].values
 
     if isinstance(domain, str):
+        if domain not in DOMAINS.keys():
+            message = 'Domain must be in '
+            message += ','.join(DOMAINS.keys())
+            print(message)
+            sys.exit(1)
         domain = DOMAINS[domain]
     elif not isinstance(domain, dict):
         message = 'The domain must either be a string or a dict'
@@ -41,7 +67,6 @@ def generate_mask(mesh, domain):
 
     outmask = inpolygon(lon, lat, xpol, ypol)
     return outmask
-
 
 
 def inpolygon(xin_2d, yin_2d, x_pol, y_pol):
@@ -64,22 +89,24 @@ def inpolygon(xin_2d, yin_2d, x_pol, y_pol):
 
     """
 
-    from matplotlib import path
-
     x_pol = np.array(x_pol)
     y_pol = np.array(y_pol)
 
     if xin_2d.ndim != 2:
-        raise ValueError("The xin_2d argument must be 2D. %d dimensions" %xin_2d.ndim)
+        raise ValueError("The xin_2d argument must be 2D. \
+                         %d dimensions" % xin_2d.ndim)
 
     if yin_2d.ndim != 2:
-        raise ValueError("The yin_2d argument must be 2D. %d dimensions" %yin_2d.ndim)
+        raise ValueError("The yin_2d argument must be 2D. \
+                         %d dimensions" % yin_2d.ndim)
 
     if x_pol.ndim != 1:
-        raise ValueError("The x_pol argument must be 1D. %d dimensions" %x_pol.ndim)
+        raise ValueError("The x_pol argument must be 1D. \
+                         %d dimensions" % x_pol.ndim)
 
     if y_pol.ndim != 1:
-        raise ValueError("The y_pol argument must be 1D. %d dimensions" %y_pol.ndim)
+        raise ValueError("The y_pol argument must be 1D. \
+                          %d dimensions" % y_pol.ndim)
 
     x_pol = np.array(x_pol)
     y_pol = np.array(y_pol)
@@ -89,11 +116,11 @@ def inpolygon(xin_2d, yin_2d, x_pol, y_pol):
         x_pol = np.append(x_pol, x_pol[0])
         y_pol = np.append(y_pol, y_pol[0])
 
-    nx, ny = xin_2d.shape
+    n_x, n_y = xin_2d.shape
 
     # creation the input of the path.Path command:
     # [(x1, y1), (x2, y2), (x3, y3)]
-    path_input = [(xtemp, ytemp) for xtemp, ytemp in zip(x_pol, y_pol)]
+    path_input = list(zip(x_pol, y_pol))
 
     # initialisation of the path object
     temppath = path.Path(path_input)
@@ -106,7 +133,7 @@ def inpolygon(xin_2d, yin_2d, x_pol, y_pol):
     mask = temppath.contains_points(list_of_points)
 
     # reconverting the mask into a nx by ny array
-    mask = np.reshape(mask, (nx, ny))
+    mask = np.reshape(mask, (n_x, n_y))
 
     return mask
 
@@ -117,67 +144,74 @@ def plot_domains(filename='apecosm_domains.pdf', ncol=2, leg_font_size=8):
     Plots the pre-defined domains on a global map.
 
     :param str filename: Name of the output image file
-    :param int ncol: Number of columns in the legend
-    :param float leg_font_size: Legend font size
+    :type filename: str, optional
+    :param ncol: Number of columns in the legend
+    :type ncol: int, optional
+    :param leg_font_size: Legend font size
+    :type leg_font_size: float, optional
 
     '''
 
     cmap = getattr(plt.cm, plt.rcParams['image.cmap'])
     fig = plt.figure()
     projection = ccrs.PlateCarree()
-    ax = plt.axes(projection=projection)
+    axis = plt.axes(projection=projection)
     cpt = 0.0
-    for k, v in DOMAINS.items():
+    for key, var in DOMAINS.items():
         col = cmap(cpt / len(DOMAINS.items()))
-        plt.plot(v['lon'], v['lat'], label=k, linewidth=1, color=col, transform=projection)
+        plt.plot(var['lon'], var['lat'], label=key, linewidth=1,
+                 color=col, transform=projection)
         cpt += 1.0
 
-    ax.coastlines(linewidth=0.5)
+    axis.coastlines(linewidth=0.5)
     plt.legend(fontsize=leg_font_size, ncol=ncol)
     plt.savefig(filename, bbox_inches='tight')
     return fig
 
+
 if __name__ == '__main__':
 
-    import xarray as xr
-    import cartopy.feature as cfeature
-    import cartopy.crs as ccrs
+    f = plot_domains()
+    plt.close(f)
 
-    fig = plot_domains()
-    plt.close(fig)
+    DIR_IN = '../doc/_static/example/data/'
+    meshdata = xr.open_dataset(os.path.join(DIR_IN, 'mesh_mask.nc')).isel(t=0)
+    print(meshdata)
 
-    dirin = '../doc/_static/example/data/'
-    mesh = xr.open_dataset(os.path.join(dirin, 'mesh_mask.nc')).isel(t=0)
-    print(mesh)
+    TEST = {'lon': [10, 20, 20, 10, 10],
+            'lat': [-36, -36, -15, -15, -36]}
 
-    TEST = {'lon': [10, 20, 20, 10, 10], 'lat': [-36, -36, -15, -15, -36]}
-
-    mask_1 = generate_mask(mesh, TEST)
-    mask_2 = generate_mask(mesh, 'ETP')
-    tmask = mesh['tmask'].isel(z=0).values
-    lonf = mesh['glamf'].values
-    latf = mesh['gphif'].values
-    lon = mesh['glamt'].values
-    lat = mesh['gphit'].values
+    mask_1 = generate_mask(meshdata, TEST)
+    mask_2 = generate_mask(meshdata, 'ETP')
+    tmask = meshdata['tmask'].isel(z=0).values
+    lonf = meshdata['glamf'].values
+    latf = meshdata['gphif'].values
+    lont = meshdata['glamt'].values
+    latt = meshdata['gphit'].values
 
     projin = ccrs.PlateCarree()
     projout = ccrs.PlateCarree()
 
     plt.figure(figsize=(18, 8))
     ax = plt.subplot(2, 1, 1, projection=projout)
-    cs = plt.pcolormesh(lonf, latf, tmask[1:, 1:], cmap=plt.cm.binary_r, transform=projin)
-    ax.add_feature(cfeature.COASTLINE, color='r')
+    cs = plt.pcolormesh(lonf, latf, tmask[1:, 1:],
+                        cmap=plt.cm.get_cmap('binary_r'),
+                        transform=projin)
+    ax.coastlines()
     iok = np.nonzero(mask_1 * tmask == 1)
-    plt.plot(lon[iok], lat[iok], marker='.', linestyle='none', transform=projin, color='gold')
+    plt.plot(lont[iok], latt[iok], marker='.', linestyle='none',
+             transform=projin, color='gold')
     plt.colorbar(cs)
 
     ax = plt.subplot(2, 1, 2, projection=projout)
-    ax.add_feature(cfeature.COASTLINE, color='r')
+    ax.coastlines()
     iok = np.nonzero((mask_2 * tmask) == 1)
-    plt.plot(lon[iok], lat[iok], marker='.', linestyle='none', transform=projin, color='gold')
-    cs =  plt.pcolormesh(lonf, latf, (mask_2 * tmask)[1:, 1:], cmap=plt.cm.binary_r, transform=projin)
+    plt.plot(lont[iok], latt[iok], marker='.', linestyle='none',
+             transform=projin, color='gold')
+    cs = plt.pcolormesh(lonf, latf, (tmask)[1:, 1:],
+                        cmap=plt.cm.get_cmap('binary_r'),
+                        transform=projin)
     plt.colorbar(cs)
-    plt.show()
     plt.savefig('mask.png', bbox_inches='tight')
 
 
