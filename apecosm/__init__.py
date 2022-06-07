@@ -26,7 +26,7 @@ from .extract import extract_ltl_data, extract_time_means, extract_oope_data, ex
 from .misc import find_percentile, compute_daylength, extract_community_names, size_to_weight, weight_to_size
 from .netcdf import rebuild_restart
 from .size_spectra import compute_spectra_ltl, plot_oope_spectra, set_plot_lim
-from .mplot import plot_oope_map, plot_season_oope
+from .mplot import plot_oope_map
 from .report import report
 from .grid import extract_weight_grid, read_ape_grid, plot_grid_nemo_ape, partial_step_ape
 from .habitat import get_tcor, compute_o2, compute_tpref, compute_tlim, compute_lightpref
