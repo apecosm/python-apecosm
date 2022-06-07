@@ -77,7 +77,6 @@ Maps
 .. autosummary::
    :toctree: generated
 
-   plot_season_oope
    plot_oope_map
 
 
