@@ -19,7 +19,7 @@ def read_config(filename, relative_to_main=False, params=None, path=''):
     :param relative_to_main: True if path names are related to
      the main configuration file, False if path names are related to
      the current configuration file.
-    :type relative_to_main: bool, optiona
+    :type relative_to_main: bool, optional
     :param params: Dictionnary that contains all the parameters.
     :type params: dict, optional
     :param path: Path that is used to reconstruct the
