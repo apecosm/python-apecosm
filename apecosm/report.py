@@ -150,8 +150,8 @@ def _make_result_template(output_dir, css, data, const, mesh, crs, domains=None,
 
 def _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, varname):
 
-    mean_size_tot = extract_mean_size(data, const, mesh, varname, maskdom=maskdom, replace_dims={}, aggregate=True)
-    mean_size = extract_mean_size(data, const, mesh, varname, maskdom=maskdom, replace_dims={})
+    mean_size_tot = extract_mean_size(data, const, mesh, varname, maskdom=maskdom, aggregate=True)
+    mean_size = extract_mean_size(data, const, mesh, varname, maskdom=maskdom)
 
     filenames = {}
 
@@ -359,7 +359,7 @@ def _plot_time_series(output_dir, mesh, data, const, maskdom, domname):
 
     filenames = {}
 
-    output = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={})
+    output = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=True, compute_mean=False)
     output = output.sum(dim='w')
     total = output.sum(dim='c')
     comnames = extract_community_names(const)
