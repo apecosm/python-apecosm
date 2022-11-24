@@ -7,162 +7,96 @@ can be used by using a virtual environment
 
 from __future__ import print_function
 import sys
-import os.path
-import numpy as np
 import xarray as xr
-import apecosm.extract
-import apecosm.misc as misc
 import cartopy.crs as ccrs
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 import cartopy.feature as cfeature
+from cartopy.mpl import geoaxes
+import matplotlib.pyplot as plt
+
 plt.rcParams['text.usetex'] = False
 
-def plot_oope_map(data, weight_step, length, lonf, latf, figname, size_class=None, projection=None, percentage=1, features=None, figargs={}):
+PROJIN = ccrs.PlateCarree()
 
-    ''' Draws 2D OOPE maps.
 
-    :param xarray.Dataset data: 2D OOPE array. Dims must be (y, x, comm, size)
-    :param numpy.array weight_step: Weight step array.
-    :param numpy.array length: Length array (cm).
-    :param numpy.array lonf: Longitude of the ``F`` points (variable `glamf` of grid files)
-    :param numpy.array latf: Latitude of the ``F`` points (variable `gphif` of grid files)
-    :param str figname: Name of the figure file (must end by .png or .pdf)
-    :param list size_class: Size classes to output (in cm)
-    :param float percentage: percentage used to saturate colorbar from percentile.
-     Colorbar is saturated from values of the (X) and (100 - X) percentile.
+def plot_oope_map(data, mesh, axis=None, **kwargs):
 
-    :return: None
-    
     '''
+    Draws 2D OOPE maps.
 
-    if weight_step.ndim == 1:
-        weight_step = weight_step[np.newaxis, :] # comm, w
+    :param data: Data to plot
+    :type data: :class:`xarray.DataArray`
+    :param mesh: Mesh dataset
+    :type mesh: :class:`xarray.Dataset`
+    :param ax: Axis on which to draw
+    :type ax: :class:`matplotlib.axes._subplots.AxesSubplot` or
+        :class:`cartopy.mpl.geoaxes.GeoAxesSubplot`, optional
+    :param \**kwargs: Additional arguments to the `pcolormesh` function
 
-    if size_class is None:
-        size_class = [1e-3, 1e-2, 1e-1, 1]
-
-    # sort size class in ascending order, and add 0 and infinity as size bounds
-    size_class = np.sort(size_class)
-
-    if size_class[0] != 0:
-        size_class = np.concatenate(([0], size_class), axis=0)
-    if size_class[-1] != np.Inf:
-        size_class = np.concatenate((size_class, [np.Inf]), axis=0)
-
-    # Check that the OOPE dataset has 4 dimensions (i.e. no time dimension)
-    ndims = len(data['OOPE'].dims)
-
-    if ndims != 4:
-        message = 'Data must have dimensions of size (lat, lon, comm, wei)'
-        print(message)
-        sys.exit(0)
-
-    oope = data['OOPE'].to_masked_array()  # lat, lon, comm, wei
-    oope = np.ma.transpose(oope (2, 3, 0, 1)) # comm, weight, lat, lon
-    oope = oope * weight_step[:, :, np.newaxis, np.newaxis]  # multiply by weight step
-
-    comm = data['community'][:].values.astype(np.int)
-
-    comm_string = misc.extract_community_names(data)
-
-    if not(figname.endswith('pdf')):
-        message = 'Figure name should end with pdf'
-        print(message)
-        sys.exit(0)
-
-    if(projection is None):
-        projection = ccrs.PlateCarree()
-
-    with PdfPages(figname) as pdf:
-
-        # Loop over communities
-        for icom in comm:
-            # Loop over size classes
-
-            if length.ndim ==1:
-                ltemp = length
-            else:
-                ltemp = length[icom]
-
-            for isize in range(0, len(size_class) - 1):
-
-                # Extract sizes comprised between the size class bound
-                iw = np.nonzero((ltemp >= size_class[isize]) & (ltemp < size_class[isize + 1]))[0]
-                if iw.size == 0:
-                    continue
-
-                # Integrate OOPE for the given community and given size class
-                temp = data[icom, iw, :, :] # weight, :, :
-                temp = np.ma.sum(temp, axis=0)
-                
-                # Finds the colorbar limits
-                cmin, cmax = misc.find_percentile(temp, percentage=1)
-    
-                plt.figure(**figargs)
-
-                ax = plt.axes(projection=projection)
-                
-                cs = plt.pcolormesh(lonf, latf, temp[1:, 1:], transform=ccrs.PlateCarree())
-                cs.set_clim(cmin, cmax)
-                cb = plt.colorbar(cs, orientation='horizontal')
-                cb.set_label(r"OOPE ($J.m^{-2}$)")
-
-                # add title
-                title = r'Community=%s, L = [%.2E cm, %.2E cm[' % (comm_string[icom], size_class[isize], size_class[isize + 1])
-                plt.title(title)
-
-                csorder = cs.get_zorder() + 1
-                if features is None: 
-                    ax.add_feature(cfeature.LAND, zorder=csorder)
-                    ax.add_feature(cfeature.COASTLINE, zorder=csorder + 1, linewidth=0.5)
-                else:
-                    for feat in features:
-                        ax.add_feature(feat, zorder=csorder)
-                        csorder += 1
-
-                pdf.savefig()
-                plt.close()
-
-
-
-def plot_season_oope(file_pattern, figname, percentage=1):
-
-    ''' Plot seasonal means
-
-    :param str file_pattern: File pattern (for instance, "data/\*nc")
-    :param str figname: Figure name
-    :param str percentage: Percentile for colormap saturation
-
-    :return: None
+    :return: The output quad mesh.
+    :rtype: :class:`matplotlib.collections.QuadMesh`
 
     '''
 
-    fig_dir = os.path.dirname(figname)
-    fig_name = os.path.basename(figname)
+    if not isinstance(data, xr.DataArray):
+        message = 'The input must be a "xarray.DataArray" '
+        message += 'Currently, it is a %s object' % type(data)
+        print(message)
+        sys.exit(1)
 
-    data = xr.open_mfdataset(file_pattern)
+    if data.ndim != 2:
+        message = 'The input data array must be 2D'
+        print(message)
+        sys.exit(1)
 
-    clim = extract.extract_time_means(data, time='season')
-    for s in clim['season'].values:
+    if 'x' not in data.dims:
+        message = 'The input data array must have a "x" dim. '
+        message += 'Dimensions are %s' % str(data.dims)
+        print(message)
+        sys.exit(1)
 
-        print('++++++++++++++++ Drawing season %s ' % s)
+    if 'y' not in data.dims:
+        message = 'The input data array must have a "y" dim.'
+        message += 'Dimensions are %s' % str(data.dims)
+        print(message)
+        sys.exit(1)
 
-        temp = clim.sel(season=s)
-        outfile = '%s/%s_%s' % (fig_dir, s, fig_name)
-        plot_oope_map(temp, outfile, percentage=percentage)
+    if axis is None:
+        axis = plt.gca()
+    lonf = mesh['glamf'].values
+    latf = mesh['gphif'].values
+    var_to_plot = data.isel(x=slice(1, None), y=slice(1, None))
+
+    if isinstance(axis, geoaxes.GeoAxesSubplot):
+        projected = True
+        quadmesh = plt.pcolormesh(lonf, latf, var_to_plot,
+                                  transform=PROJIN, **kwargs)
+    else:
+        projected = False
+        quadmesh = plt.pcolormesh(lonf, latf, var_to_plot, **kwargs)
+    if projected:
+        axis.add_feature(cfeature.LAND, zorder=1000)
+        axis.add_feature(cfeature.COASTLINE, zorder=1001)
+
+    return quadmesh
 
 
 if __name__ == '__main__':
 
-    data = xr.open_dataset('/home/barrier/Work/apecosm/analyse_passive_active/data/OOPE.nc')
-    data = data.isel(time=0)
+    DIRIN = '../doc/_static/example/data/'
+    MESH = xr.open_dataset('%s/mesh_mask.nc' % DIRIN).isel(t=0)
 
-    #plot_oope_map(data, 'test.pdf', size_class=None, percentage=1, projection=ccrs.Mollweide())
-    projection = ccrs.Mollweide()
-    #projection = None
-    plot_oope_map(data, 'test.pdf', size_class=None, percentage=1, projection=projection)
+    DATA = xr.open_dataset('%s/apecosm/apecosm_OOPE.nc' % DIRIN)
+    DATA1 = DATA['OOPE'].mean(dim='time').isel(community=0, weight=0)
+    DATA2 = DATA['OOPE'].mean(dim='time').isel(x=0, y=0)
 
+    fig = plt.figure()
+    axes = plt.axes()
+    plot_oope_map(DATA1, MESH)
+    plt.savefig('maps1.png', bbox_inches='tight')
+    plt.close(fig)
 
-
-    #plot_season_oope('data/CMIP2_SPIN_OOPE_EMEAN.nc', './OOPE_mean.pdf')
+    fig = plt.figure()
+    axes = plt.axes(projection=ccrs.PlateCarree())
+    plot_oope_map(DATA1, MESH)
+    plt.savefig('maps2.png', bbox_inches='tight')
+    plt.close(fig)
