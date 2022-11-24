@@ -13,3 +13,5 @@ dist
 doc/_build
 doc/generated
 doc/_static/**/*.svg
+apecosm/*pdf
+apecosm/*png
