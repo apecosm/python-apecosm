@@ -1,31 +1,73 @@
 ''' Module that contains some functions for data extractions '''
 
-from __future__ import print_function
+import os
 import sys
 from glob import glob
 import xarray as xr
 import numpy as np
-from .domains import DOMAINS, inpolygon
-import os
 
-def open_mesh_mask(meshfile, replace_dims={}):
+
+def open_mesh_mask(meshfile, replace_dims=None):
+
+    '''
+
+    Opens a NEMO mesh mask. It removes the `t` dimension from
+    the dataset.
+
+    :param mesh_file: Full path of the mesh file.
+    :type mesh_file: str
+
+    :param replace_dims: Dictionnary that is used to
+        rename dimensions
+    :type replace_dims: dict, optional
+    :return: A dataset containing the variables of the
+        mesh mask.
+    :rtype: :class:`xarray.Dataset`
+    '''
 
     # open the mesh file, extract tmask, lonT and latT
     mesh = xr.open_dataset(meshfile)
-    mesh = mesh.rename(replace_dims)
+    if replace_dims is not None:
+        mesh = mesh.rename(replace_dims)
     if 't' in mesh.dims:
         mesh = mesh.isel(t=0)
 
     return mesh
 
-def open_constants(dirin, replace_dims={}):
+
+def open_constants(dirin, replace_dims=None):
+
+    '''
+    Opens an Apecosm constant file. It will look for
+    a file that contains `Constant`.
+
+    :param dirin: Input directory.
+    :type dirin: str
+
+    :param replace_dims: Dictionnary that is used to
+        rename dimensions
+    :type replace_dims: dict, optional
+    '''
 
     path = os.path.join(dirin, '*Constant*.nc')
     constant = xr.open_mfdataset(path)
-    constant = constant.rename(replace_dims)
+    if replace_dims is not None:
+        constant = constant.rename(replace_dims)
     return constant
 
-def open_apecosm_data(dirin, replace_dims={}, **kwargs):
+
+def open_apecosm_data(dirin, replace_dims=None, **kwargs):
+
+    '''
+    Opens Apecosm outputs.
+
+    :param dirin: Input directory.
+    :type dirin: str
+
+    :param replace_dims: Dictionnary that is used to
+        rename dimensions
+    :type replace_dims: dict, optional
+    '''
 
     pattern = os.path.join(dirin, '*.nc.*')
     filelist = glob(pattern)
@@ -37,21 +79,37 @@ def open_apecosm_data(dirin, replace_dims={}, **kwargs):
     # open the dataset
     filelist.sort()
     data = xr.open_mfdataset(filelist, **kwargs)
-    data = data.rename(replace_dims)
+    if replace_dims is not None:
+        data = data.rename(replace_dims)
     return data
 
-def open_ltl_data(dirin, pattern, replace_dims={}, **kwargs):
 
-    pattern = os.path.join(dirin, pattern)
+def open_ltl_data(dirin, replace_dims=None, **kwargs):
+
+    '''
+    Opens NEMO/PISCES outputs.
+
+    :param dirin: Input directory.
+    :type dirin: str
+
+    :param replace_dims: Dictionnary that is used to
+        rename dimensions
+    :type replace_dims: dict, optional
+    '''
+
+    pattern = os.path.join(dirin, '*.nc')
     filelist = glob(pattern)
     filelist.sort()
 
     data = xr.open_mfdataset(filelist, **kwargs)
-    data = data.rename(replace_dims)
+    if replace_dims is not None:
+        data = data.rename(replace_dims)
     return data
 
+
 def extract_ltl_data(data, varname, mesh,
-                     maskdom=None, compute_mean=False, depth_max=None, replace_dims={}):
+                     maskdom=None, compute_mean=False,
+                     depth_max=None):
 
     '''
     Extraction of LTL values on a given domain.
@@ -63,8 +121,8 @@ def extract_ltl_data(data, varname, mesh,
     :param str meshfile: Name of the NetCDF meshfile
     :param str domain_name: Name of the domain to extract
     :param bool vvl: True if VVL is on, else False
-    :param bool compute_mean: If True, mean is computed. If False, integral is provided.
-    :param dict replace_dims: Replacement of the dimensions names, should be consistent with mesh_mask dimensions.
+    :param bool compute_mean: If True, mean is computed.
+        If False, integral is provided.
 
     :return: A xarray dataset
 
@@ -90,20 +148,18 @@ def extract_ltl_data(data, varname, mesh,
 
     tmask = mesh['tmask']
 
-    if('tmaskutil' in mesh.variables):
+    if 'tmaskutil' in mesh.variables:
         tmask *= mesh['tmaskutil']
 
-    lon = _squeeze_variable(mesh['glamt'])
     lat = _squeeze_variable(mesh['gphit'])
-    nlat, nlon = lat.shape
 
     # extract the domain coordinates
-    if maskdom == None:
+    if maskdom is None:
         maskdom = np.ones(lat.shape)
 
     maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
 
-    tmask = tmask * maskdom  #  0 if land or out of domain, else 1
+    tmask = tmask * maskdom  # 0 if land or out of domain, else 1
     weight = surf * e3t * tmask  # (1, z, lat, lon) or (time, z, lat, lon)
 
     # clear unused variables
@@ -112,7 +168,7 @@ def extract_ltl_data(data, varname, mesh,
     if depth_max is not None:
         weight = weight.where(depth <= depth_max)
 
-    tdim, zdim, ydim, xdim = data.dims
+    zdim, ydim, xdim = data.dims[1:]
 
     # integrate spatially and vertically the LTL concentrations
     data = (data * weight).sum(dim=(zdim, ydim, xdim))  # time
@@ -124,9 +180,9 @@ def extract_ltl_data(data, varname, mesh,
 
 def _rename_z_dim(var):
 
-    for t in ['olevel', 'depth', 'deptht', 'depthu', 'depthv']:
-        if t in var.dims:
-            var = var.rename({t : 'z'})
+    for dims in ['olevel', 'depth', 'deptht', 'depthu', 'depthv']:
+        if dims in var.dims:
+            var = var.rename({dims: 'z'})
     return var
 
 
@@ -144,7 +200,8 @@ def extract_time_means(data, time=None):
     '''
 
     if (time is not None) & (time not in ('season', 'month', 'year')):
-        message = "Time argument must be set to 'season', 'month', 'year' or None"
+        message = "Time argument must be set to \
+            'season', 'month', 'year' or None"
         print(message)
         sys.exit(0)
 
@@ -160,9 +217,31 @@ def extract_time_means(data, time=None):
 
     return climatology
 
-def extract_mean_size(data, const, mesh, varname, maskdom=None, replace_dims={}, aggregate=False):
 
-    if('tmaskutil' in mesh.variables):
+def extract_mean_size(data, const, mesh, varname,
+                      maskdom=None, aggregate=False):
+
+    '''
+    Extracts the mean length or weight.
+
+    :param data: Apecosm dataset
+    :type data: :class:`xarray.Dataset`
+    :param const: Apecosm constants dataset
+    :type const: :class:`xarray.Dataset`
+    :param mesh: Mesh grid dataset
+    :type mesh: :class:`xarray.Dataset`
+    :param varname: Name of the variable
+        to extract (`length` or `weight`)
+    :type varname: str
+    :param maskdom: Array of domain mask
+    :type maskdom: :class:`numpy.array`, optional
+    :param aggregate: True if community is included
+        in the mean. If False, output depends on community.
+    :type aggregate: bool, optional
+
+    '''
+
+    if 'tmaskutil' in mesh.variables:
         tmask = mesh['tmaskutil']
     else:
         tmask = mesh['tmask']
@@ -179,7 +258,8 @@ def extract_mean_size(data, const, mesh, varname, maskdom=None, replace_dims={},
     maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
     tmask = tmask * maskdom
 
-    weight = tmask * surf * oope * const['weight_step'] # time, lat, lon, comm, w
+    # time, lat, lon, comm, w
+    weight = tmask * surf * oope * const['weight_step']
 
     dims = ['x', 'y', 'w']
     if aggregate:
@@ -190,9 +270,29 @@ def extract_mean_size(data, const, mesh, varname, maskdom=None, replace_dims={},
 
     return variable
 
-def extract_weighted_data(data, const, mesh, varname, maskdom=None, replace_dims={}, aggregate=False):
 
-    if('tmaskutil' in mesh.variables):
+def extract_weighted_data(data, const, mesh, varname,
+                          maskdom=None):
+
+    '''
+    Extracts data outputs and weight them using
+    biomass outputs.
+
+    :param data: Apecosm dataset
+    :type data: :class:`xarray.Dataset`
+    :param const: Apecosm constants dataset
+    :type const: :class:`xarray.Dataset`
+    :param mesh: Mesh grid dataset
+    :type mesh: :class:`xarray.Dataset`
+    :param varname: Name of the variable
+        to extract (`repfonct_day` for instance)
+    :type varname: str
+    :param maskdom: Array of domain mask
+    :type maskdom: :class:`numpy.array`, optional
+
+    '''
+
+    if 'tmaskutil' in mesh.variables:
         tmask = mesh['tmaskutil']
     else:
         tmask = mesh['tmask']
@@ -209,27 +309,39 @@ def extract_weighted_data(data, const, mesh, varname, maskdom=None, replace_dims
 
     oope = data['OOPE']
 
-    weight = tmask * surf * oope * const['weight_step']  # time, lat, lon, comm, w
+    # time, lat, lon, comm, w
+    weight = tmask * surf * oope * const['weight_step']
 
     dims = ['y', 'x']
 
-    output = (data[varname] * weight).sum(dims) /  weight.sum(dims)
+    output = (data[varname] * weight).sum(dims) / weight.sum(dims)
     return output
 
 
 def extract_oope_data(data, mesh, const, maskdom=None,
-                      use_wstep=True, compute_mean=False, replace_dims={}, replace_const_dims={}):
+                      use_wstep=True, compute_mean=False):
 
     '''
     Extraction of OOPE values on a given domain.
     OOPE is spatially integrated over
     the domain.
 
-    :param str file_pattern: OOPE file pattern
-    :param str varname: OOPE variable name
-    :param str meshfile: Name of the NetCDF meshfile
-    :param str domain_name: Name of the domain to extract
-    :param str compute_mean: True if mean, else integral.
+    :param data: Apecosm dataset
+    :param mesh: Mesh grid dataset
+    :param const: Apecosm constants dataset
+    :param maskdom: Array containing the area mask
+    :param use_wstep: True if data must be multiplied
+        by weight step (conversion from :math:`J.m^{-2}.kg^{-1}`
+        to :math:`J.m^{-2}`)
+    :param compute_mean: True if mean, else integral.
+
+    :type data: :class:`xarray.Dataset`
+    :type mesh: :class:`xarray.Dataset`
+    :type const: :class:`xarray.Dataset`
+    :type maskdom: :class:`numpy.array`, optional
+    :type use_wstep: bool, optional
+    :type compute_mean: bool, optional
+
 
     :return: A tuple with the time-value and the LTL time series
 
@@ -243,14 +355,12 @@ def extract_oope_data(data, mesh, const, maskdom=None,
 
     surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
 
-    if('tmaskutil' in mesh.variables):
+    if 'tmaskutil' in mesh.variables:
         tmask = mesh['tmaskutil']
     else:
         tmask = mesh['tmask']
 
     tmask = _squeeze_variable(tmask)
-
-    nlat, nlon = tmask.shape
 
     # extract the domain coordinates
     if maskdom is None:
@@ -285,87 +395,10 @@ def _squeeze_variable(variable):
     :return: A data array with the given time mean
     '''
 
-    dims = variable.dims
     dictout = {}
-    for d in dims:
-        if d not in ['x', 'y']:
-            dictout[d] = 0
+    for dim in variable.dims:
+        if dim not in ['x', 'y']:
+            dictout[dim] = 0
         else:
-            dictout[d] = slice(None, None)
+            dictout[dim] = slice(None, None)
     return variable.isel(**dictout)
-
-# if __name__ == '__main__':
-#
-#     meshfile = 'data/mesh_mask.nc'
-#     domain = 'benguela'
-#
-#     #output = extract_oope_data('data/CMIP2_SPIN_OOPE_EMEAN.nc', 'OOPE', meshfile, domain)
-#     #output.to_netcdf('test_ts.nc', format='NETCDF4_CLASSIC')
-#
-#     test = xr.open_dataset('test_ts.nc')
-#     test = test.mean(dim='time')
-#     oope = test['OOPE'].values
-#     length = test['length'].values
-#     comm = test['community'].values.astype(np.int)
-#
-#     commnames = misc.extract_community_names(test)
-#
-#     length2d, comm2d = np.meshgrid(length, comm)
-#     iok = np.nonzero(oope > 0)
-#     lmin, lmax = length2d[iok].min(), length2d[iok].max()
-#     rmin, rmax = oope[iok].min(), oope[iok].max()
-#
-#     file_pattern = 'data/PISCES*nc'
-#     time, dataPHY2 = extract_ltl_data(file_pattern, 'PHY2', meshfile, domain)
-#     time, dataZOO = extract_ltl_data(file_pattern, 'ZOO', meshfile, domain)
-#     time, dataZOO2 = extract_ltl_data(file_pattern, 'ZOO2', meshfile, domain)
-#     time, dataGOC = extract_ltl_data(file_pattern, 'GOC', meshfile, domain)
-#
-#     [dataPHY2, dataZOO, dataZOO2, dataGOC] = map(np.mean, [dataPHY2, dataZOO, dataZOO2, dataGOC])
-#
-#     import constants
-#     mul = 1e-3 * constants.C_E_convert
-#
-#     L = [10e-6, 100e-6]
-#     lVec2dPHY2, rhoLPHY2 = compute_spectra_ltl(mul*dataPHY2, L, out='length')
-#
-#     L = [20.e-6, 200.e-6]
-#     lVec2dZOO, rhoLZOO = compute_spectra_ltl(mul*dataZOO, L, out='length')
-#
-#     L = [200.e-6, 2000.e-6]
-#     lVec2dZOO2, rhoLZOO2 = compute_spectra_ltl(mul*dataZOO2, L, out='length')
-#
-#     L = [100e-6, 50000.e-6]
-#     lVec2dGOC, rhoLGOC = compute_spectra_ltl(mul*dataGOC, L, out='length')
-#
-#
-#     import pylab as plt
-#     cmap = plt.cm.Spectral
-#     plt.figure()
-#     ax = plt.gca()
-#     for icom in comm:
-#         color = cmap(float(icom) / len(comm))
-#         plt.scatter(length2d[icom], oope[icom], c=color, label=commnames[icom])
-#
-#
-#     plt.scatter(lVec2dPHY2, rhoLPHY2, label='PHY2')
-#     plt.scatter(lVec2dZOO, rhoLZOO, label='ZOO')
-#     plt.scatter(lVec2dZOO2, rhoLZOO2, label='ZOO2')
-#     plt.scatter(lVec2dGOC, rhoLGOC, label='GOC')
-#
-#     xmin = np.min(map(np.min, [lVec2dPHY2, lVec2dZOO, lVec2dZOO2, lVec2dGOC, length2d]))
-#     xmax = np.max(map(np.max, [lVec2dPHY2, lVec2dZOO, lVec2dZOO2, lVec2dGOC, length2d]))
-#
-#     ymin = np.min(map(np.min, [rhoLPHY2, rhoLZOO, rhoLZOO2, rhoLGOC, oope]))
-#     ymax = np.max(map(np.max, [rhoLPHY2, rhoLZOO, rhoLZOO2, rhoLGOC, oope]))
-#
-#     ax.set_yscale("log")
-#     ax.set_xscale("log")
-#     plt.xlabel('Size (m)')
-#     plt.xlim(xmin, xmax)
-#     plt.ylim(ymin, ymax)
-#     plt.ylabel(r'$\displaystyle \rho$')
-#     plt.legend()
-#     plt.title(domain)
-#
-#     plt.savefig('size_spectra_%s.png' %domain, bbox_inches='tight')

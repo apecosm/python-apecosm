@@ -5,7 +5,6 @@
 from functools import total_ordering
 import subprocess
 from apecosm.constants import LTL_NAMES
-import nbformat as nbf
 from .diags import compute_size_cumprop
 from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data, extract_mean_size
 from .misc import extract_community_names, find_percentile

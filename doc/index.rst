@@ -3,10 +3,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-
-.. image:: _static/logo-apecosm.*
-   :width: 250 px
-   :align: center
+.. only:: html
+    
+    .. image:: _static/logo-apecosm.*
+       :width: 250 px
+       :align: center
 
 |
 
