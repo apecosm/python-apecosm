@@ -59,7 +59,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'APECOSM'
+project = u'Apecosm Python package'
 copyright = u'2017, Olivier Maury, Philippe Verley, Nicolas Barrier'
 author = u'Olivier Maury, Philippe Verley, Nicolas Barrier'
 
