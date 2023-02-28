@@ -1,0 +1,16 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Barrier
+    given-names: Nicolas
+    orcid: https://orcid.org/0000-0002-1693-4719
+  - family-names: Rault
+    given-names: Jonathan
+  - family-names: Maury
+    given-names: Olivier
+    orcid: https://orcid.org/0000-0002-7999-9982
+
+title: APECOSM Python package
+version: 1.0.2
+date-released: 2023-02-28
+doi: 10.5281/zenodo.4110303
