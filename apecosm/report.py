@@ -406,8 +406,11 @@ def _plot_domain_maps(output_dir, mesh, crs, maskdom, domname):
     cs.set_clim(0, 1)
     cb = plt.colorbar(cs)
     plt.title('%s mask' %domname)
-    ax.add_feature(cfeature.LAND)
-    ax.add_feature(cfeature.COASTLINE)
+    try:
+        ax.add_feature(cfeature.LAND)
+        ax.add_feature(cfeature.COASTLINE)
+    except:
+        pass
     fileout = _savefig(output_dir, 'domain_map_%s.svg' %domname)
     plt.close(fig)
     return fileout
@@ -439,8 +442,11 @@ def _plot_mean_maps(output_dir, mesh, data, const, crs, maskdom, domname):
     cb = plt.colorbar(cs)
     cb.set_label('J/m2')
     plt.title("Total")
-    ax.add_feature(cfeature.LAND)
-    ax.add_feature(cfeature.COASTLINE)
+    try:
+        ax.add_feature(cfeature.LAND)
+        ax.add_feature(cfeature.COASTLINE)
+    except:
+        pass
     filenames['Total'] = _savefig(output_dir, 'mean_maps_total_%s.svg' %domname)
     plt.close(fig)
 
@@ -448,8 +454,11 @@ def _plot_mean_maps(output_dir, mesh, data, const, crs, maskdom, domname):
         fig = plt.figure()
         ax = plt.axes(projection=crs)
         cs = plt.pcolormesh(lonf, latf, output.isel(c=c, y=slice(1, None), x=slice(1, None)))
-        ax.add_feature(cfeature.LAND)
-        ax.add_feature(cfeature.COASTLINE)
+        try:
+            ax.add_feature(cfeature.LAND)
+            ax.add_feature(cfeature.COASTLINE)
+        except:
+            pass
         cb = plt.colorbar(cs)
         cb.set_label('Joules/m2')
         plt.title(comnames['Community ' + str(c)])
