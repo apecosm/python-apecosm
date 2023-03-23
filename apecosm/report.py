@@ -1,40 +1,30 @@
-# from traitlets.config import Config
-# from jupyter_core.command import main as jupymain
-# from nbconvert.exporters import HTMLExporter, PDFExporter
-# from nbconvert.preprocessors import TagRemovePreprocessor
-from functools import total_ordering
-import subprocess
 from apecosm.constants import LTL_NAMES
 from .diags import compute_size_cumprop
 from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data, extract_mean_size
-from .misc import extract_community_names, find_percentile
+from .misc import extract_community_names
 from .size_spectra import plot_oope_spectra
 import numpy as np
 import matplotlib.pyplot as plt
 import xarray as xr
 import cartopy.crs as ccrs
-# import papermill as pm
 import pkg_resources
-import os
 import jinja2
 import os
-import io
-import tempfile
 import urllib
 plt.rcParams['text.usetex'] = False
 import cartopy.feature as cfeature
-import shutil
-from glob import glob
 
 
 def report(input_dir, mesh_file, domain_file=None, crs=ccrs.PlateCarree(), output_dir='report', filecss='default', xarray_args={}):
 
     mesh = open_mesh_mask(mesh_file)
+    if('X' in mesh.dims and 'Y' in mesh.dims and 'Z' in mesh.dims):
+        mesh = open_mesh_mask(mesh_file, replace_dims={'X': 'x', 'Y': 'y', 'Z': 'z'})
     const = open_constants(input_dir)
     data = open_apecosm_data(input_dir, **xarray_args)
 
     # If a domain file is provided, extracts it and
-    # store it into a dictionnary
+    # store it into a dictionary
     if domain_file is None:
         domains = {}
     else:
@@ -56,7 +46,7 @@ def report(input_dir, mesh_file, domain_file=None, crs=ccrs.PlateCarree(), outpu
     css_dir = os.path.join(output_dir, 'css')
     os.makedirs(css_dir, exist_ok=True)
 
-    # process the banner file, by adding as many tabs as do,ains
+    # process the banner file, by adding as many tabs as domains
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("banner.html")
 
@@ -90,6 +80,7 @@ def report(input_dir, mesh_file, domain_file=None, crs=ccrs.PlateCarree(), outpu
     _make_meta_template(output_dir, css, data, const)
     _make_config_template(output_dir, css, data, const)
     _make_result_template(output_dir, css, data, const, mesh, crs)
+    _make_fisheries_template(output_dir, css, data, const, mesh, crs)
     for domname in domains:
         _make_result_template(output_dir, css, data, const, mesh, crs, domains, domname)
 
@@ -190,7 +181,7 @@ def _plot_diet_values(output_dir, mesh, data, const, maskdom, domname):
     if 'community' in data.dims:
         data = data.rename({'community' : 'c'})
 
-    diet = extract_weighted_data(data, const, mesh, 'community_diet_values', maskdom=maskdom, replace_dims={})
+    diet = extract_weighted_data(data, const, mesh, 'community_diet_values', maskdom=maskdom)
     diet = extract_time_means(diet)
 
     community_names = extract_community_names(const)
@@ -418,15 +409,16 @@ def _plot_domain_maps(output_dir, mesh, crs, maskdom, domname):
 def _plot_mean_maps(output_dir, mesh, data, const, crs, maskdom, domname):
 
     filenames = {}
+    lonf = np.squeeze(mesh['glamf'].values)
+    latf = np.squeeze(mesh['gphif'].values)
 
     if maskdom is None:
         maskdom = np.ones(lonf.shape)
-
     maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
 
+    print(mesh.dims)
+    #mesh = mesh.drop_dims(["X","Y"])
     mesh = mesh.where(maskdom > 0, drop=True)
-    lonf = np.squeeze(mesh['glamf'].values)
-    latf = np.squeeze(mesh['gphif'].values)
 
     output = (data['OOPE'] * const['weight_step']).mean(dim='time').sum(dim=['w'])
     output = output.where(output > 0)
@@ -523,8 +515,9 @@ def _plot_wl_community(output_dir, data, varname, units):
 
 def _plot_size_spectra(output_dir, mesh, data, const, maskdom, domname):
 
-     # extract data in the entire domain, integrates over space
-    data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False, replace_dims={}, replace_const_dims={})
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False, replace_dims={}, replace_const_dims={})
+    data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
     data = extract_time_means(data)
 
     fig = plt.figure()
@@ -537,6 +530,278 @@ def _plot_size_spectra(output_dir, mesh, data, const, maskdom, domname):
     figname = _savefig(output_dir, 'size_spectra_%s.svg' %domname)
     plt.close(figname)
 
+    return figname
+
+
+def _make_fisheries_template(output_dir, css, data, const, mesh, crs, domains=None, domname=None):
+
+    env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
+    template = env.get_template("template_fisheries.html")
+
+    if domains is not None:
+        maskdom = domains[domname]
+    else:
+        maskdom = np.ones(mesh['nav_lon'].shape)
+        domname = 'global'
+
+    maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
+
+    outputs = {}
+    outputs['css'] = css
+
+    outputs['domain_figs'] = _plot_domain_maps(output_dir, mesh, crs, maskdom, domname)
+    outputs['fleet_size'] = _plot_fleet_size(output_dir, mesh, data, const, maskdom, domname)
+    outputs['fishing_effective_effort'] = _plot_fishing_effective_effort(output_dir, mesh, crs, data, const, maskdom, domname)
+    outputs['landing_rate_eez_hs'] = _plot_landing_rate_eez_hs(output_dir, mesh, data, const, maskdom, domname)
+    outputs['landing_rate_total'] = _plot_landing_rate_total(output_dir, mesh, data, const, maskdom, domname)
+    outputs['landing_rate_by_vessels'] = _plot_landing_rate_by_vessels(output_dir, mesh, crs, data, const, maskdom, domname)
+    outputs['landing_rate_density'] = _plot_landing_rate_density(output_dir, mesh, crs, data, const, maskdom, domname)
+    outputs['average_fishing_distance'] = _plot_average_fishing_distance(output_dir, mesh, crs, data, const, maskdom, domname)
+    outputs['fuel_use_intensity'] = _plot_fuel_use_intensity(output_dir, mesh, data, const, maskdom, domname)
+    outputs['yearly_profit'] = _plot_yearly_profit(output_dir, mesh, data, const, maskdom, domname)
+    outputs['savings'] = _plot_savings(output_dir, mesh, data, const, maskdom, domname)
+    outputs['fish_price'] = _plot_fish_price(output_dir, mesh, data, const, maskdom, domname)
+    outputs['capture_landing_rate'] = _plot_capture_landing_rate(output_dir, mesh, data, const, maskdom, domname)
+    outputs['cost_revenue_by_vessels'] = _plot_cost_revenue_by_vessels(output_dir, mesh, data, const, maskdom, domname)
+    outputs['fishing_time_fraction'] = _plot_fishing_time_fraction(output_dir, mesh, data, const, maskdom, domname)
+
+    render = template.render(**outputs)
+
+    output_file = os.path.join(output_dir, 'html', 'fisheries_report.html')
+    with open(output_file, "w") as f:
+        f.write(render)
+
+
+def _plot_fleet_size(output_dir, mesh, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    plt.plot(range(100), range(100))
+    plt.plot(range(100), range(100))
+    plt.plot(range(100), range(100))
+    plt.xlabel('Time (years)')
+    plt.ylabel('Fleet size (number of vessels)')
+    plt.legend(['fishing','sailing','at ports'])
+    figname = _savefig(output_dir, 'fleet_size_%s.svg' %domname)
+    plt.close(figname)
+    return figname
+
+
+def _plot_fishing_effective_effort(output_dir, mesh, crs, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    ax = plt.axes(projection=crs)
+    try:
+        ax.add_feature(cfeature.LAND)
+        ax.add_feature(cfeature.COASTLINE)
+    except:
+        pass
+    figname = _savefig(output_dir, 'fishing_effective_effort_%s.svg' %domname)
+    plt.close(figname)
+    return figname
+
+
+def _plot_landing_rate_eez_hs(output_dir, mesh, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    plt.plot(range(100), range(100))
+    plt.plot(range(100), range(100))
+    plt.xlabel('Time (years)')
+    plt.ylabel('Landing rate (million T.years-1)')
+    plt.legend(['EEZ','HS'])
+    figname = _savefig(output_dir, 'landing_rate_eez_hs_%s.svg' %domname)
+    plt.close(figname)
+    return figname
+
+
+def _plot_landing_rate_total(output_dir, mesh, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    plt.plot(range(100), range(100))
+    plt.xlabel('Time (years)')
+    plt.ylabel('Landing rate (MT.years-1)')
+    plt.title('last year landing rate : XXX MT.years-1')
+    figname = _savefig(output_dir, 'landing_rate_total_%s.svg' %domname)
+    plt.close(figname)
+    return figname
+
+
+def _plot_landing_rate_by_vessels(output_dir, mesh, crs, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    ax = plt.axes(projection=crs)
+    try:
+        ax.add_feature(cfeature.LAND)
+        ax.add_feature(cfeature.COASTLINE)
+    except:
+        pass
+    figname = _savefig(output_dir, 'landing_rate_by_vessels_%s.svg' %domname)
+    plt.close(figname)
+    return figname
+
+
+def _plot_landing_rate_density(output_dir, mesh, crs, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    ax = plt.axes(projection=crs)
+    try:
+        ax.add_feature(cfeature.LAND)
+        ax.add_feature(cfeature.COASTLINE)
+    except:
+        pass
+    figname = _savefig(output_dir, 'landing_rate_density_%s.svg' %domname)
+    plt.close(figname)
+    return figname
+
+
+def _plot_average_fishing_distance(output_dir, mesh, crs, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    plt.plot(range(100), range(100))
+    plt.xlabel('Time (years)')
+    plt.ylabel('Average fishing distance (km)')
+    plt.title('last year distance : XXX km')
+    figname = _savefig(output_dir, 'average_fishing_distance_%s.svg' %domname)
+    plt.close(figname)
+    return figname
+
+
+def _plot_fuel_use_intensity(output_dir, mesh, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    plt.plot(range(100), range(100))
+    plt.xlabel('Time (years)')
+    plt.ylabel('Fuel use intensity (kL.T-1)')
+    plt.title('last year FUI : XXX kL.T-1')
+    figname = _savefig(output_dir, 'fuel_use_intensity_%s.svg' %domname)
+    plt.close(figname)
+    return figname
+
+
+def _plot_yearly_profit(output_dir, mesh, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    plt.plot(range(100), range(100))
+    plt.xlabel('Time (years)')
+    plt.ylabel('Yearly profit (k$.years-1)')
+    plt.title('last year profit : XXX k$.years-1')
+    figname = _savefig(output_dir, 'yearly_profit_%s.svg' %domname)
+    plt.close(figname)
+    return figname
+
+
+def _plot_savings(output_dir, mesh, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    plt.plot(range(100), range(100))
+    plt.xlabel('Time (years)')
+    plt.ylabel('Savings (k$)')
+    plt.title('last year distance : XXX k$')
+    figname = _savefig(output_dir, 'savings_%s.svg' %domname)
+    plt.close(figname)
+    return figname
+
+
+def _plot_fish_price(output_dir, mesh, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    plt.plot(range(100), range(100))
+    plt.xlabel('Time (years)')
+    plt.ylabel('Fish price ($.kg-1)')
+    plt.title('last year fish price : XXX $.kg-1')
+    figname = _savefig(output_dir, 'fish_price_%s.svg' %domname)
+    plt.close(figname)
+    return figname
+
+
+def _plot_capture_landing_rate(output_dir, mesh, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    plt.plot(range(100), range(100))
+    plt.xlabel('Time (years)')
+    plt.ylabel('Capture and landing rate (T.day-1)')
+    plt.legend(['Capture','Landing'])
+    figname = _savefig(output_dir, 'capture_landing_rate_%s.svg' %domname)
+    plt.close(figname)
+    return figname
+
+
+def _plot_cost_revenue_by_vessels(output_dir, mesh, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    plt.plot(range(100), range(100))
+    plt.plot(range(100), range(100))
+    plt.xlabel('Time (years)')
+    plt.ylabel('Cost and revenue by active vessels (K$.day-1)')
+    plt.legend(['Cost','Revenue'])
+    figname = _savefig(output_dir, 'cost_revenue_by_vessels_%s.svg' %domname)
+    plt.close(figname)
+    return figname
+
+
+def _plot_fishing_time_fraction(output_dir, mesh, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    #data = extract_time_means(data)
+
+    fig = plt.figure()
+    plt.plot(range(100), range(100))
+    plt.xlabel('Time (years)')
+    plt.ylabel('Fishing time fraction')
+    figname = _savefig(output_dir, 'fishing_time_fraction_%s.svg' %domname)
+    plt.close(figname)
     return figname
 
 
