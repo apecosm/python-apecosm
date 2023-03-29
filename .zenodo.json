@@ -1,24 +1,6 @@
 {
-    "publication_date": "2023-02-28",
-    "version": "1.0.2",
-    "related_identifiers": [
-        {
-            "scheme": "url",
-            "identifier": "https://github.com/apecosm/python-apecosm/tree/1.0.1",
-            "relation": "isSupplementTo"
-        },
-        {
-            "scheme": "doi",
-            "identifier": "10.5281/zenodo.4110279",
-            "relation": "isVersionOf"
-        }
-    ],
     "title": "APECOSM Python package",
     "notes": "If you use this software, please cite it as below.",
-    "upload_type": "software",
-    "license": "other-open",
-    "description": "",
-    "access_right": "open",
     "communities": [
         {
             "identifier": "apecosm"
