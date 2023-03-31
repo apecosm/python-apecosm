@@ -9,6 +9,7 @@ dist
 **/*.ipynb
 **/*.swp
 **/*.pyc
+venv
 
 doc/_build
 doc/generated

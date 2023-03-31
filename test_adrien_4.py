@@ -41,7 +41,7 @@ fleet_names = apecosm.extract_fleet_names(fishing_config_path)
 # ========================== #
 # REPORT
 # ========================== #
-apecosm.report(output_path, mesh_file, fishing_path, apecosm_config_path)
+apecosm.report(output_path, mesh_file, fishing_path, fishing_config_path)
 
 
 # ========================== #
