@@ -2,6 +2,8 @@
 
 import numpy as np
 from .constants import ALLOM_W_L
+import os
+import xarray as xr
 
 
 def find_percentile(data, percentage=1):
@@ -128,6 +130,66 @@ def weight_to_size(weight):
     '''
 
     return np.power(weight / ALLOM_W_L, 1/3.)
+
+
+def compute_mean_min_max_ts(ts, period):
+
+    '''
+        Compute the mean, min and max value of timeserie ts over time of length period
+
+        :param ts: timeserie (containing a time field).
+        :param period: number of time step upon which are computed mean, min and max value of ts.
+
+        :type ts: xarray with a field named time
+        :type period: int
+    '''
+
+    n = int(len(ts.time)/period)
+
+    average = np.zeros(n)
+    maxi = np.zeros(n)
+    mini = np.zeros(n)
+    time = np.zeros(n)
+    cpt = 0
+    while cpt < n:
+        average[cpt] = ts[(cpt * period):((cpt + 1) * period - 1)].mean()
+        maxi[cpt] = ts[(cpt * period):((cpt + 1) * period - 1)].max()
+        mini[cpt] = ts[(cpt * period):((cpt + 1) * period - 1)].min()
+        time[cpt] = ts.time[cpt*period]
+        cpt = cpt + 1
+
+    return average, maxi, mini, time
+
+
+def extract_fleet_names(dirin):
+
+    '''
+    Extracts fleet names from the fishing configuration file.
+
+    :param str: configuration path
+
+    :return: The list of fleet names
+    '''
+
+    fishing_model = os.path.join(dirin, 'fishing_model.conf')
+    with open(fishing_model) as f:
+        for line in f:
+            if "nb_fishing_fleets" in line.strip():
+                _, nb_fleet_str = line.split('=')
+                nb_fleet = int(nb_fleet_str)
+
+    fleet = {}
+    fleet_names = {}
+    for i in np.arange(nb_fleet):
+        fleet_fname = os.path.join(dirin, 'fleet_' + str(i) + '.conf')
+        with open(fleet_fname) as f:
+            for line in f:
+                if "fleet_name" in line.strip():
+                    _, fleet_name_str = line.split('=')
+                    fleet_names[i] = fleet_name_str[:-1]
+
+    return fleet_names
+
 
 
 if __name__ == '__main__':

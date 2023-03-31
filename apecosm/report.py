@@ -1,10 +1,11 @@
 from apecosm.constants import LTL_NAMES
 from .diags import compute_size_cumprop
-from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data, extract_mean_size
-from .misc import extract_community_names
+from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data, extract_mean_size, open_fishing_data
+from .misc import extract_community_names, compute_mean_min_max_ts, extract_fleet_names
 from .size_spectra import plot_oope_spectra
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 import xarray as xr
 import cartopy.crs as ccrs
 import pkg_resources
@@ -15,7 +16,7 @@ plt.rcParams['text.usetex'] = False
 import cartopy.feature as cfeature
 
 
-def report(input_dir, mesh_file, domain_file=None, crs=ccrs.PlateCarree(), output_dir='report', filecss='default', xarray_args={}):
+def report(input_dir, mesh_file, fishing_path, config_path, domain_file=None, crs=ccrs.PlateCarree(), output_dir='report', filecss='default', xarray_args={}):
 
     mesh = open_mesh_mask(mesh_file)
     if('X' in mesh.dims and 'Y' in mesh.dims and 'Z' in mesh.dims):
@@ -79,10 +80,10 @@ def report(input_dir, mesh_file, domain_file=None, crs=ccrs.PlateCarree(), outpu
 
     _make_meta_template(output_dir, css, data, const)
     _make_config_template(output_dir, css, data, const)
-    _make_result_template(output_dir, css, data, const, mesh, crs)
-    _make_fisheries_template(output_dir, css, data, const, mesh, crs)
-    for domname in domains:
-        _make_result_template(output_dir, css, data, const, mesh, crs, domains, domname)
+    #_make_result_template(output_dir, css, data, const, mesh, crs)
+    _make_fisheries_template(output_dir, css, fishing_path, config_path, mesh, crs)
+    #for domname in domains:
+    #    _make_result_template(output_dir, css, data, const, mesh, crs, domains, domname)
 
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
@@ -533,37 +534,31 @@ def _plot_size_spectra(output_dir, mesh, data, const, maskdom, domname):
     return figname
 
 
-def _make_fisheries_template(output_dir, css, data, const, mesh, crs, domains=None, domname=None):
+def _make_fisheries_template(output_dir, css, fishing_path, config_path, mesh, crs):
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"),  autoescape=jinja2.select_autoescape())
     template = env.get_template("template_fisheries.html")
 
-    if domains is not None:
-        maskdom = domains[domname]
-    else:
-        maskdom = np.ones(mesh['nav_lon'].shape)
-        domname = 'global'
-
-    maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
+    market, fleet_maps, fleet_summary, fleet_parameters = open_fishing_data(fishing_path)
+    fleet_names = extract_fleet_names(config_path)
 
     outputs = {}
     outputs['css'] = css
 
-    outputs['domain_figs'] = _plot_domain_maps(output_dir, mesh, crs, maskdom, domname)
-    outputs['fleet_size'] = _plot_fleet_size(output_dir, mesh, data, const, maskdom, domname)
-    outputs['fishing_effective_effort'] = _plot_fishing_effective_effort(output_dir, mesh, crs, data, const, maskdom, domname)
-    outputs['landing_rate_eez_hs'] = _plot_landing_rate_eez_hs(output_dir, mesh, data, const, maskdom, domname)
-    outputs['landing_rate_total'] = _plot_landing_rate_total(output_dir, mesh, data, const, maskdom, domname)
-    outputs['landing_rate_by_vessels'] = _plot_landing_rate_by_vessels(output_dir, mesh, crs, data, const, maskdom, domname)
-    outputs['landing_rate_density'] = _plot_landing_rate_density(output_dir, mesh, crs, data, const, maskdom, domname)
-    outputs['average_fishing_distance'] = _plot_average_fishing_distance(output_dir, mesh, crs, data, const, maskdom, domname)
-    outputs['fuel_use_intensity'] = _plot_fuel_use_intensity(output_dir, mesh, data, const, maskdom, domname)
-    outputs['yearly_profit'] = _plot_yearly_profit(output_dir, mesh, data, const, maskdom, domname)
-    outputs['savings'] = _plot_savings(output_dir, mesh, data, const, maskdom, domname)
-    outputs['fish_price'] = _plot_fish_price(output_dir, mesh, data, const, maskdom, domname)
-    outputs['capture_landing_rate'] = _plot_capture_landing_rate(output_dir, mesh, data, const, maskdom, domname)
-    outputs['cost_revenue_by_vessels'] = _plot_cost_revenue_by_vessels(output_dir, mesh, data, const, maskdom, domname)
-    outputs['fishing_time_fraction'] = _plot_fishing_time_fraction(output_dir, mesh, data, const, maskdom, domname)
+    outputs['fleet_size'] = _plot_fleet_size(output_dir, fleet_summary, fleet_names) #ok
+    outputs['fishing_effective_effort'] = _plot_fishing_effective_effort(output_dir, fleet_maps, fleet_names, mesh, crs) #nok
+    outputs['landing_rate_eez_hs'] = _plot_landing_rate_eez_hs(output_dir, fleet_summary, fleet_names) #ok
+    outputs['landing_rate_total'] = _plot_landing_rate_total(output_dir, fleet_summary, fleet_names) #ok
+    outputs['landing_rate_by_vessels'] = _plot_landing_rate_by_vessels(output_dir, fleet_maps, fleet_names, mesh, crs) #nok
+    outputs['landing_rate_density'] = _plot_landing_rate_density(output_dir, fleet_maps, fleet_names, mesh, crs) #nok
+    outputs['average_fishing_distance'] = _plot_average_fishing_distance(output_dir, fleet_summary, fleet_names) #nok
+    outputs['fuel_use_intensity'] = _plot_fuel_use_intensity(output_dir, fleet_summary, fleet_names) #ok
+    outputs['yearly_profit'] = _plot_yearly_profit(output_dir, fleet_summary, fleet_names) #ok
+    outputs['savings'] = _plot_savings(output_dir, fleet_summary, fleet_names) #ok
+    outputs['fish_price'] = _plot_fish_price(output_dir, market, fleet_names) #ok
+    outputs['capture_landing_rate'] = _plot_capture_landing_rate(output_dir, fleet_summary, fleet_names) #ok
+    outputs['cost_revenue_by_vessels'] = _plot_cost_revenue_by_vessels(output_dir, fleet_summary, fleet_names) #ok
+    outputs['fishing_time_fraction'] = _plot_fishing_time_fraction(output_dir, fleet_summary, fleet_names) #ok
 
     render = template.render(**outputs)
 
@@ -572,235 +567,372 @@ def _make_fisheries_template(output_dir, css, data, const, mesh, crs, domains=No
         f.write(render)
 
 
-def _plot_fleet_size(output_dir, mesh, data, const, maskdom, domname):
+def _plot_fleet_size(output_dir, fleet_summary, fleet_names):
+    nb_fleet = len(fleet_summary)
+    n_col = 3
+    n_row = int(nb_fleet/n_col)
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
-
-    fig = plt.figure()
-    plt.plot(range(100), range(100))
-    plt.plot(range(100), range(100))
-    plt.plot(range(100), range(100))
-    plt.xlabel('Time (years)')
-    plt.ylabel('Fleet size (number of vessels)')
-    plt.legend(['fishing','sailing','at ports'])
-    figname = _savefig(output_dir, 'fleet_size_%s.svg' %domname)
+    fig, axes = plt.subplots(n_row, n_col, figsize = (n_col*10, n_row*10), dpi = 300, sharex=True)
+    for i in np.arange(nb_fleet):
+        plt.subplot(n_row, n_col, i + 1)
+        av_1, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['effective_effort'], 365)
+        av_2, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['active_vessels'], 365)
+        av_3, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['total_vessels'], 365)
+        plt.plot(time, av_1, color='red', linewidth=2, label='Fishing')
+        plt.plot(time, av_1+av_2, color='blue', linewidth=2, label='Sailing')
+        plt.plot(time, av_1+av_2+av_3, color='green', linewidth=2, label='At port')
+        plt.fill_between(time, av_1+av_2+av_3, av_1+av_2, color='green', alpha=0.25)
+        plt.fill_between(time, av_1+av_2, av_1, color='blue', alpha=0.25)
+        plt.fill_between(time, av_1, color='red', alpha=0.25)
+        plt.grid()
+        plt.title(fleet_names[i], fontsize=25)
+        plt.tick_params(axis='both', labelsize=25)
+        plt.xlabel('Time (years)', fontsize=25)
+        plt.ylabel('Number of vessels', fontsize=25)
+    fig.tight_layout()
+    plt.legend(loc='best', fontsize=25)
+    figname = _savefig(output_dir, 'fleet_size.svg')
     plt.close(figname)
     return figname
 
 
-def _plot_fishing_effective_effort(output_dir, mesh, crs, data, const, maskdom, domname):
+def _plot_fishing_effective_effort(output_dir, fleet_maps, fleet_names, mesh, crs):
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
+    nb_fleet = len(fleet_maps)
+    n_col = 3
+    n_row = int(nb_fleet / n_col)
 
-    fig = plt.figure()
-    ax = plt.axes(projection=crs)
-    try:
+    lonf = np.squeeze(mesh['glamf'].values)
+    latf = np.squeeze(mesh['gphif'].values)
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 12, n_row * 10), dpi=300)
+    for i in np.arange(nb_fleet):
+        ax = plt.subplot(n_row, n_col, i + 1, projection=crs)
+        cs = plt.pcolormesh(lonf, latf, fleet_maps[i]['effective_effort_density'].sum(dim='time', skipna=True)[1:,1:])
+        plt.title(fleet_names[i], fontsize=25)
+        cb = plt.colorbar(cs, shrink=0.4)
+        cb.set_label('T/day-1', fontsize=25)
+        cb.ax.tick_params(labelsize=25)
         ax.add_feature(cfeature.LAND)
         ax.add_feature(cfeature.COASTLINE)
-    except:
-        pass
-    figname = _savefig(output_dir, 'fishing_effective_effort_%s.svg' %domname)
+        plt.grid()
+    fig.tight_layout()
+    figname = _savefig(output_dir, 'fishing_effective_effort.svg')
     plt.close(figname)
     return figname
 
 
-def _plot_landing_rate_eez_hs(output_dir, mesh, data, const, maskdom, domname):
+def _plot_landing_rate_eez_hs(output_dir, fleet_summary, fleet_names):
+    nb_fleet = len(fleet_summary)
+    n_col = 3
+    n_row = int(nb_fleet / n_col)
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
-
-    fig = plt.figure()
-    plt.plot(range(100), range(100))
-    plt.plot(range(100), range(100))
-    plt.xlabel('Time (years)')
-    plt.ylabel('Landing rate (million T.years-1)')
-    plt.legend(['EEZ','HS'])
-    figname = _savefig(output_dir, 'landing_rate_eez_hs_%s.svg' %domname)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 10, n_row * 10), dpi=300, sharex=True)
+    for i in np.arange(nb_fleet):
+        ax = plt.subplot(n_row, n_col, i + 1)
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        av_1, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * fleet_summary[i]['current_total_landings_rate_from_EEZ'], 365)
+        av_2, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * (fleet_summary[i]['step_landings']-fleet_summary[i]['current_total_landings_rate_from_EEZ']), 365)
+        plt.plot(time, av_1, color='red', linewidth=2,label='EEZ')
+        plt.plot(time, av_1+av_2, color='blue', linewidth=2,label='HS')
+        plt.fill_between(time, av_1+av_2, av_1, color='blue', alpha=0.25)
+        plt.fill_between(time, av_1, color='red', alpha=0.25)
+        plt.grid()
+        plt.title(fleet_names[i], fontsize=25)
+        plt.tick_params(axis='both', labelsize=25)
+        plt.xlabel('Time (years)', fontsize=25)
+        plt.ylabel('Landing rate (million T.years-1)', fontsize=25)
+    fig.tight_layout()
+    plt.legend(loc='best', fontsize=25)
+    figname = _savefig(output_dir, 'landing_rate_eez_hs.svg')
     plt.close(figname)
     return figname
 
 
-def _plot_landing_rate_total(output_dir, mesh, data, const, maskdom, domname):
+def _plot_landing_rate_total(output_dir, fleet_summary, fleet_names):
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
+    nb_fleet = len(fleet_summary)
+    n_col = 3
+    n_row = int(nb_fleet / n_col)
 
-    fig = plt.figure()
-    plt.plot(range(100), range(100))
-    plt.xlabel('Time (years)')
-    plt.ylabel('Landing rate (MT.years-1)')
-    plt.title('last year landing rate : XXX MT.years-1')
-    figname = _savefig(output_dir, 'landing_rate_total_%s.svg' %domname)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 10, n_row * 10), dpi=300)
+    for i in np.arange(nb_fleet):
+        average, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * fleet_summary[i]['step_landings'], 365)
+        ax = plt.subplot(n_row, n_col, i + 1)
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        plt.plot(time, average, linewidth=2, color='blue')
+        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
+        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
+        plt.grid()
+        plt.title(fleet_names[i], fontsize=25)
+        plt.tick_params(axis='both', labelsize=25)
+        plt.xlabel('Time (years)', fontsize=25)
+        plt.ylabel('Landing rate (MT.years-1)', fontsize=25)
+        plt.title('last year landing rate : %.2f MT.years-1' % average[-1], fontsize=25)
+    fig.tight_layout()
+    figname = _savefig(output_dir, 'landing_rate_total.svg')
     plt.close(figname)
     return figname
 
 
-def _plot_landing_rate_by_vessels(output_dir, mesh, crs, data, const, maskdom, domname):
+def _plot_landing_rate_by_vessels(output_dir, fleet_maps, fleet_names, mesh, crs):
+    nb_fleet = len(fleet_maps)
+    n_col = 3
+    n_row = int(nb_fleet / n_col)
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
+    lonf = np.squeeze(mesh['glamf'].values)
+    latf = np.squeeze(mesh['gphif'].values)
 
-    fig = plt.figure()
-    ax = plt.axes(projection=crs)
-    try:
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 12, n_row * 10), dpi=300)
+    for i in np.arange(nb_fleet):
+        ax = plt.subplot(n_row, n_col, i + 1, projection=crs)
+        cs = plt.pcolormesh(lonf, latf, fleet_maps[i]['landing_rate_by_vessel'].sum(dim='time', skipna=True)[1:,1:])
+        plt.title(fleet_names[i], fontsize=25)
+        cb = plt.colorbar(cs, shrink=0.4)
+        cb.set_label('T/day-1', fontsize=25)
+        cb.ax.tick_params(labelsize=25)
         ax.add_feature(cfeature.LAND)
         ax.add_feature(cfeature.COASTLINE)
-    except:
-        pass
-    figname = _savefig(output_dir, 'landing_rate_by_vessels_%s.svg' %domname)
+        plt.grid()
+    fig.tight_layout()
+    figname = _savefig(output_dir, 'landing_rate_by_vessels.svg')
     plt.close(figname)
     return figname
 
 
-def _plot_landing_rate_density(output_dir, mesh, crs, data, const, maskdom, domname):
+def _plot_landing_rate_density(output_dir, fleet_maps, fleet_names, mesh, crs):
+    nb_fleet = len(fleet_maps)
+    n_col = 3
+    n_row = int(nb_fleet / n_col)
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
+    lonf = np.squeeze(mesh['glamf'].values)
+    latf = np.squeeze(mesh['gphif'].values)
 
-    fig = plt.figure()
-    ax = plt.axes(projection=crs)
-    try:
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 12, n_row * 10), dpi=300)
+    for i in np.arange(nb_fleet):
+        ax = plt.subplot(n_row, n_col, i + 1, projection=crs)
+        cs = plt.pcolormesh(lonf, latf, fleet_maps[i]['landing_rate'].sum(dim='time', skipna=True)[1:,1:])
+        plt.title(fleet_names[i], fontsize=25)
+        cb = plt.colorbar(cs, shrink=0.4)
+        cb.set_label('T/day-1', fontsize=25)
+        cb.ax.tick_params(labelsize=25)
         ax.add_feature(cfeature.LAND)
         ax.add_feature(cfeature.COASTLINE)
-    except:
-        pass
-    figname = _savefig(output_dir, 'landing_rate_density_%s.svg' %domname)
+        plt.grid()
+    fig.tight_layout()
+    figname = _savefig(output_dir, 'landing_rate_density.svg')
     plt.close(figname)
     return figname
 
 
-def _plot_average_fishing_distance(output_dir, mesh, crs, data, const, maskdom, domname):
+def _plot_average_fishing_distance(output_dir, fleet_summary, fleet_names):
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
+    nb_fleet = len(fleet_summary)
+    n_col = 3
+    n_row = int(nb_fleet / n_col)
 
-    fig = plt.figure()
-    plt.plot(range(100), range(100))
-    plt.xlabel('Time (years)')
-    plt.ylabel('Average fishing distance (km)')
-    plt.title('last year distance : XXX km')
-    figname = _savefig(output_dir, 'average_fishing_distance_%s.svg' %domname)
+    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col * 10, n_row * 10), dpi=300)
+    for i in np.arange(nb_fleet):
+        average, maxi, mini, time = compute_mean_min_max_ts(0*fleet_summary[i]['step_landings'], 365)
+        plt.subplot(n_row, n_col, i + 1)
+        plt.plot(time, average, linewidth=2, color='blue')
+        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
+        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
+        plt.grid()
+        plt.title(fleet_names[i], fontsize=25)
+        plt.tick_params(axis='both', labelsize=25)
+        plt.xlabel('Time (years)', fontsize=25)
+        plt.ylabel('Average fishing distance (km)', fontsize=25)
+        plt.title('last year distance : %.1f km' % average[-1], fontsize=25)
+    fig.tight_layout()
+    figname = _savefig(output_dir, 'average_fishing_distance.svg')
     plt.close(figname)
     return figname
 
 
-def _plot_fuel_use_intensity(output_dir, mesh, data, const, maskdom, domname):
+def _plot_fuel_use_intensity(output_dir, fleet_summary, fleet_names):
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
+    nb_fleet = len(fleet_summary)
+    n_col = 3
+    n_row = int(nb_fleet / n_col)
 
-    fig = plt.figure()
-    plt.plot(range(100), range(100))
-    plt.xlabel('Time (years)')
-    plt.ylabel('Fuel use intensity (kL.T-1)')
-    plt.title('last year FUI : XXX kL.T-1')
-    figname = _savefig(output_dir, 'fuel_use_intensity_%s.svg' %domname)
+    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col * 10, n_row * 10), dpi=300)
+    for i in np.arange(nb_fleet):
+        average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['average_fuel_use_intensity'], 365)
+        plt.subplot(n_row, n_col, i + 1)
+        plt.plot(time, average, linewidth=2, color='blue')
+        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
+        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
+        plt.grid()
+        plt.title(fleet_names[i], fontsize=25)
+        plt.tick_params(axis='both', labelsize=25)
+        plt.xlabel('Time (years)', fontsize=25)
+        plt.ylabel('Fuel use intensity (kL.T-1)', fontsize=25)
+        plt.title('last year FUI : %.1f kL.T-1' % average[-1], fontsize=25)
+    fig.tight_layout()
+    figname = _savefig(output_dir, 'fuel_use_intensity.svg')
     plt.close(figname)
     return figname
 
 
-def _plot_yearly_profit(output_dir, mesh, data, const, maskdom, domname):
+def _plot_yearly_profit(output_dir, fleet_summary, fleet_names):
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
+    nb_fleet = len(fleet_summary)
+    n_col = 3
+    n_row = int(nb_fleet / n_col)
 
-    fig = plt.figure()
-    plt.plot(range(100), range(100))
-    plt.xlabel('Time (years)')
-    plt.ylabel('Yearly profit (k$.years-1)')
-    plt.title('last year profit : XXX k$.years-1')
-    figname = _savefig(output_dir, 'yearly_profit_%s.svg' %domname)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 10, n_row * 10), dpi=300)
+    for i in np.arange(nb_fleet):
+        average, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * fleet_summary[i]['step_profits'], 365)
+        ax = plt.subplot(n_row, n_col, i + 1)
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        plt.plot(time, average, linewidth=2, color='blue')
+        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
+        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
+        plt.grid()
+        plt.title(fleet_names[i], fontsize=25)
+        plt.tick_params(axis='both', labelsize=25)
+        plt.xlabel('Time (years)', fontsize=25)
+        plt.ylabel('Yearly profit (G$.years-1)', fontsize=25)
+        plt.title('last year profit : %.1f G$.years-1' % average[-1], fontsize=25)
+    fig.tight_layout()
+    figname = _savefig(output_dir, 'yearly_profit.svg')
     plt.close(figname)
     return figname
 
 
-def _plot_savings(output_dir, mesh, data, const, maskdom, domname):
+def _plot_savings(output_dir, fleet_summary, fleet_names):
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
+    nb_fleet = len(fleet_summary)
+    n_col = 3
+    n_row = int(nb_fleet / n_col)
 
-    fig = plt.figure()
-    plt.plot(range(100), range(100))
-    plt.xlabel('Time (years)')
-    plt.ylabel('Savings (k$)')
-    plt.title('last year distance : XXX k$')
-    figname = _savefig(output_dir, 'savings_%s.svg' %domname)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 10, n_row * 10), dpi=300)
+    for i in np.arange(nb_fleet):
+        average, maxi, mini, time = compute_mean_min_max_ts(0.000001 * fleet_summary[i]['savings'], 365)
+        ax = plt.subplot(n_row, n_col, i + 1)
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        plt.plot(time, average, linewidth=2, color='blue')
+        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
+        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
+        plt.grid()
+        plt.title(fleet_names[i], fontsize=25)
+        plt.tick_params(axis='both', labelsize=25)
+        plt.xlabel('Time (years)', fontsize=25)
+        plt.ylabel('Savings (G$)', fontsize=25)
+        plt.title('last year savings : %.1f G$' % average[-1], fontsize=25)
+    fig.tight_layout()
+    figname = _savefig(output_dir, 'savings.svg')
     plt.close(figname)
     return figname
 
 
-def _plot_fish_price(output_dir, mesh, data, const, maskdom, domname):
+def _plot_fish_price(output_dir, market, fleet_names):
+    nb_fleet = len(market['fleet'])
+    n_col = 3
+    n_row = int(nb_fleet / n_col)
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
-
-    fig = plt.figure()
-    plt.plot(range(100), range(100))
-    plt.xlabel('Time (years)')
-    plt.ylabel('Fish price ($.kg-1)')
-    plt.title('last year fish price : XXX $.kg-1')
-    figname = _savefig(output_dir, 'fish_price_%s.svg' %domname)
+    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col * 10, n_row * 10), dpi=300)
+    for i in np.arange(nb_fleet):
+        average, maxi, mini, time = compute_mean_min_max_ts(market['average_price'].isel(fleet=i), 365)
+        plt.subplot(n_row, n_col, i + 1)
+        plt.plot(time, average, linewidth=2, color='blue')
+        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
+        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
+        plt.grid()
+        plt.title(fleet_names[i], fontsize=25)
+        plt.tick_params(axis='both', labelsize=25)
+        plt.xlabel('Time (years)', fontsize=25)
+        plt.ylabel('Fish price ($.kg-1)', fontsize=25)
+        plt.title('last year fish price : %.1f $.kg-1' % average[-1], fontsize=25)
+    fig.tight_layout()
+    figname = _savefig(output_dir, 'fish_price.svg')
     plt.close(figname)
     return figname
 
 
-def _plot_capture_landing_rate(output_dir, mesh, data, const, maskdom, domname):
+def _plot_capture_landing_rate(output_dir, fleet_summary, fleet_names):
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
+    nb_fleet = len(fleet_summary)
+    n_col = 3
+    n_row = int(nb_fleet / n_col)
 
-    fig = plt.figure()
-    plt.plot(range(100), range(100))
-    plt.xlabel('Time (years)')
-    plt.ylabel('Capture and landing rate (T.day-1)')
-    plt.legend(['Capture','Landing'])
-    figname = _savefig(output_dir, 'capture_landing_rate_%s.svg' %domname)
+    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col * 10, n_row * 10), dpi=300)
+    for i in np.arange(nb_fleet):
+        average_1, maxi_1, mini_1, time_1 = compute_mean_min_max_ts(fleet_summary[i]['average_capture_rate_by_active_vessel'], 365)
+        average_2, maxi_2, mini_2, time_2 = compute_mean_min_max_ts(fleet_summary[i]['average_landing_rate_by_active_vessel'], 365)
+        plt.subplot(n_row, n_col, i + 1)
+        plt.plot(time_1, average_1, linewidth=2, color='blue', label='Capture')
+        plt.fill_between(time_1, mini_1, average_1, color='blue', alpha=0.25)
+        plt.fill_between(time_1, average_1, maxi_1, color='blue', alpha=0.25)
+        plt.plot(time_2, average_2, linewidth=2, color='red', label='Landing')
+        plt.fill_between(time_2, mini_2, average_2, color='red', alpha=0.25)
+        plt.fill_between(time_2, average_2, maxi_2, color='red', alpha=0.25)
+        plt.grid()
+        plt.title(fleet_names[i], fontsize=25)
+        plt.tick_params(axis='both', labelsize=25)
+        plt.xlabel('Time (years)', fontsize=25)
+        plt.ylabel('Capture and landing rate (T.day-1)', fontsize=25)
+    plt.legend(loc='best', fontsize=25)
+    fig.tight_layout()
+    figname = _savefig(output_dir, 'capture_landing_rate.svg')
     plt.close(figname)
     return figname
 
 
-def _plot_cost_revenue_by_vessels(output_dir, mesh, data, const, maskdom, domname):
+def _plot_cost_revenue_by_vessels(output_dir, fleet_summary, fleet_names):
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
+    nb_fleet = len(fleet_summary)
+    n_col = 3
+    n_row = int(nb_fleet / n_col)
 
-    fig = plt.figure()
-    plt.plot(range(100), range(100))
-    plt.plot(range(100), range(100))
-    plt.xlabel('Time (years)')
-    plt.ylabel('Cost and revenue by active vessels (K$.day-1)')
-    plt.legend(['Cost','Revenue'])
-    figname = _savefig(output_dir, 'cost_revenue_by_vessels_%s.svg' %domname)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 10, n_row * 10), dpi=300)
+    for i in np.arange(nb_fleet):
+        average_1, maxi_1, mini_1, time_1 = compute_mean_min_max_ts(fleet_summary[i]['average_cost_by_active_vessels'], 365)
+        average_2, maxi_2, mini_2, time_2 = compute_mean_min_max_ts(fleet_summary[i]['average_profit_by_active_vessels'], 365)
+        ax = plt.subplot(n_row, n_col, i + 1)
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
+        plt.plot(time_1, average_1, linewidth=2, color='blue', label='Cost')
+        plt.fill_between(time_1, mini_1, average_1, color='blue', alpha=0.25)
+        plt.fill_between(time_1, average_1, maxi_1, color='blue', alpha=0.25)
+        plt.plot(time_2, average_2, linewidth=2, color='red', label='Revenue')
+        plt.fill_between(time_2, mini_2, average_2, color='red', alpha=0.25)
+        plt.fill_between(time_2, average_2, maxi_2, color='red', alpha=0.25)
+        plt.grid()
+        plt.title(fleet_names[i], fontsize=25)
+        plt.tick_params(axis='both', labelsize=25)
+        plt.xlabel('Time (years)', fontsize=25)
+        plt.ylabel('Cost and revenue by active vessels (k$.day-1)', fontsize=25)
+    plt.legend(loc='best', fontsize=25)
+    fig.tight_layout()
+    figname = _savefig(output_dir, 'cost_revenue_by_vessels.svg')
     plt.close(figname)
     return figname
 
 
-def _plot_fishing_time_fraction(output_dir, mesh, data, const, maskdom, domname):
+def _plot_fishing_time_fraction(output_dir, fleet_summary, fleet_names):
 
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    #data = extract_time_means(data)
+    nb_fleet = len(fleet_summary)
+    n_col = 3
+    n_row = int(nb_fleet / n_col)
 
-    fig = plt.figure()
-    plt.plot(range(100), range(100))
-    plt.xlabel('Time (years)')
-    plt.ylabel('Fishing time fraction')
-    figname = _savefig(output_dir, 'fishing_time_fraction_%s.svg' %domname)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 10, n_row * 10), dpi=300)
+    for i in np.arange(nb_fleet):
+        average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['average_fishing_time_fraction_of_active_vessels'], 365)
+        ax = plt.subplot(n_row, n_col, i + 1)
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        plt.plot(time, average, linewidth=2, color='blue')
+        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
+        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
+        plt.grid()
+        plt.title(fleet_names[i], fontsize=25)
+        plt.tick_params(axis='both', labelsize=25)
+        plt.xlabel('Time (years)', fontsize=25)
+        plt.ylabel('Fishing time fraction', fontsize=25)
+        plt.ylim([0,1])
+        plt.title('last year fishing time fraction : %.2f' % average[-1], fontsize=25)
+    fig.tight_layout()
+    figname = _savefig(output_dir, 'fishing_time_fraction.svg')
     plt.close(figname)
     return figname
 
