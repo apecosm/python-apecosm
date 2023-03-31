@@ -386,6 +386,32 @@ def extract_oope_data(data, mesh, const, maskdom=None,
     return data
 
 
+def open_fishing_data(dirin):
+
+    '''
+        Opens Apecosm fishing output files : market_result.nc; fleet_maps_2d_X.nc;
+        fleet_summary_X.nc; fleet_parameters_X.nc
+
+        :param dirin: Directory of Apecosm fishing outputs.
+
+        :type dirin: str
+    '''
+
+    market = xr.open_dataset(os.path.join(dirin, "market_results.nc"))
+    nb_fleet = len(market['fleet'])
+
+    fleet_maps = {}
+    fleet_summary = {}
+    fleet_parameters = {}
+    for i in np.arange(nb_fleet):
+        fleet_maps[i] = xr.open_dataset(os.path.join(dirin, 'fleet_maps_2d_' + str(i) + '.nc'))
+        fleet_summary[i] = xr.open_dataset(os.path.join(dirin, 'fleet_summary_' + str(i) + '.nc'))
+        fleet_parameters[i] = xr.open_dataset(os.path.join(dirin, 'fleet_parameters_' + str(i) + '.nc'))
+
+    return market, fleet_maps, fleet_summary, fleet_parameters
+
+
+
 def _squeeze_variable(variable):
 
     r'''
