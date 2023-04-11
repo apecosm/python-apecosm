@@ -132,32 +132,43 @@ def weight_to_size(weight):
     return np.power(weight / ALLOM_W_L, 1/3.)
 
 
-def compute_mean_min_max_ts(ts, period):
+def compute_mean_min_max_ts(timeserie, period):
 
     '''
         Compute the mean, min and max value of timeserie ts over time of length period
 
-        :param ts: timeserie (containing a time field).
+        :param timeserie: timeserie (containing a time field).
         :param period: number of time step upon which are computed mean, min and max value of ts.
 
         :type ts: xarray with a field named time
         :type period: int
     '''
 
-    n = int(len(ts.time)/period)
-
+    n = int(len(timeserie.time)/period)
     average = np.zeros(n)
     maxi = np.zeros(n)
     mini = np.zeros(n)
     time = np.zeros(n)
-    cpt = 0
-    while cpt < n:
-        average[cpt] = ts[(cpt * period):((cpt + 1) * period - 1)].mean()
-        maxi[cpt] = ts[(cpt * period):((cpt + 1) * period - 1)].max()
-        mini[cpt] = ts[(cpt * period):((cpt + 1) * period - 1)].min()
-        time[cpt] = ts.time[cpt*period]
-        cpt = cpt + 1
-
+    if period <= 1:
+        average = timeserie.values()
+        maxi = timeserie.values()
+        mini = timeserie.values()
+        time = timeserie.time
+        print("WARNING : period <= 1 --> raw timeserie returned")
+    elif period >= len(timeserie.time):
+        average = timeserie.mean()
+        maxi = timeserie.max()
+        mini = timeserie.min()
+        time = 0
+        print("WARNING : period >= length(timeserie) --> mean, max, min values of timeserie returned")
+    else:
+        cpt = 0
+        while cpt < n:
+            average[cpt] = timeserie[(cpt * period):((cpt + 1) * period - 1)].mean()
+            maxi[cpt] = timeserie[(cpt * period):((cpt + 1) * period - 1)].max()
+            mini[cpt] = timeserie[(cpt * period):((cpt + 1) * period - 1)].min()
+            time[cpt] = timeserie.time[cpt * period]
+            cpt = cpt + 1
     return average, maxi, mini, time
 
 
