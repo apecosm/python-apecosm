@@ -217,6 +217,9 @@ def _make_meta_template(output_dir, css, data, const):
     template = env.get_template("template_meta.html")
 
     comnames = extract_community_names(const)
+    #fleet_names = extract_fleet_names(fishing_config_path)
+    #outputs['fleet_names'] = fleet_names
+
 
     outputs = {}
 
@@ -363,7 +366,7 @@ def _plot_time_series(output_dir, mesh, data, const, maskdom, domname):
     plt.xticks(rotation=30, ha='right')
     plt.grid()
     plt.xlabel('')
-    filenames['Total'] = _savefig(output_dir, 'time_series_total.svg')
+    filenames['Total'] = _savefig(output_dir, 'time_series_total.svg', 'svg')
     plt.close(fig)
 
     for c in range(data.dims['c']):
@@ -548,12 +551,12 @@ def _make_fisheries_template(output_dir, css, fishing_path, fishing_config_path,
     outputs['css'] = css
 
     outputs['fleet_size'] = _plot_fleet_size(output_dir, fleet_summary, fleet_names) #ok
-    outputs['fishing_effective_effort'] = _plot_fishing_effective_effort(output_dir, fleet_maps, fleet_names, mesh, crs) #nok
+    outputs['fishing_effective_effort'] = _plot_fishing_effective_effort(output_dir, fleet_maps, fleet_names, mesh, crs) #ok
     outputs['landing_rate_eez_hs'] = _plot_landing_rate_eez_hs(output_dir, fleet_summary, fleet_names) #ok
     outputs['landing_rate_total'] = _plot_landing_rate_total(output_dir, fleet_summary, fleet_names) #ok
-    outputs['landing_rate_by_vessels'] = _plot_landing_rate_by_vessels(output_dir, fleet_maps, fleet_names, mesh, crs) #nok
-    outputs['landing_rate_density'] = _plot_landing_rate_density(output_dir, fleet_maps, fleet_names, mesh, crs) #nok
-    outputs['average_fishing_distance'] = _plot_average_fishing_distance(output_dir, fleet_summary, fleet_names) #nok
+    outputs['landing_rate_by_vessels'] = _plot_landing_rate_by_vessels(output_dir, fleet_maps, fleet_names, mesh, crs) #ok
+    outputs['landing_rate_density'] = _plot_landing_rate_density(output_dir, fleet_maps, fleet_names, mesh, crs) #ok
+    outputs['average_fishing_distance'] = _plot_average_fishing_distance(output_dir, fleet_summary, fleet_names) #ok
     outputs['fuel_use_intensity'] = _plot_fuel_use_intensity(output_dir, fleet_summary, fleet_names) #ok
     outputs['yearly_profit'] = _plot_yearly_profit(output_dir, fleet_summary, fleet_names) #ok
     outputs['savings'] = _plot_savings(output_dir, fleet_summary, fleet_names) #ok
@@ -574,19 +577,24 @@ def _plot_fleet_size(output_dir, fleet_summary, fleet_names):
     n_col = 3
     n_row = int(nb_fleet/n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize = (n_col * 15, n_row * 5), dpi = 300, sharex=True)
+    col_1 = (241/256, 140/256, 141/256)
+    col_2 = (154/256, 190/256, 219/256)
+    col_3 = (165/256, 215/256, 164/256)
+    col_grid = (190/256,190/256,190/256)
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi = 300, sharex=True)
     for i in np.arange(nb_fleet):
         plt.subplot(n_row, n_col, i + 1)
         av_1, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['effective_effort'], 365)
         av_2, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['active_vessels'], 365)
         av_3, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['total_vessels'], 365)
-        plt.plot(time, av_1, color='red', linewidth=2, label='Fishing')
-        plt.plot(time, av_2, color='blue', linewidth=2, label='Sailing')
-        plt.plot(time, av_3, color='green', linewidth=2, label='At port')
-        plt.fill_between(time, av_1, color='red', alpha=0.25)
-        plt.fill_between(time, av_2, av_1, color='blue', alpha=0.25)
-        plt.fill_between(time, av_3, av_2, color='green', alpha=0.25)
-        plt.grid()
+        plt.plot(time, av_1, color='black', linewidth=1)
+        plt.plot(time, av_2, color='black', linewidth=1)
+        plt.plot(time, av_3, color='black', linewidth=1)
+        plt.fill_between(time, av_1, color=col_1, alpha=0.80, label='Fishing')
+        plt.fill_between(time, av_2, av_1, color=col_2, alpha=0.80, label='Sailing')
+        plt.fill_between(time, av_3, av_2, color=col_3, alpha=0.80, label='At port')
+        plt.grid(color=col_grid, linestyle='dashdot', linewidth=2)
         plt.title(fleet_names[i], fontsize=25)
         plt.tick_params(axis='both', labelsize=25)
         plt.xlabel('Time (years)', fontsize=25)
@@ -604,12 +612,14 @@ def _plot_fishing_effective_effort(output_dir, fleet_maps, fleet_names, mesh, cr
 
     nb_fleet = len(fleet_maps)
     n_col = 3
-    n_row = int(nb_fleet / n_col)
+    n_row = int(nb_fleet/n_col)
 
     lonf = np.squeeze(mesh['glamf'].values)
     latf = np.squeeze(mesh['gphif'].values)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 12, n_row * 10), dpi=300)
+    cb_qu = 15
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi=300)
     for i in np.arange(nb_fleet):
         ax = plt.subplot(n_row, n_col, i + 1, projection=crs_out)
         raw = fleet_maps[i]['effective_effort_density'].isel(time=-1)
@@ -621,13 +631,13 @@ def _plot_fishing_effective_effort(output_dir, fleet_maps, fleet_names, mesh, cr
         cb_lb = 0
         cb_ub = 1
         if len(data[extract])>0:
-            cb_lb = np.percentile(data[extract], 25)
-            cb_ub = np.percentile(data[extract], 100)
+            cb_lb = np.percentile(data[extract], cb_qu)
+            cb_ub = np.percentile(data[extract], 100-cb_qu)
 
         cs = plt.pcolormesh(lonf, latf, data[1:, 1:], cmap='RdYlBu_r', transform=crs_in, vmin=cb_lb, vmax=cb_ub)
-        # cs = plt.pcolormesh(lonf[:-1, :-1], latf[:-1, :-1], test[1:-1, 1:-1],  cmap='RdYlBu_r', transform=crs_in, vmin=-13.5, vmax=-10)
+        # cs = plt.pcolormesh(lonf[:-1, :-1], latf[:-1, :-1], test[1:-1, 1:-1],  cmap='RdYlBu_r', transform=crs_in, vmin=cb_lb, vmax=cb_ub)
         plt.title(fleet_names[i], fontsize=25)
-        cb = plt.colorbar(cs, shrink=0.4)
+        cb = plt.colorbar(cs, shrink=0.7)
         cb.ax.tick_params(labelsize=25)
         cb.ax.yaxis.get_offset_text().set(size=25)
         ax.coastlines(zorder=101)
@@ -643,17 +653,21 @@ def _plot_landing_rate_eez_hs(output_dir, fleet_summary, fleet_names):
     n_col = 3
     n_row = int(nb_fleet / n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 15, n_row * 5), dpi=300, sharex=True)
+    col_1 = (241/256, 140/256, 141/256)
+    col_2 = (154/256, 190/256, 219/256)
+    col_grid = (190/256,190/256,190/256)
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi=300, sharex=True)
     for i in np.arange(nb_fleet):
         ax = plt.subplot(n_row, n_col, i + 1)
         ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
         av_1, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * fleet_summary[i]['current_total_landings_rate_from_EEZ'], 365)
         av_2, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * (fleet_summary[i]['step_landings']-fleet_summary[i]['current_total_landings_rate_from_EEZ']), 365)
-        plt.plot(time, av_1, color='red', linewidth=2,label='EEZ')
-        plt.plot(time, av_1+av_2, color='blue', linewidth=2,label='HS')
-        plt.fill_between(time, av_1+av_2, av_1, color='blue', alpha=0.25)
-        plt.fill_between(time, av_1, color='red', alpha=0.25)
-        plt.grid()
+        plt.plot(time, av_1, color='black', linewidth=1)
+        plt.plot(time, av_1+av_2, color='black', linewidth=1)
+        plt.fill_between(time, av_1+av_2, av_1, color=col_2, alpha=0.80, label='HS')
+        plt.fill_between(time, av_1, color=col_1, alpha=0.80, label='EEZ')
+        plt.grid(color=col_grid, linestyle='dashdot', linewidth=2)
         plt.title(fleet_names[i], fontsize=25)
         plt.tick_params(axis='both', labelsize=25)
         plt.xlabel('Time (years)', fontsize=25)
@@ -671,15 +685,18 @@ def _plot_landing_rate_total(output_dir, fleet_summary, fleet_names):
     n_col = 3
     n_row = int(nb_fleet / n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 15, n_row * 5), dpi=300)
+    col_1 = (0/255, 0/255, 255/255)
+    col_grid = (190/255,190/255,190/255)
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi=300)
     for i in np.arange(nb_fleet):
         average, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * fleet_summary[i]['step_landings'], 365)
         ax = plt.subplot(n_row, n_col, i + 1)
         ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-        plt.plot(time, average, linewidth=2, color='blue')
-        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
-        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
-        plt.grid()
+        plt.plot(time, average, linewidth=5, color=col_1)
+        plt.fill_between(time, mini, average, color=col_1, alpha=0.25)
+        plt.fill_between(time, average, maxi, color=col_1, alpha=0.25)
+        plt.grid(color=col_grid, linestyle='dashdot', linewidth=2)
         plt.tick_params(axis='both', labelsize=25)
         plt.xlabel('Time (years)', fontsize=25)
         plt.ylabel('Landing rate (MT.years-1)', fontsize=25)
@@ -701,7 +718,9 @@ def _plot_landing_rate_by_vessels(output_dir, fleet_maps, fleet_names, mesh, crs
     lonf = np.squeeze(mesh['glamf'].values)
     latf = np.squeeze(mesh['gphif'].values)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 12, n_row * 10), dpi=300)
+    cb_qu = 15
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi=300)
     for i in np.arange(nb_fleet):
         ax = plt.subplot(n_row, n_col, i + 1, projection=crs_out)
         raw = fleet_maps[i]['landing_rate_by_vessel'].isel(time=-1)
@@ -713,13 +732,13 @@ def _plot_landing_rate_by_vessels(output_dir, fleet_maps, fleet_names, mesh, crs
         cb_lb = 0
         cb_ub = 1
         if len(data[extract]) > 0:
-            cb_lb = np.percentile(data[extract], 25)
-            cb_ub = np.percentile(data[extract], 100)
+            cb_lb = np.percentile(data[extract], cb_qu)
+            cb_ub = np.percentile(data[extract], 100-cb_qu)
 
         cs = plt.pcolormesh(lonf, latf, data[1:, 1:], cmap='RdYlBu_r', transform=crs_in, vmin=cb_lb, vmax=cb_ub)
         # cs = plt.pcolormesh(lonf[:-1, :-1], latf[:-1, :-1], test[1:-1, 1:-1],  cmap='RdYlBu_r', transform=crs_in, vmin=-13.5, vmax=-10)
         plt.title(fleet_names[i], fontsize=25)
-        cb = plt.colorbar(cs, shrink=0.4)
+        cb = plt.colorbar(cs, shrink=0.7)
         cb.set_label('T/day-1', fontsize=25)
         cb.ax.tick_params(labelsize=25)
         cb.ax.yaxis.get_offset_text().set(size=25)
@@ -742,7 +761,9 @@ def _plot_landing_rate_density(output_dir, fleet_maps, fleet_names, mesh, crs_ou
     lonf = np.squeeze(mesh['glamf'].values)
     latf = np.squeeze(mesh['gphif'].values)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 12, n_row * 10), dpi=300)
+    cb_qu = 15
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi=300)
     for i in np.arange(nb_fleet):
         ax = plt.subplot(n_row, n_col, i + 1, projection=crs_out)
         raw = fleet_maps[i]['landing_rate'].isel(time=-1)
@@ -754,13 +775,13 @@ def _plot_landing_rate_density(output_dir, fleet_maps, fleet_names, mesh, crs_ou
         cb_lb = 0
         cb_ub = 1
         if len(data[extract]) > 0:
-            cb_lb = np.percentile(data[extract], 25)
-            cb_ub = np.percentile(data[extract], 100)
+            cb_lb = np.percentile(data[extract], cb_qu)
+            cb_ub = np.percentile(data[extract], 100-cb_qu)
 
         cs = plt.pcolormesh(lonf, latf, data[1:, 1:], cmap='RdYlBu_r', transform=crs_in, vmin=cb_lb, vmax=cb_ub)
         # cs = plt.pcolormesh(lonf[:-1, :-1], latf[:-1, :-1], test[1:-1, 1:-1],  cmap='RdYlBu_r', transform=crs_in, vmin=-13.5, vmax=-10)
         plt.title(fleet_names[i], fontsize=25)
-        cb = plt.colorbar(cs, shrink=0.4)
+        cb = plt.colorbar(cs, shrink=0.7)
         cb.ax.tick_params(labelsize=25)
         cb.ax.yaxis.get_offset_text().set(size=25)
         ax.coastlines(zorder=101)
@@ -777,15 +798,18 @@ def _plot_average_fishing_distance(output_dir, fleet_summary, fleet_names):
     n_col = 3
     n_row = int(nb_fleet / n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 15, n_row * 5), dpi=300)
+    col_1 = (255/255, 0/255, 0/255)
+    col_grid = (190/255,190/255,190/255)
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi=300)
     for i in np.arange(nb_fleet):
         average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['average_fishing_distance_to_ports_of_active_vessels'], 365)
         ax = plt.subplot(n_row, n_col, i + 1)
         ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
-        plt.plot(time, average, linewidth=2, color='blue')
-        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
-        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
-        plt.grid()
+        plt.plot(time, average, linewidth=5, color=col_1)
+        plt.fill_between(time, mini, average, color=col_1, alpha=0.25)
+        plt.fill_between(time, average, maxi, color=col_1, alpha=0.25)
+        plt.grid(color=col_grid, linestyle='dashdot', linewidth=2)
         plt.tick_params(axis='both', labelsize=25)
         plt.xlabel('Time (years)', fontsize=25)
         plt.ylabel('Average fishing distance (km)', fontsize=25)
@@ -802,14 +826,17 @@ def _plot_fuel_use_intensity(output_dir, fleet_summary, fleet_names):
     n_col = 3
     n_row = int(nb_fleet / n_col)
 
-    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col * 15, n_row * 5), dpi=300)
+    col_1 = (160/255, 32/255, 240/255)
+    col_grid = (190/255,190/255,190/255)
+
+    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi=300)
     for i in np.arange(nb_fleet):
         average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['average_fuel_use_intensity'], 365)
         plt.subplot(n_row, n_col, i + 1)
-        plt.plot(time, average, linewidth=2, color='blue')
-        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
-        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
-        plt.grid()
+        plt.plot(time, average, linewidth=5, color=col_1)
+        plt.fill_between(time, mini, average, color=col_1, alpha=0.25)
+        plt.fill_between(time, average, maxi, color=col_1, alpha=0.25)
+        plt.grid(color=col_grid, linestyle='dashdot', linewidth=2)
         plt.tick_params(axis='both', labelsize=25)
         plt.xlabel('Time (years)', fontsize=25)
         plt.ylabel('Fuel use intensity (kL.T-1)', fontsize=25)
@@ -826,15 +853,18 @@ def _plot_yearly_profit(output_dir, fleet_summary, fleet_names):
     n_col = 3
     n_row = int(nb_fleet / n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 15, n_row * 5), dpi=300)
+    col_1 = (255/255, 165/255, 0/255)
+    col_grid = (190/255,190/255,190/255)
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi=300)
     for i in np.arange(nb_fleet):
         average, maxi, mini, time = compute_mean_min_max_ts(0.001 * 365 * fleet_summary[i]['step_profits'], 365)
         ax = plt.subplot(n_row, n_col, i + 1)
         ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
-        plt.plot(time, average, linewidth=2, color='blue')
-        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
-        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
-        plt.grid()
+        plt.plot(time, average, linewidth=5, color=col_1)
+        plt.fill_between(time, mini, average, color=col_1, alpha=0.25)
+        plt.fill_between(time, average, maxi, color=col_1, alpha=0.25)
+        plt.grid(color=col_grid, linestyle='dashdot', linewidth=2)
         plt.tick_params(axis='both', labelsize=25)
         plt.xlabel('Time (years)', fontsize=25)
         plt.ylabel('Yearly profit (M$.years-1)', fontsize=25)
@@ -851,15 +881,18 @@ def _plot_savings(output_dir, fleet_summary, fleet_names):
     n_col = 3
     n_row = int(nb_fleet / n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 15, n_row * 5), dpi=300)
+    col_1 = (0/255, 100/255, 0/255)
+    col_grid = (190/255,190/255,190/255)
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi=300)
     for i in np.arange(nb_fleet):
         average, maxi, mini, time = compute_mean_min_max_ts(0.001 * fleet_summary[i]['savings'], 365)
         ax = plt.subplot(n_row, n_col, i + 1)
         ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
-        plt.plot(time, average, linewidth=2, color='blue')
-        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
-        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
-        plt.grid()
+        plt.plot(time, average, linewidth=5, color=col_1)
+        plt.fill_between(time, mini, average, color=col_1, alpha=0.25)
+        plt.fill_between(time, average, maxi, color=col_1, alpha=0.25)
+        plt.grid(color=col_grid, linestyle='dashdot', linewidth=2)
         plt.tick_params(axis='both', labelsize=25)
         plt.xlabel('Time (years)', fontsize=25)
         plt.ylabel('Savings (M$)', fontsize=25)
@@ -875,17 +908,20 @@ def _plot_fish_price(output_dir, market, fleet_names):
     n_col = 3
     n_row = int(nb_fleet / n_col)
 
-    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col * 15, n_row * 5), dpi=300)
+    col_1 = (167/255, 61/255, 11/255)
+    col_grid = (190/255,190/255,190/255)
+
+    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi=300)
     for i in np.arange(nb_fleet):
         if i == 4:
             average, maxi, mini, time = compute_mean_min_max_ts(market['average_price'].isel(fleet=i, community=4), 365)
         else:
             average, maxi, mini, time = compute_mean_min_max_ts(market['average_price'].isel(fleet=i, community=1), 365)
         plt.subplot(n_row, n_col, i + 1)
-        plt.plot(time, average, linewidth=2, color='blue')
-        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
-        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
-        plt.grid()
+        plt.plot(time, average, linewidth=5, color=col_1)
+        plt.fill_between(time, mini, average, color=col_1, alpha=0.25)
+        plt.fill_between(time, average, maxi, color=col_1, alpha=0.25)
+        plt.grid(color=col_grid, linestyle='dashdot', linewidth=2)
         plt.tick_params(axis='both', labelsize=25)
         plt.xlabel('Time (years)', fontsize=25)
         plt.ylabel('Fish price ($.kg-1)', fontsize=25)
@@ -902,18 +938,22 @@ def _plot_capture_landing_rate(output_dir, fleet_summary, fleet_names):
     n_col = 3
     n_row = int(nb_fleet / n_col)
 
-    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col * 15, n_row * 5), dpi=300)
+    col_1 = (0/255, 0/255, 255/255)
+    col_2 = (255/255, 0/255, 0/255)
+    col_grid = (190/255,190/255,190/255)
+
+    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi=300)
     for i in np.arange(nb_fleet):
         average_1, maxi_1, mini_1, time_1 = compute_mean_min_max_ts(fleet_summary[i]['average_capture_rate_by_active_vessel'], 365)
         average_2, maxi_2, mini_2, time_2 = compute_mean_min_max_ts(fleet_summary[i]['average_landing_rate_by_active_vessel'], 365)
         plt.subplot(n_row, n_col, i + 1)
-        plt.plot(time_1, average_1, linewidth=2, color='blue', label='Capture')
-        plt.fill_between(time_1, mini_1, average_1, color='blue', alpha=0.25)
-        plt.fill_between(time_1, average_1, maxi_1, color='blue', alpha=0.25)
-        plt.plot(time_2, average_2, linewidth=2, color='red', label='Landing')
-        plt.fill_between(time_2, mini_2, average_2, color='red', alpha=0.25)
-        plt.fill_between(time_2, average_2, maxi_2, color='red', alpha=0.25)
-        plt.grid()
+        plt.plot(time_1, average_1, linewidth=5, color=col_1, label='Capture')
+        plt.fill_between(time_1, mini_1, average_1, color=col_1, alpha=0.25)
+        plt.fill_between(time_1, average_1, maxi_1, color=col_1, alpha=0.25)
+        plt.plot(time_2, average_2, linewidth=5, color=col_2, label='Landing')
+        plt.fill_between(time_2, mini_2, average_2, color=col_2, alpha=0.25)
+        plt.fill_between(time_2, average_2, maxi_2, color=col_2, alpha=0.25)
+        plt.grid(color=col_grid, linestyle='dashdot', linewidth=2)
         plt.title(fleet_names[i], fontsize=25)
         plt.tick_params(axis='both', labelsize=25)
         plt.xlabel('Time (years)', fontsize=25)
@@ -931,19 +971,23 @@ def _plot_cost_revenue_by_vessels(output_dir, fleet_summary, fleet_names):
     n_col = 3
     n_row = int(nb_fleet / n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 15, n_row * 5), dpi=300)
+    col_1 = (0/255, 0/255, 255/255)
+    col_2 = (255/255, 0/255, 0/255)
+    col_grid = (190/255,190/255,190/255)
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi=300)
     for i in np.arange(nb_fleet):
         average_1, maxi_1, mini_1, time_1 = compute_mean_min_max_ts(fleet_summary[i]['average_cost_by_active_vessels'], 365)
         average_2, maxi_2, mini_2, time_2 = compute_mean_min_max_ts(fleet_summary[i]['average_profit_by_active_vessels']+fleet_summary[i]['average_cost_by_active_vessels'], 365)
         ax = plt.subplot(n_row, n_col, i + 1)
         ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
-        plt.plot(time_1, average_1, linewidth=2, color='blue', label='Cost')
-        plt.fill_between(time_1, mini_1, average_1, color='blue', alpha=0.25)
-        plt.fill_between(time_1, average_1, maxi_1, color='blue', alpha=0.25)
-        plt.plot(time_2, average_2, linewidth=2, color='red', label='Revenue')
-        plt.fill_between(time_2, mini_2, average_2, color='red', alpha=0.25)
-        plt.fill_between(time_2, average_2, maxi_2, color='red', alpha=0.25)
-        plt.grid()
+        plt.plot(time_1, average_1, linewidth=5, color=col_1, label='Cost')
+        plt.fill_between(time_1, mini_1, average_1, color=col_1, alpha=0.25)
+        plt.fill_between(time_1, average_1, maxi_1, color=col_1, alpha=0.25)
+        plt.plot(time_2, average_2, linewidth=5, color=col_2, label='Revenue')
+        plt.fill_between(time_2, mini_2, average_2, color=col_2, alpha=0.25)
+        plt.fill_between(time_2, average_2, maxi_2, color=col_2, alpha=0.25)
+        plt.grid(color=col_grid, linestyle='dashdot', linewidth=2)
         plt.title(fleet_names[i], fontsize=25)
         plt.tick_params(axis='both', labelsize=25)
         plt.xlabel('Time (years)', fontsize=25)
@@ -961,19 +1005,22 @@ def _plot_fishing_time_fraction(output_dir, fleet_summary, fleet_names):
     n_col = 3
     n_row = int(nb_fleet / n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * 15, n_row * 5), dpi=300)
+    col_1 = (0/255, 104/255, 139/255)
+    col_grid = (190/255,190/255,190/255)
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*12, n_row*6), dpi=300)
     for i in np.arange(nb_fleet):
         average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['average_fishing_time_fraction_of_active_vessels'], 365)
         ax = plt.subplot(n_row, n_col, i + 1)
         ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-        plt.plot(time, average, linewidth=2, color='blue')
-        plt.fill_between(time, mini, average, color='blue', alpha=0.25)
-        plt.fill_between(time, average, maxi, color='blue', alpha=0.25)
-        plt.grid()
+        plt.plot(time, average, linewidth=5, color=col_1)
+        plt.fill_between(time, mini, average, color=col_1, alpha=0.25)
+        plt.fill_between(time, average, maxi, color=col_1, alpha=0.25)
+        plt.grid(color=col_grid, linestyle='dashdot', linewidth=2)
         plt.tick_params(axis='both', labelsize=25)
         plt.xlabel('Time (years)', fontsize=25)
         plt.ylabel('Fishing time fraction', fontsize=25)
-        plt.ylim([0,1])
+        plt.ylim([-0.05,1.05])
         plt.title('%s - last year fishing time fraction : %.2f' % (fleet_names[i], average[-1]), fontsize=25)
     fig.tight_layout()
     figname = _savefig(output_dir, 'fishing_time_fraction.png', 'png')
