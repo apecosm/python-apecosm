@@ -186,7 +186,7 @@ def _rename_z_dim(var):
     return var
 
 
-def compute_oope_size_integration(data, const, lmin=None, lmax=None):
+def extract_oope_size_integration(data, const, lmin=None, lmax=None):
 
     oope = data['OOPE']
     weight_step = const['weight_step']
