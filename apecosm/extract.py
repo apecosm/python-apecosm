@@ -186,6 +186,30 @@ def _rename_z_dim(var):
     return var
 
 
+def compute_oope_size_integration(data, const, lmin=None, lmax=None):
+
+    oope = data['OOPE']
+    weight_step = const['weight_step']
+    length = const['length'] * 100
+    if lmin is not None:
+        # if lmin is not None, check_lmin is True if length greater than Lmin
+        check_lmin = (length >= lmin)
+    else:
+        # if lmin is None, check_lmin is true everywhere
+        check_lmin = (length >= 0)
+
+    if lmax is not None:
+        # if lmax is not None, check_lmax is True if length greater than lmax
+        check_lmax = (length <= lmax)
+    else:
+        # if lmax is None, check_lmax is true everywhere
+        check_lmax = (length >= 0)
+
+    check_size = (check_lmin & check_lmax)
+
+    output = (oope * weight_step).where(check_size).sum(dim='w')
+    return output
+
 def extract_time_means(data, time=None):
 
     r'''
