@@ -1,5 +1,26 @@
 {
+    "title": "APECOSM Python package",
+    "notes": "If you use this software, please cite it as below.",
     "communities": [
-            {"identifier": "apecosm"}
-        ]
+        {
+            "identifier": "apecosm"
+        },
+        {
+            "identifier": "umr-marbec"
+        }
+    ],
+    "creators": [
+        {
+            "name": "Barrier, Nicolas",
+            "orcid": "0000-0002-1693-4719"
+        },
+        {
+            "name": "Rault, Jonathan",
+            "orcid": "0009-0008-5880-9028"
+        },
+        {
+            "name": "Maury, Olivier",
+            "orcid": "0000-0002-7999-9982"
+        }
+    ]
 }
