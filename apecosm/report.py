@@ -101,10 +101,10 @@ def report(input_dir, mesh_file, fishing_path, config_path, domain_file=None, cr
     _make_config_template(output_dir, css, data, const)
     print('conf - cpu % used:', psutil.cpu_percent())
     print('conf - memory % used:', psutil.virtual_memory()[2])
-    #_make_result_template(output_dir, css, data, const, mesh, crs)
+    _make_result_template(output_dir, css, data, const, mesh, crs)
     print('res - cpu % used:', psutil.cpu_percent())
     print('res - memory % used:', psutil.virtual_memory()[2])
-    #_make_fisheries_template(output_dir, css, fishing_path, config_path, mesh, crs)
+    _make_fisheries_template(output_dir, css, fishing_path, config_path, mesh, crs)
     print('fisheries - cpu % used:', psutil.cpu_percent())
     print('fisheries - memory % used:', psutil.virtual_memory()[2])
     #for domname in domains:
@@ -122,6 +122,13 @@ def report(input_dir, mesh_file, fishing_path, config_path, domain_file=None, cr
     with open(os.path.join(output_dir, 'index.html'), "w") as f:
         f.write(render)
 
+
+def _savefig(output_dir, figname, format):
+    img_file = os.path.join(output_dir, 'html', 'images', figname)
+    plt.savefig(img_file, format=format, bbox_inches='tight')
+    return os.path.join('images', figname)
+
+
 def _make_result_template(output_dir, css, data, const, mesh, crs, domains=None, domname=None):
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
@@ -132,29 +139,21 @@ def _make_result_template(output_dir, css, data, const, mesh, crs, domains=None,
     else:
         maskdom = np.ones(mesh['nav_lon'].shape)
         domname = 'global'
-
     maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
 
     outputs = {}
     outputs['css'] = css
-
     outputs['domain_figs'] = _plot_domain_maps(output_dir, mesh, crs, maskdom, domname) #ok
-
-    outputs['ts_figs'] = _plot_time_series(output_dir, mesh, data, const, maskdom, domname) #ok
+    #outputs['ts_figs'] = _plot_time_series(output_dir, mesh, data, const, maskdom, domname) #ok
+    outputs['mean_length_figs'] = _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, 'length')  # ok
+    outputs['mean_weight_figs'] = _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, 'weight')  # ok
     outputs['cumbiom_figs'] = _plot_integrated_time_series(output_dir, mesh, data, const, maskdom, domname) #ok
     #outputs['maps_figs'] = _plot_mean_maps(output_dir, mesh, data, const, crs, maskdom, domname) # nok--> os kill when plotting
-
-    outputs['mean_length_figs'] = _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, 'length') #ok
-    outputs['mean_weight_figs'] = _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, 'weight') #ok
-
     outputs['spectra_figs'] = _plot_size_spectra(output_dir, mesh, data, const, maskdom, domname) #ok
-
     if 'repfonct_day' in data.variables:
         outputs['repfonct_figs'] = _plot_weighted_values(output_dir, mesh, data, const, 'repfonct_day', maskdom, domname)
-
     if 'mort_day' in data.variables:
         outputs['mort_figs'] = _plot_weighted_values(output_dir, mesh, data, const, 'mort_day', maskdom, domname)
-
     if 'community_diet_values' in data.variables:
         outputs['diet_figs'] = _plot_diet_values(output_dir, mesh, data, const, maskdom, domname)
 
@@ -163,6 +162,81 @@ def _make_result_template(output_dir, css, data, const, mesh, crs, domains=None,
     output_file = os.path.join(output_dir, 'html', 'results_report_%s.html' %domname)
     with open(output_file, "w") as f:
         f.write(render)
+
+
+def _plot_domain_maps(output_dir, mesh, crs_out, maskdom, domname):
+
+    crs_in = ccrs.PlateCarree()
+
+    lonf = np.squeeze(mesh['glamf'].values)
+    latf = np.squeeze(mesh['gphif'].values)
+    if 'tmaskutil' in mesh.variables:
+        tmask = mesh['tmaskutil']
+    else:
+        tmask = mesh['tmask'].isel(z=0)
+
+    tmask = tmask.values.copy()
+    tmask = np.ma.masked_where(tmask == 0, tmask)
+    test = (tmask == 1) & (maskdom.values == 1)
+    tmask[~test] -= 1
+
+    fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT), dpi=300)
+    ax = plt.axes(projection=crs_out)
+    cs = plt.pcolormesh(lonf, latf, tmask[1:, 1:].astype(int), cmap=COL_MAP, transform=crs_in)
+    cs.set_clim(0, 1)
+    cb = plt.colorbar(cs, shrink=CB_SHRINK)
+    cb.ax.tick_params(labelsize=LABEL_SIZE)
+    cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+    plt.title('%s mask' %domname, fontsize=FONT_SIZE)
+    ax.add_feature(cfeature.LAND, zorder=100)
+    ax.add_feature(cfeature.COASTLINE, zorder=101)
+    fileout = _savefig(output_dir, 'domain_map_%s.svg' %domname, 'svg')
+    plt.close(fig)
+    return fileout
+
+
+def _plot_time_series(output_dir, mesh, data, const, maskdom, domname):
+
+    filenames = {}
+
+    output = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=True, compute_mean=False)
+    output = output.sum(dim='w')
+    total = output.sum(dim='c')
+
+    community_names = extract_community_names(const)
+
+    nb_community = len(community_names)
+    n_col = 3
+    n_row = ceil(nb_community/n_col)
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
+    ax = plt.subplot(n_row, n_col, 1)
+    total.plot.line(linewidth=THICK_LWD)
+    plt.title('Total', fontsize=FONT_SIZE)
+    plt.ylabel('Joules', fontsize=FONT_SIZE)
+    plt.xticks(rotation=30, ha='right')
+    plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+    ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+    plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+    plt.xlabel('')
+
+    for c in range(data.dims['c']):
+        ax = plt.subplot(n_row, n_col, c+2)
+        output.isel(c=c).plot.line(linewidth=THICK_LWD)
+        plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+        plt.ylabel('Joules', fontsize=FONT_SIZE)
+        plt.xticks(rotation=30, ha='right')
+        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+        ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+        plt.xlabel('')
+        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+    fig.tight_layout()
+    filenames['timeseries_bycommunity'] = _savefig(output_dir, 'time_series_com_%s.svg' %domname, 'svg')
+    plt.close(fig)
+
+    return filenames
+
 
 def _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, varname):
 
@@ -212,153 +286,6 @@ def _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, varname):
 
     return filenames
 
-def _plot_diet_values(output_dir, mesh, data, const, maskdom, domname):
-
-    if 'community' in data.dims:
-        data = data.rename({'community' : 'c'})
-
-    diet = extract_weighted_data(data, const, mesh, 'community_diet_values', maskdom=maskdom)
-    diet = extract_time_means(diet)
-
-    community_names = extract_community_names(const)
-
-    legend = LTL_NAMES.copy()
-    for c in range(data.dims['c']):
-        legend.append(community_names['Community ' + str(c)])
-
-    filenames = {}
-    for c in range(data.dims['c']):
-        fig = plt.figure()
-        ax = plt.gca()
-        l = const['length'].isel(c=c)
-        toplot = diet.isel(c=c)
-        repf = toplot.sum(dim='prey_group')
-        plt.stackplot(l, toplot.T, edgecolor='k', linewidth=0.5)
-        plt.ylim(0, repf.max())
-        plt.xlim(l.min(), l.max())
-        ax.set_xscale('log')
-        plt.title(community_names['Community ' + str(c)])
-        plt.legend(legend)
-
-        filenames['Community ' + str(c)] = _savefig(output_dir, 'diets_com_%d_%s.svg' %(c, domname), 'svg')
-        plt.close(fig)
-
-    return filenames
-
-def _make_meta_template(output_dir, css, data, const):
-
-    env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
-    template = env.get_template("template_meta.html")
-
-    community_names = extract_community_names(const)
-    #fleet_names = extract_fleet_names(fishing_config_path)
-    #outputs['fleet_names'] = fleet_names
-
-
-    outputs = {}
-
-    outputs['css'] = css
-
-    dims = data.dims
-    list_dims = [d for d in data.dims if 'prey' not in d]
-
-    outputs['comnames'] = community_names
-    outputs['dims'] = dims
-    outputs['list_dims'] = list_dims
-    outputs['start_date'] = data['time'][0].values
-    outputs['end_date'] = data['time'][-1].values
-
-    render = template.render(**outputs)
-
-    output_file = os.path.join(output_dir, 'html', 'config_meta.html')
-    with open(output_file, "w") as f:
-        f.write(render)
-
-def _plot_trophic_interactions(output_dir, data):
-
-    trophic_interact = data['troph_interaction'].values
-
-    community_names = extract_community_names(data)
-    xlabel = []
-    for c in range(0, trophic_interact[0][0].shape[0]):
-        xlabel.append(community_names['Community ' + str(c)])
-
-    fig = plt.figure()
-    plt.subplots_adjust(wspace=0.8)
-    nd, npred, nprey = trophic_interact.shape
-    title = ['Day', 'Night']
-    for d in range(2):
-        ax = plt.subplot(1, 2, d+1)
-        cs = plt.imshow(trophic_interact[d], origin='lower', interpolation='none', cmap=plt.cm.jet)
-        for i in range(nprey + 1):
-            plt.axvline(i - 0.5, linestyle='--', linewidth=THIN_LWD, color='w')
-            plt.axhline(i - 0.5, linestyle='--', linewidth=THIN_LWD, color='w')
-        plt.title(title[d])
-        cs.set_clim(0, 1)
-        plt.xlabel('Prey')
-        plt.ylabel('Predator')
-        ax.set_xticks(np.arange(nprey))
-        ax.set_yticks(np.arange(npred))
-        ax.set_xticklabels(xlabel, rotation=45)
-        ax.set_yticklabels(xlabel, rotation=45)
-        ax.set_aspect('equal', 'box')
-    output = _savefig(output_dir, 'trophic_interactions.svg', 'svg')
-    plt.close(fig)
-    return output
-
-def _make_config_template(output_dir, css, data, const):
-
-    env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
-    template = env.get_template("template_config.html")
-
-    outputs = {}
-
-    outputs['css'] = css
-
-    dims = data.dims
-    list_dims = [d for d in data.dims if 'prey' not in d]
-
-    outputs['dims'] = dims
-    outputs['list_dims'] = list_dims
-    outputs['start_date'] = data['time'][0].values
-    outputs['end_date'] = data['time'][-1].values
-
-    outputs['length_figs'] = _plot_wl_community(output_dir, const, 'length', 'meters')
-    outputs['weight_figs'] = _plot_wl_community(output_dir, const, 'weight', 'kilograms')
-    outputs['select_figs'] = _plot_ltl_selectivity(output_dir, const)
-
-    outputs['trophic_figs'] = _plot_trophic_interactions(output_dir, const)
-
-    render = template.render(**outputs)
-
-    output_file = os.path.join(output_dir, 'html', 'config_report.html')
-    with open(output_file, "w") as f:
-        f.write(render)
-
-def _plot_weighted_values(output_dir, mesh, data, const, varname, maskdom, domname):
-
-    output = extract_weighted_data(data, const, mesh, varname, maskdom)
-    output = extract_time_means(output)
-
-    community_names = extract_community_names(const)
-
-    filenames = {}
-    for c in range(data.dims['c']):
-        fig = plt.figure()
-        ax = plt.gca()
-        l = const['length'].isel(c=c)
-        toplot = output.isel(c=c)
-        plt.plot(l, toplot, color='k')
-        ax.set_xscale('log')
-        plt.xlim(l.min(), l.max())
-        plt.title(community_names['Community ' + str(c)])
-        plt.xlabel('Length (log-scale)')
-        plt.ylabel(varname)
-        plt.ylim(toplot.min(), toplot.max())
-        filenames['Community ' + str(c)] = _savefig(output_dir, 'weighted_%s_com_%d_%s.svg' %(varname, c, domname), 'svg')
-        plt.close(fig)
-    return filenames
-
 
 def _plot_integrated_time_series(output_dir, mesh, data, const, maskdom, domname):
 
@@ -377,7 +304,7 @@ def _plot_integrated_time_series(output_dir, mesh, data, const, maskdom, domname
         ax = plt.subplot(n_row, n_col, c+1)
         l = const['length'].isel(c=c)
         toplot = size_prop.isel(c=c)
-        plt.fill_between(l, 0, toplot, edgecolor='k', facecolor='lightgray', linewidth=THICK_LWD)
+        plt.fill_between(l, 0, toplot, edgecolor='k', facecolor='lightgray', linewidth=THIN_LWD)
         ax.set_xscale('log')
         plt.xlim(l.min(), l.max())
         plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
@@ -391,77 +318,6 @@ def _plot_integrated_time_series(output_dir, mesh, data, const, maskdom, domname
     plt.close(fig)
     return filenames
 
-def _plot_time_series(output_dir, mesh, data, const, maskdom, domname):
-
-    filenames = {}
-
-    output = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=True, compute_mean=False)
-    output = output.sum(dim='w')
-    total = output.sum(dim='c')
-
-    community_names = extract_community_names(const)
-
-    nb_community = len(community_names)
-    n_col = 3
-    n_row = ceil(nb_community/n_col)
-
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    ax = plt.subplot(n_row, n_col, 1)
-    total.plot.line(linewidth=THICK_LWD)
-    plt.title('Total', fontsize=FONT_SIZE)
-    plt.ylabel('Joules', fontsize=FONT_SIZE)
-    plt.xticks(rotation=30, ha='right')
-    plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-    ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-    plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-    plt.xlabel('')
-
-    for c in range(data.dims['c']):
-        ax = plt.subplot(n_row, n_col, c+2)
-        output.isel(c=c).plot.line(linewidth=THICK_LWD)
-        plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
-        plt.ylabel('Joules', fontsize=FONT_SIZE)
-        plt.xticks(rotation=30, ha='right')
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        plt.xlabel('')
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-    fig.tight_layout()
-    filenames['timeseries_bycommunity'] = _savefig(output_dir, 'time_series_com_%s.svg' %domname, 'svg')
-    plt.close(fig)
-
-    return filenames
-
-def _plot_domain_maps(output_dir, mesh, crs_out, maskdom, domname):
-
-    crs_in = ccrs.PlateCarree()
-
-    lonf = np.squeeze(mesh['glamf'].values)
-    latf = np.squeeze(mesh['gphif'].values)
-    if 'tmaskutil' in mesh.variables:
-        tmask = mesh['tmaskutil']
-    else:
-        tmask = mesh['tmask'].isel(z=0)
-
-    tmask = tmask.values.copy()
-    tmask = np.ma.masked_where(tmask == 0, tmask)
-    test = (tmask == 1) & (maskdom.values == 1)
-    tmask[~test] -= 1
-
-    fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT), dpi=300)
-    ax = plt.axes(projection=crs_out)
-    cs = plt.pcolormesh(lonf, latf, tmask[1:, 1:].astype(int), cmap=COL_MAP, transform=crs_in)
-    cs.set_clim(0, 1)
-    cb = plt.colorbar(cs, shrink=CB_SHRINK)
-    cb.ax.tick_params(labelsize=LABEL_SIZE)
-    cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-    plt.title('%s mask' %domname, fontsize=FONT_SIZE)
-    ax.add_feature(cfeature.LAND, zorder=100)
-    ax.add_feature(cfeature.COASTLINE, zorder=101)
-    fileout = _savefig(output_dir, 'domain_map_%s.svg' %domname, 'svg')
-    plt.close(fig)
-    return fileout
 
 def _plot_mean_maps(output_dir, mesh, data, const, crs_out, maskdom, domname):
 
@@ -512,15 +368,203 @@ def _plot_mean_maps(output_dir, mesh, data, const, crs_out, maskdom, domname):
     fig.tight_layout()
     filenames['mean_maps_bycommunity'] = _savefig(output_dir, 'mean_maps_com_%s.svg' %domname, 'svg')
     plt.close(fig)
+    return filenames
+
+
+def _plot_size_spectra(output_dir, mesh, data, const, maskdom, domname):
+
+    # extract data in the entire domain, integrates over space
+    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False, replace_dims={}, replace_const_dims={})
+    data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    data = extract_time_means(data)
+
+    fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT), dpi=300)
+    plot_oope_spectra(data, const, output_var='length', linewidth=THICK_LWD)
+    plt.gca().set_xscale('log')
+    plt.gca().set_yscale('log')
+    plt.xlabel('Length (m)', fontsize=FONT_SIZE)
+    plt.ylabel('OOPE (J/m)', fontsize=FONT_SIZE)
+    plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+    plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+    plt.legend(fontsize=FONT_SIZE)
+    figname = _savefig(output_dir, 'size_spectra_%s.svg' %domname, 'svg')
+    plt.close(figname)
+
+    return figname
+
+
+def _plot_weighted_values(output_dir, mesh, data, const, varname, maskdom, domname):
+
+    output = extract_weighted_data(data, const, mesh, varname, maskdom)
+    output = extract_time_means(output)
+
+    community_names = extract_community_names(const)
+
+    filenames = {}
+    for c in range(data.dims['c']):
+        fig = plt.figure()
+        ax = plt.gca()
+        l = const['length'].isel(c=c)
+        toplot = output.isel(c=c)
+        plt.plot(l, toplot, color='k')
+        ax.set_xscale('log')
+        plt.xlim(l.min(), l.max())
+        plt.title(community_names['Community ' + str(c)])
+        plt.xlabel('Length (log-scale)')
+        plt.ylabel(varname)
+        plt.ylim(toplot.min(), toplot.max())
+        filenames['Community ' + str(c)] = _savefig(output_dir, 'weighted_%s_com_%d_%s.svg' %(varname, c, domname), 'svg')
+        plt.close(fig)
+    return filenames
+
+
+def _plot_diet_values(output_dir, mesh, data, const, maskdom, domname):
+
+    if 'community' in data.dims:
+        data = data.rename({'community' : 'c'})
+
+    diet = extract_weighted_data(data, const, mesh, 'community_diet_values', maskdom=maskdom)
+    diet = extract_time_means(diet)
+
+    community_names = extract_community_names(const)
+
+    legend = LTL_NAMES.copy()
+    for c in range(data.dims['c']):
+        legend.append(community_names['Community ' + str(c)])
+
+    filenames = {}
+    for c in range(data.dims['c']):
+        fig = plt.figure()
+        ax = plt.gca()
+        l = const['length'].isel(c=c)
+        toplot = diet.isel(c=c)
+        repf = toplot.sum(dim='prey_group')
+        plt.stackplot(l, toplot.T, edgecolor='k', linewidth=0.5)
+        plt.ylim(0, repf.max())
+        plt.xlim(l.min(), l.max())
+        ax.set_xscale('log')
+        plt.title(community_names['Community ' + str(c)])
+        plt.legend(legend)
+
+        filenames['Community ' + str(c)] = _savefig(output_dir, 'diets_com_%d_%s.svg' %(c, domname), 'svg')
+        plt.close(fig)
 
     return filenames
 
 
-def _savefig(output_dir, figname, format):
+def _make_meta_template(output_dir, css, data, const):
 
-    img_file = os.path.join(output_dir, 'html', 'images', figname)
-    plt.savefig(img_file, format=format, bbox_inches='tight')
-    return os.path.join('images', figname)
+    env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
+    template = env.get_template("template_meta.html")
+
+    community_names = extract_community_names(const)
+    #fleet_names = extract_fleet_names(fishing_config_path)
+    #outputs['fleet_names'] = fleet_names
+    dims = data.dims
+    list_dims = [d for d in data.dims if 'prey' not in d]
+
+    outputs = {}
+    outputs['css'] = css
+    outputs['comnames'] = community_names
+    outputs['dims'] = dims
+    outputs['list_dims'] = list_dims
+    outputs['start_date'] = data['time'][0].values
+    outputs['end_date'] = data['time'][-1].values
+
+    render = template.render(**outputs)
+
+    output_file = os.path.join(output_dir, 'html', 'config_meta.html')
+    with open(output_file, "w") as f:
+        f.write(render)
+
+
+def _make_config_template(output_dir, css, data, const):
+
+    env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
+    template = env.get_template("template_config.html")
+
+    dims = data.dims
+    list_dims = [d for d in data.dims if 'prey' not in d]
+
+    outputs = {}
+    outputs['css'] = css
+    #outputs['dims'] = dims
+    #outputs['list_dims'] = list_dims
+    #outputs['start_date'] = data['time'][0].values
+    #outputs['end_date'] = data['time'][-1].values
+    outputs['length_figs'] = _plot_wl_community(output_dir, const, 'length', 'meters')
+    outputs['weight_figs'] = _plot_wl_community(output_dir, const, 'weight', 'kilograms')
+    outputs['trophic_figs'] = _plot_trophic_interactions(output_dir, const)
+    outputs['select_figs'] = _plot_ltl_selectivity(output_dir, const)
+
+    render = template.render(**outputs)
+
+    output_file = os.path.join(output_dir, 'html', 'config_report.html')
+    with open(output_file, "w") as f:
+        f.write(render)
+
+
+def _plot_wl_community(output_dir, data, varname, units):
+
+    output = {}
+
+    community_names = extract_community_names(data)
+
+    nb_community = len(community_names)
+    n_col = 3
+    n_row = ceil((1 + nb_community) / n_col)
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
+    for c in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, c+1)
+        if c+1 <= data.dims['c']:
+            length = data[varname].isel(c=c)
+            plt.plot(length.values, linewidth=THICK_LWD)
+            plt.xlim(0, length.shape[0]-1)
+            plt.ylabel('%s' %units, fontsize=FONT_SIZE)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+        else:
+            ax.axis('off')
+    output['wl_bycommunity'] = _savefig(output_dir, '%s_bycommunity.svg' %varname, 'svg')
+    plt.close(fig)
+
+    return output
+
+
+def _plot_trophic_interactions(output_dir, data):
+
+    trophic_interact = data['troph_interaction'].values
+
+    community_names = extract_community_names(data)
+    xlabel = []
+    for c in range(0, trophic_interact[0][0].shape[0]):
+        xlabel.append(community_names['Community ' + str(c)])
+
+    fig = plt.figure()
+    plt.subplots_adjust(wspace=0.8)
+    nd, npred, nprey = trophic_interact.shape
+    title = ['Day', 'Night']
+    for d in range(2):
+        ax = plt.subplot(1, 2, d+1)
+        cs = plt.imshow(trophic_interact[d], origin='lower', interpolation='none', cmap=plt.cm.jet)
+        for i in range(nprey + 1):
+            plt.axvline(i - 0.5, linestyle='--', linewidth=THIN_LWD, color='w')
+            plt.axhline(i - 0.5, linestyle='--', linewidth=THIN_LWD, color='w')
+        plt.title(title[d])
+        cs.set_clim(0, 1)
+        plt.xlabel('Prey')
+        plt.ylabel('Predator')
+        ax.set_xticks(np.arange(nprey))
+        ax.set_yticks(np.arange(npred))
+        ax.set_xticklabels(xlabel, rotation=45)
+        ax.set_yticklabels(xlabel, rotation=45)
+        ax.set_aspect('equal', 'box')
+    output = _savefig(output_dir, 'trophic_interactions.svg', 'svg')
+    plt.close(fig)
+    return output
+
 
 def _plot_ltl_selectivity(output_dir, data):
 
@@ -552,56 +596,6 @@ def _plot_ltl_selectivity(output_dir, data):
     plt.close(fig)
 
     return output
-
-def _plot_wl_community(output_dir, data, varname, units):
-
-    output = {}
-
-    community_names = extract_community_names(data)
-
-    nb_community = len(community_names)
-    n_col = 3
-    n_row = ceil((1 + nb_community) / n_col)
-
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for c in range(n_row*n_col):
-        ax = plt.subplot(n_row, n_col, c+1)
-        if c+1 <= data.dims['c']:
-            length = data[varname].isel(c=c)
-            plt.plot(length.values, linewidth=THICK_LWD)
-            plt.xlim(0, length.shape[0]-1)
-            plt.ylabel('%s' %units, fontsize=FONT_SIZE)
-            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-            plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
-            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        else:
-            ax.axis('off')
-    output['wl_bycommunity'] = _savefig(output_dir, '%s_bycommunity.svg' %varname, 'svg')
-    plt.close(fig)
-
-    return output
-
-
-def _plot_size_spectra(output_dir, mesh, data, const, maskdom, domname):
-
-    # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False, replace_dims={}, replace_const_dims={})
-    data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
-    data = extract_time_means(data)
-
-    fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT), dpi=300)
-    plot_oope_spectra(data, const, output_var='length', linewidth=THICK_LWD)
-    plt.gca().set_xscale('log')
-    plt.gca().set_yscale('log')
-    plt.xlabel('Length (m)', fontsize=FONT_SIZE)
-    plt.ylabel('OOPE (J/m)', fontsize=FONT_SIZE)
-    plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-    plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-    plt.legend(fontsize=FONT_SIZE)
-    figname = _savefig(output_dir, 'size_spectra_%s.svg' %domname, 'svg')
-    plt.close(figname)
-
-    return figname
 
 
 def _make_fisheries_template(output_dir, css, fishing_path, fishing_config_path, mesh, crs):
