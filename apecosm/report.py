@@ -1,12 +1,13 @@
 import os
 import sys
 import urllib
+from math import ceil
 import numpy as np
 import pkg_resources
 import jinja2
+import psutil
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
-from math import ceil
 import xarray as xr
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -16,22 +17,6 @@ from .extract import extract_oope_data, extract_time_means, open_apecosm_data, o
 from .misc import extract_community_names, compute_mean_min_max_ts, extract_fleet_names
 from .size_spectra import plot_oope_spectra
 plt.rcParams['text.usetex'] = False
-import psutil
-
-#global FONT_SIZE, LABEL_SIZE, THIN_LWD, REGULAR_LWD, THICK_LWD, COL_GRID, REGULAR_TRANSP, HIGH_TRANSP, FIG_WIDTH, FIG_HEIGHT, FIG_DPI, CB_SHRINK, COL_MAP
-#FONT_SIZE = 25
-#LABEL_SIZE = 25
-#THIN_LWD = 1
-#REGULAR_LWD = 2
-#THICK_LWD = 4
-#COL_GRID = (190/256, 190/256, 190/256)
-#REGULAR_TRANSP = 0.80
-#HIGH_TRANSP = 0.25
-#FIG_WIDTH = 12
-#FIG_HEIGHT = 6
-#FIG_DPI = 300
-#CB_SHRINK = 0.7
-#COL_MAP = 'RdYlBu_r'
 
 
 def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_dir='report', filecss='default', xarray_args={}):
@@ -89,6 +74,8 @@ def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_d
     template = env.get_template("banner.html")
 
     outputs = {'domains': domains}
+    if use_fishing == 1:
+        outputs = {'use_fishing': use_fishing}
     render = template.render(**outputs)
     output_file = os.path.join(report_dir, 'html', 'banner.html')
     with open(output_file, "w") as f:
@@ -115,7 +102,7 @@ def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_d
     with open(os.path.join(css_dir, 'styles.css'), 'w') as fout:
         fout.write(css)
 
-    _make_meta_template(report_dir, css, data, const)
+    _make_meta_template(report_dir, fishing_config_dir, css, data, const) # in the long run, no need for fshing_config_dir (fleet_names included in const in the future)
     print('meta - cpu % used:', psutil.cpu_percent())
     print('meta - memory % used:', psutil.virtual_memory()[2])
     _make_config_template(report_dir, css, data, const)
@@ -143,9 +130,9 @@ def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_d
         f.write(render)
 
 
-def _savefig(report_dir, fig_name, format):
+def _savefig(report_dir, fig_name, pic_format):
     img_file = os.path.join(report_dir, 'html', 'images', fig_name)
-    plt.savefig(img_file, format=format, bbox_inches='tight')
+    plt.savefig(img_file, format=pic_format, bbox_inches='tight')
     return os.path.join('images', fig_name)
 
 
@@ -163,13 +150,13 @@ def _make_result_template(report_dir, css, data, const, mesh, crs, domains=None,
 
     outputs = {}
     outputs['css'] = css
-    outputs['domain_figs'] = _plot_domain_maps(report_dir, mesh, crs, maskdom, domname) #ok
+    #outputs['domain_figs'] = _plot_domain_maps(report_dir, mesh, crs, maskdom, domname) #ok
     #outputs['ts_figs'] = _plot_time_series(report_dir, mesh, data, const, maskdom, domname) #ok
-    outputs['mean_length_figs'] = _plot_mean_size(report_dir, mesh, data, const, maskdom, domname, 'length')  # ok
-    outputs['mean_weight_figs'] = _plot_mean_size(report_dir, mesh, data, const, maskdom, domname, 'weight')  # ok
-    outputs['cumbiom_figs'] = _plot_integrated_time_series(report_dir, mesh, data, const, maskdom, domname) #ok
+    #outputs['mean_length_figs'] = _plot_mean_size(report_dir, mesh, data, const, maskdom, domname, 'length')  # ok
+    #outputs['mean_weight_figs'] = _plot_mean_size(report_dir, mesh, data, const, maskdom, domname, 'weight')  # ok
+    #outputs['cumbiom_figs'] = _plot_integrated_time_series(report_dir, mesh, data, const, maskdom, domname) #ok
     #outputs['maps_figs'] = _plot_mean_maps(report_dir, mesh, data, const, crs, maskdom, domname) # nok--> os kill when plotting
-    outputs['spectra_figs'] = _plot_size_spectra(report_dir, mesh, data, const, maskdom, domname) #ok
+    #outputs['spectra_figs'] = _plot_size_spectra(report_dir, mesh, data, const, maskdom, domname) #ok
     if 'repfonct_day' in data.variables:
         outputs['repfonct_figs'] = _plot_weighted_values(report_dir, mesh, data, const, 'repfonct_day', maskdom, domname)
     if 'mort_day' in data.variables:
@@ -228,10 +215,10 @@ def _plot_time_series(report_dir, mesh, data, const, maskdom, domname):
     n_col = 3
     n_row = ceil(n_plot/n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
-        if i+1==1:
+        if i+1 == 1:
             total.plot.line(linewidth=THICK_LWD)
             plt.title('Total', fontsize=FONT_SIZE)
             plt.ylabel('Joules', fontsize=FONT_SIZE)
@@ -281,7 +268,7 @@ def _plot_mean_size(report_dir, mesh, data, const, maskdom, domname, varname):
     n_col = 3
     n_row = ceil(n_plot/n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 == 1:
@@ -323,7 +310,7 @@ def _plot_integrated_time_series(report_dir, mesh, data, const, maskdom, domname
     n_col = 3
     n_row = ceil(n_plot/n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 <= n_plot:
@@ -371,9 +358,9 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, maskdom, domname):
     total = output.sum(dim='c')
     total = total.where(total > 0)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
-        ax = plt.subplot(n_row, n_col, c+1, projection=crs_out)
+        ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
         if i+1 == 1:
             cs = plt.pcolormesh(lonf, latf, total.isel(y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
             cb = plt.colorbar(cs, shrink=CB_SHRINK)
@@ -433,7 +420,7 @@ def _plot_weighted_values(report_dir, mesh, data, const, varname, maskdom, domna
     n_col = 3
     n_row = ceil(n_plot/n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 <= n_plot:
@@ -475,7 +462,7 @@ def _plot_diet_values(report_dir, mesh, data, const, maskdom, domname):
     for c in range(n_community):
         legend.append(community_names['Community ' + str(c)])
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 <= n_plot:
@@ -498,22 +485,20 @@ def _plot_diet_values(report_dir, mesh, data, const, maskdom, domname):
     return fig_name
 
 
-def _make_meta_template(report_dir, css, data, const):
+def _make_meta_template(report_dir, fishing_config_dir, css, data, const):
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
     template = env.get_template("template_meta.html")
 
     community_names = extract_community_names(const)
-    #fleet_names = extract_fleet_names(fishing_fishing_config_dir)
-    #outputs['fleet_names'] = fleet_names
-    dims = data.dims
-    list_dims = [d for d in data.dims if 'prey' not in d]
+    fleet_names = extract_fleet_names(fishing_config_dir)
 
     outputs = {}
     outputs['css'] = css
-    outputs['comnames'] = community_names
-    outputs['dims'] = dims
-    outputs['list_dims'] = list_dims
+    outputs['community_names'] = community_names
+    outputs['fleet_names'] = fleet_names
+    outputs['dims'] = data.dims
+    outputs['list_dims'] = [d for d in data.dims if 'prey' not in d]
     outputs['start_date'] = data['time'][0].values
     outputs['end_date'] = data['time'][-1].values
 
@@ -552,7 +537,7 @@ def _plot_wl_community(report_dir, data, varname, units):
     n_col = 3
     n_row = ceil(n_plot/n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 <= n_plot:
@@ -614,7 +599,7 @@ def _plot_ltl_selectivity(report_dir, data):
     n_col = 3
     n_row = ceil(n_plot/n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 <= n_plot:
@@ -638,13 +623,13 @@ def _plot_ltl_selectivity(report_dir, data):
     return fig_name
 
 
-def _make_fisheries_template(report_dir, css, fishing_output_dir, fishing_fishing_config_dir, mesh, crs):
+def _make_fisheries_template(report_dir, css, fishing_output_dir, fishing_config_dir, mesh, crs):
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
     template = env.get_template("template_fisheries.html")
 
     market, fleet_maps, fleet_summary, fleet_parameters = open_fishing_data(fishing_output_dir)
-    fleet_names = extract_fleet_names(fishing_fishing_config_dir)
+    fleet_names = extract_fleet_names(fishing_config_dir)
     #fleet_names = ['east_pacific_ps', 'atlantic_ps', 'indian_ps', 'west_pacific_ps', 'longline', 'indian_ss']
 
     outputs = {}
@@ -682,13 +667,13 @@ def _plot_fleet_size(report_dir, fleet_summary, fleet_names):
     col_2 = (154/256, 190/256, 219/256)
     col_3 = (165/256, 215/256, 164/256)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI, sharex=True)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI, sharex=True)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 <= n_plot:
-            av_1, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['effective_effort'], 365)
-            av_2, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['active_vessels'], 365)
-            av_3, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['total_vessels'], 365)
+            av_1, _, _, time = compute_mean_min_max_ts(fleet_summary[i]['effective_effort'], 365)
+            av_2, _, _, _ = compute_mean_min_max_ts(fleet_summary[i]['active_vessels'], 365)
+            av_3, _, _, _ = compute_mean_min_max_ts(fleet_summary[i]['total_vessels'], 365)
             plt.plot(time, av_1, color='black', linewidth=THIN_LWD)
             plt.plot(time, av_2, color='black', linewidth=THIN_LWD)
             plt.plot(time, av_3, color='black', linewidth=THIN_LWD)
@@ -723,7 +708,7 @@ def _plot_fishing_effective_effort(report_dir, fleet_maps, fleet_names, mesh, cr
 
     cb_qu = 15
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
         if i+1 <= n_plot:
@@ -765,13 +750,13 @@ def _plot_landing_rate_eez_hs(report_dir, fleet_summary, fleet_names):
     col_1 = (241/256, 140/256, 141/256)
     col_2 = (154/256, 190/256, 219/256)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI, sharex=True)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI, sharex=True)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 <= n_plot:
             ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-            av_1, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * fleet_summary[i]['current_total_landings_rate_from_EEZ'], 365)
-            av_2, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * (fleet_summary[i]['step_landings']-fleet_summary[i]['current_total_landings_rate_from_EEZ']), 365)
+            av_1, _, _, time = compute_mean_min_max_ts(0.000001 * 365 * fleet_summary[i]['current_total_landings_rate_from_EEZ'], 365)
+            av_2, _, _, _ = compute_mean_min_max_ts(0.000001 * 365 * (fleet_summary[i]['step_landings']-fleet_summary[i]['current_total_landings_rate_from_EEZ']), 365)
             plt.plot(time, av_1, color='black', linewidth=THIN_LWD)
             plt.plot(time, av_1+av_2, color='black', linewidth=THIN_LWD)
             plt.fill_between(time, av_1+av_2, av_1, color=col_2, alpha=REGULAR_TRANSP, label='HS')
@@ -799,7 +784,7 @@ def _plot_landing_rate_total(report_dir, fleet_summary, fleet_names):
 
     col_1 = (0/255, 0/255, 255/255)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 <= n_plot:
@@ -835,7 +820,7 @@ def _plot_landing_rate_by_vessels(report_dir, fleet_maps, fleet_names, mesh, crs
 
     cb_qu = 15
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
         if i+1 <= n_plot:
@@ -882,7 +867,7 @@ def _plot_landing_rate_density(report_dir, fleet_maps, fleet_names, mesh, crs_ou
 
     cb_qu = 15
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
         if i+1 <= n_plot:
@@ -923,7 +908,7 @@ def _plot_average_fishing_distance(report_dir, fleet_summary, fleet_names):
 
     col_1 = (255/255, 0/255, 0/255)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 <= n_plot:
@@ -984,7 +969,7 @@ def _plot_yearly_profit(report_dir, fleet_summary, fleet_names):
 
     col_1 = (255/255, 165/255, 0/255)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 <= n_plot:
@@ -1015,7 +1000,7 @@ def _plot_savings(report_dir, fleet_summary, fleet_names):
 
     col_1 = (0/255, 100/255, 0/255)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 <= n_plot:
@@ -1116,7 +1101,7 @@ def _plot_cost_revenue_by_vessels(report_dir, fleet_summary, fleet_names):
     col_1 = (0/255, 0/255, 255/255)
     col_2 = (255/255, 0/255, 0/255)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 <= n_plot:
@@ -1152,7 +1137,7 @@ def _plot_fishing_time_fraction(report_dir, fleet_summary, fleet_names):
 
     col_1 = (0/255, 104/255, 139/255)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
         if i+1 <= n_plot:

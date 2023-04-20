@@ -9,7 +9,9 @@
     <article class="page-header" vertical-align="middle">
         <a href="config_meta.html" class="btn" target=MAIN-WINDOW>Description</a>
         <a href="config_report.html" class="btn" target=MAIN-WINDOW>Configuration</a>
+        {% if use_fishing is defined %}
         <a href="fisheries_report.html" class="btn" target=MAIN-WINDOW>Fisheries</a>
+        {% endif %}
         <a href="results_report_global.html" class="btn" target=MAIN-WINDOW>Global</a>
         {% for item in domains %}
             <a href="results_report_{{ item }}.html" class="btn" target=MAIN-WINDOW>{{ item }}</a>
