@@ -18,27 +18,50 @@ from .size_spectra import plot_oope_spectra
 plt.rcParams['text.usetex'] = False
 import psutil
 
-global FONT_SIZE, LABEL_SIZE, THIN_LWD, REGULAR_LWD, THICK_LWD, COL_GRID, REGULAR_TRANSP, HIGH_TRANSP, FIG_WIDTH, FIG_HEIGHT, FIG_DPI, CB_SHRINK, COL_MAP
-FONT_SIZE = 25
-LABEL_SIZE = 25
-THIN_LWD = 1
-REGULAR_LWD = 2
-THICK_LWD = 4
-COL_GRID = (190/256, 190/256, 190/256)
-REGULAR_TRANSP = 0.80
-HIGH_TRANSP = 0.25
-FIG_WIDTH = 12
-FIG_HEIGHT = 6
-FIG_DPI = 300
-CB_SHRINK = 0.7
-COL_MAP = 'RdYlBu_r'
+#global FONT_SIZE, LABEL_SIZE, THIN_LWD, REGULAR_LWD, THICK_LWD, COL_GRID, REGULAR_TRANSP, HIGH_TRANSP, FIG_WIDTH, FIG_HEIGHT, FIG_DPI, CB_SHRINK, COL_MAP
+#FONT_SIZE = 25
+#LABEL_SIZE = 25
+#THIN_LWD = 1
+#REGULAR_LWD = 2
+#THICK_LWD = 4
+#COL_GRID = (190/256, 190/256, 190/256)
+#REGULAR_TRANSP = 0.80
+#HIGH_TRANSP = 0.25
+#FIG_WIDTH = 12
+#FIG_HEIGHT = 6
+#FIG_DPI = 300
+#CB_SHRINK = 0.7
+#COL_MAP = 'RdYlBu_r'
 
 
-def report(input_dir, mesh_file, fishing_path, config_path, domain_file=None, crs=ccrs.PlateCarree(), output_dir='report', filecss='default', xarray_args={}):
+def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_dir='report', filecss='default', xarray_args={}):
+
+    # read report parameters
+    mesh_file = report_parameters['mesh_file']
+    output_dir = report_parameters['output_dir']
+    fishing_output_dir = report_parameters['fishing_output_dir']
+    fishing_config_dir = report_parameters['fishing_config_dir']
+    use_fishing = 0
+    if fishing_output_dir != '' and fishing_config_dir != '':
+        use_fishing = 1
+    global FONT_SIZE, LABEL_SIZE, THIN_LWD, REGULAR_LWD, THICK_LWD, COL_GRID, REGULAR_TRANSP, HIGH_TRANSP, FIG_WIDTH, FIG_HEIGHT, FIG_DPI, CB_SHRINK, COL_MAP
+    FONT_SIZE = report_parameters['FONT_SIZE']
+    LABEL_SIZE = report_parameters['LABEL_SIZE']
+    THIN_LWD = report_parameters['THIN_LWD']
+    REGULAR_LWD = report_parameters['REGULAR_LWD']
+    THICK_LWD = report_parameters['THICK_LWD']
+    COL_GRID = report_parameters['COL_GRID']
+    REGULAR_TRANSP = report_parameters['REGULAR_TRANSP']
+    HIGH_TRANSP = report_parameters['HIGH_TRANSP']
+    FIG_WIDTH = report_parameters['FIG_WIDTH']
+    FIG_HEIGHT = report_parameters['FIG_HEIGHT']
+    FIG_DPI = report_parameters['FIG_DPI']
+    CB_SHRINK = report_parameters['CB_SHRINK']
+    COL_MAP = report_parameters['COL_MAP']
 
     mesh = open_mesh_mask(mesh_file)
-    const = open_constants(input_dir)
-    data = open_apecosm_data(input_dir, **xarray_args)
+    const = open_constants(output_dir)
+    data = open_apecosm_data(output_dir, **xarray_args)
 
     # If a domain file is provided, extracts it and store it into a dictionary
     if domain_file is None:
@@ -51,14 +74,14 @@ def report(input_dir, mesh_file, fishing_path, config_path, domain_file=None, cr
 
     # create the output architecture
     # first create html folder
-    html_dir = os.path.join(output_dir, 'html')
+    html_dir = os.path.join(report_dir, 'html')
     os.makedirs(html_dir, exist_ok=True)
 
-    images_dir = os.path.join(output_dir, 'html/images')
+    images_dir = os.path.join(report_dir, 'html/images')
     os.makedirs(images_dir, exist_ok=True)
 
     # create css folder
-    css_dir = os.path.join(output_dir, 'css')
+    css_dir = os.path.join(report_dir, 'css')
     os.makedirs(css_dir, exist_ok=True)
 
     # process the banner file, by adding as many tabs as domains
@@ -67,7 +90,7 @@ def report(input_dir, mesh_file, fishing_path, config_path, domain_file=None, cr
 
     outputs = {'domains': domains}
     render = template.render(**outputs)
-    output_file = os.path.join(output_dir, 'html', 'banner.html')
+    output_file = os.path.join(report_dir, 'html', 'banner.html')
     with open(output_file, "w") as f:
         f.write(render)
 
@@ -92,21 +115,21 @@ def report(input_dir, mesh_file, fishing_path, config_path, domain_file=None, cr
     with open(os.path.join(css_dir, 'styles.css'), 'w') as fout:
         fout.write(css)
 
-    _make_meta_template(output_dir, css, data, const)
+    _make_meta_template(report_dir, css, data, const)
     print('meta - cpu % used:', psutil.cpu_percent())
     print('meta - memory % used:', psutil.virtual_memory()[2])
-    _make_config_template(output_dir, css, data, const)
+    _make_config_template(report_dir, css, data, const)
     print('conf - cpu % used:', psutil.cpu_percent())
     print('conf - memory % used:', psutil.virtual_memory()[2])
-    _make_result_template(output_dir, css, data, const, mesh, crs)
+    _make_result_template(report_dir, css, data, const, mesh, crs)
+    for domname in domains:
+        _make_result_template(report_dir, css, data, const, mesh, crs, domains, domname)
     print('res - cpu % used:', psutil.cpu_percent())
     print('res - memory % used:', psutil.virtual_memory()[2])
-    _make_fisheries_template(output_dir, css, fishing_path, config_path, mesh, crs)
+    if use_fishing == 1:
+        _make_fisheries_template(report_dir, css, fishing_output_dir, fishing_config_dir, mesh, crs)
     print('fisheries - cpu % used:', psutil.cpu_percent())
     print('fisheries - memory % used:', psutil.virtual_memory()[2])
-    for domname in domains:
-        _make_result_template(output_dir, css, data, const, mesh, crs, domains, domname)
-
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
     template = env.get_template("template.html")
@@ -116,17 +139,17 @@ def report(input_dir, mesh_file, fishing_path, config_path, domain_file=None, cr
 
     render = template.render(**outputs)
 
-    with open(os.path.join(output_dir, 'index.html'), "w") as f:
+    with open(os.path.join(report_dir, 'index.html'), "w") as f:
         f.write(render)
 
 
-def _savefig(output_dir, fig_name, format):
-    img_file = os.path.join(output_dir, 'html', 'images', fig_name)
+def _savefig(report_dir, fig_name, format):
+    img_file = os.path.join(report_dir, 'html', 'images', fig_name)
     plt.savefig(img_file, format=format, bbox_inches='tight')
     return os.path.join('images', fig_name)
 
 
-def _make_result_template(output_dir, css, data, const, mesh, crs, domains=None, domname=None):
+def _make_result_template(report_dir, css, data, const, mesh, crs, domains=None, domname=None):
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
     template = env.get_template("template_results.html")
@@ -140,28 +163,28 @@ def _make_result_template(output_dir, css, data, const, mesh, crs, domains=None,
 
     outputs = {}
     outputs['css'] = css
-    outputs['domain_figs'] = _plot_domain_maps(output_dir, mesh, crs, maskdom, domname) #ok
-    #outputs['ts_figs'] = _plot_time_series(output_dir, mesh, data, const, maskdom, domname) #ok
-    outputs['mean_length_figs'] = _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, 'length')  # ok
-    outputs['mean_weight_figs'] = _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, 'weight')  # ok
-    outputs['cumbiom_figs'] = _plot_integrated_time_series(output_dir, mesh, data, const, maskdom, domname) #ok
-    #outputs['maps_figs'] = _plot_mean_maps(output_dir, mesh, data, const, crs, maskdom, domname) # nok--> os kill when plotting
-    outputs['spectra_figs'] = _plot_size_spectra(output_dir, mesh, data, const, maskdom, domname) #ok
+    outputs['domain_figs'] = _plot_domain_maps(report_dir, mesh, crs, maskdom, domname) #ok
+    #outputs['ts_figs'] = _plot_time_series(report_dir, mesh, data, const, maskdom, domname) #ok
+    outputs['mean_length_figs'] = _plot_mean_size(report_dir, mesh, data, const, maskdom, domname, 'length')  # ok
+    outputs['mean_weight_figs'] = _plot_mean_size(report_dir, mesh, data, const, maskdom, domname, 'weight')  # ok
+    outputs['cumbiom_figs'] = _plot_integrated_time_series(report_dir, mesh, data, const, maskdom, domname) #ok
+    #outputs['maps_figs'] = _plot_mean_maps(report_dir, mesh, data, const, crs, maskdom, domname) # nok--> os kill when plotting
+    outputs['spectra_figs'] = _plot_size_spectra(report_dir, mesh, data, const, maskdom, domname) #ok
     if 'repfonct_day' in data.variables:
-        outputs['repfonct_figs'] = _plot_weighted_values(output_dir, mesh, data, const, 'repfonct_day', maskdom, domname)
+        outputs['repfonct_figs'] = _plot_weighted_values(report_dir, mesh, data, const, 'repfonct_day', maskdom, domname)
     if 'mort_day' in data.variables:
-        outputs['mort_figs'] = _plot_weighted_values(output_dir, mesh, data, const, 'mort_day', maskdom, domname)
+        outputs['mort_figs'] = _plot_weighted_values(report_dir, mesh, data, const, 'mort_day', maskdom, domname)
     if 'community_diet_values' in data.variables:
-        outputs['diet_figs'] = _plot_diet_values(output_dir, mesh, data, const, maskdom, domname)
+        outputs['diet_figs'] = _plot_diet_values(report_dir, mesh, data, const, maskdom, domname)
 
     render = template.render(**outputs)
 
-    output_file = os.path.join(output_dir, 'html', 'results_report_%s.html' %domname)
+    output_file = os.path.join(report_dir, 'html', 'results_report_%s.html' %domname)
     with open(output_file, "w") as f:
         f.write(render)
 
 
-def _plot_domain_maps(output_dir, mesh, crs_out, maskdom, domname):
+def _plot_domain_maps(report_dir, mesh, crs_out, maskdom, domname):
 
     crs_in = ccrs.PlateCarree()
 
@@ -187,12 +210,12 @@ def _plot_domain_maps(output_dir, mesh, crs_out, maskdom, domname):
     plt.title('%s mask' %domname, fontsize=FONT_SIZE)
     ax.add_feature(cfeature.LAND, zorder=100)
     ax.add_feature(cfeature.COASTLINE, zorder=101)
-    fig_name = _savefig(output_dir, 'domain_map_%s.svg' %domname, 'svg')
+    fig_name = _savefig(report_dir, 'domain_map_%s.svg' %domname, 'svg')
     plt.close(fig)
     return fig_name
 
 
-def _plot_time_series(output_dir, mesh, data, const, maskdom, domname):
+def _plot_time_series(report_dir, mesh, data, const, maskdom, domname):
 
     output = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=True, compute_mean=False)
     output = output.sum(dim='w')
@@ -231,13 +254,13 @@ def _plot_time_series(output_dir, mesh, data, const, maskdom, domname):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'time_series_com_%s.svg' %domname, 'svg')
+    fig_name = _savefig(report_dir, 'time_series_com_%s.svg' %domname, 'svg')
     plt.close(fig)
 
     return fig_name
 
 
-def _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, varname):
+def _plot_mean_size(report_dir, mesh, data, const, maskdom, domname, varname):
 
     mean_size_tot = extract_mean_size(data, const, mesh, varname, maskdom=maskdom, aggregate=True)
     mean_size = extract_mean_size(data, const, mesh, varname, maskdom=maskdom)
@@ -282,13 +305,13 @@ def _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, varname):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'mean_%s_comunities_and_total_%s.svg' %(varname, domname), 'svg')
+    fig_name = _savefig(report_dir, 'mean_%s_comunities_and_total_%s.svg' %(varname, domname), 'svg')
     plt.close(fig)
 
     return fig_name
 
 
-def _plot_integrated_time_series(output_dir, mesh, data, const, maskdom, domname):
+def _plot_integrated_time_series(report_dir, mesh, data, const, maskdom, domname):
 
     size_prop = compute_size_cumprop(mesh, data, const, maskdom=maskdom)
     size_prop = extract_time_means(size_prop)
@@ -319,12 +342,12 @@ def _plot_integrated_time_series(output_dir, mesh, data, const, maskdom, domname
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'biomass_cumsum_bycom_%s.svg' %domname, 'svg')
+    fig_name = _savefig(report_dir, 'biomass_cumsum_bycom_%s.svg' %domname, 'svg')
     plt.close(fig)
     return fig_name
 
 
-def _plot_mean_maps(output_dir, mesh, data, const, crs_out, maskdom, domname):
+def _plot_mean_maps(report_dir, mesh, data, const, crs_out, maskdom, domname):
 
     crs_in = ccrs.PlateCarree()
 
@@ -373,12 +396,12 @@ def _plot_mean_maps(output_dir, mesh, data, const, crs_out, maskdom, domname):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'mean_maps_com_%s.svg' %domname, 'svg')
+    fig_name = _savefig(report_dir, 'mean_maps_com_%s.svg' %domname, 'svg')
     plt.close(fig)
     return fig_name
 
 
-def _plot_size_spectra(output_dir, mesh, data, const, maskdom, domname):
+def _plot_size_spectra(report_dir, mesh, data, const, maskdom, domname):
 
     # extract data in the entire domain, integrates over space
     data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
@@ -393,12 +416,12 @@ def _plot_size_spectra(output_dir, mesh, data, const, maskdom, domname):
     plt.tick_params(axis='both', labelsize=LABEL_SIZE)
     plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
     plt.legend(fontsize=FONT_SIZE)
-    fig_name = _savefig(output_dir, 'size_spectra_%s.svg' %domname, 'svg')
+    fig_name = _savefig(report_dir, 'size_spectra_%s.svg' %domname, 'svg')
     plt.close(fig)
     return fig_name
 
 
-def _plot_weighted_values(output_dir, mesh, data, const, varname, maskdom, domname):
+def _plot_weighted_values(report_dir, mesh, data, const, varname, maskdom, domname):
 
     output = extract_weighted_data(data, const, mesh, varname, maskdom)
     output = extract_time_means(output)
@@ -428,12 +451,12 @@ def _plot_weighted_values(output_dir, mesh, data, const, varname, maskdom, domna
             plt.ylim(toplot.min(), toplot.max())
         else:
             ax.axis('off')
-    fig_name = _savefig(output_dir, 'weighted_%s_by_com_%s.svg' %(varname, domname), 'svg')
+    fig_name = _savefig(report_dir, 'weighted_%s_by_com_%s.svg' %(varname, domname), 'svg')
     plt.close(fig)
     return fig_name
 
 
-def _plot_diet_values(output_dir, mesh, data, const, maskdom, domname):
+def _plot_diet_values(report_dir, mesh, data, const, maskdom, domname):
 
     if 'community' in data.dims:
         data = data.rename({'community' : 'c'})
@@ -470,18 +493,18 @@ def _plot_diet_values(output_dir, mesh, data, const, maskdom, domname):
             plt.legend(legend, fontsize=FONT_SIZE)
         else:
             ax.axis('off')
-    fig_name = _savefig(output_dir, 'diets_com_%s.svg' %domname, 'svg')
+    fig_name = _savefig(report_dir, 'diets_com_%s.svg' %domname, 'svg')
     plt.close(fig)
     return fig_name
 
 
-def _make_meta_template(output_dir, css, data, const):
+def _make_meta_template(report_dir, css, data, const):
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
     template = env.get_template("template_meta.html")
 
     community_names = extract_community_names(const)
-    #fleet_names = extract_fleet_names(fishing_config_path)
+    #fleet_names = extract_fleet_names(fishing_fishing_config_dir)
     #outputs['fleet_names'] = fleet_names
     dims = data.dims
     list_dims = [d for d in data.dims if 'prey' not in d]
@@ -496,31 +519,31 @@ def _make_meta_template(output_dir, css, data, const):
 
     render = template.render(**outputs)
 
-    output_file = os.path.join(output_dir, 'html', 'config_meta.html')
+    output_file = os.path.join(report_dir, 'html', 'config_meta.html')
     with open(output_file, "w") as f:
         f.write(render)
 
 
-def _make_config_template(output_dir, css, data, const):
+def _make_config_template(report_dir, css, data, const):
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
     template = env.get_template("template_config.html")
 
     outputs = {}
     outputs['css'] = css
-    outputs['length_figs'] = _plot_wl_community(output_dir, const, 'length', 'meters')
-    outputs['weight_figs'] = _plot_wl_community(output_dir, const, 'weight', 'kilograms')
-    outputs['trophic_figs'] = _plot_trophic_interactions(output_dir, const)
-    outputs['select_figs'] = _plot_ltl_selectivity(output_dir, const)
+    outputs['length_figs'] = _plot_wl_community(report_dir, const, 'length', 'meters')
+    outputs['weight_figs'] = _plot_wl_community(report_dir, const, 'weight', 'kilograms')
+    outputs['trophic_figs'] = _plot_trophic_interactions(report_dir, const)
+    outputs['select_figs'] = _plot_ltl_selectivity(report_dir, const)
 
     render = template.render(**outputs)
 
-    output_file = os.path.join(output_dir, 'html', 'config_report.html')
+    output_file = os.path.join(report_dir, 'html', 'config_report.html')
     with open(output_file, "w") as f:
         f.write(render)
 
 
-def _plot_wl_community(output_dir, data, varname, units):
+def _plot_wl_community(report_dir, data, varname, units):
 
     community_names = extract_community_names(data)
 
@@ -543,13 +566,13 @@ def _plot_wl_community(output_dir, data, varname, units):
             plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
         else:
             ax.axis('off')
-    fig_name = _savefig(output_dir, '%s_by_com.svg' %varname, 'svg')
+    fig_name = _savefig(report_dir, '%s_by_com.svg' %varname, 'svg')
     plt.close(fig)
 
     return fig_name
 
 
-def _plot_trophic_interactions(output_dir, data):
+def _plot_trophic_interactions(report_dir, data):
 
     trophic_interact = data['troph_interaction'].values
 
@@ -577,12 +600,12 @@ def _plot_trophic_interactions(output_dir, data):
         ax.set_xticklabels(xlabel, rotation=45)
         ax.set_yticklabels(xlabel, rotation=45)
         ax.set_aspect('equal', 'box')
-    fig_name = _savefig(output_dir, 'trophic_interactions.svg', 'svg')
+    fig_name = _savefig(report_dir, 'trophic_interactions.svg', 'svg')
     plt.close(fig)
     return fig_name
 
 
-def _plot_ltl_selectivity(output_dir, data):
+def _plot_ltl_selectivity(report_dir, data):
 
     community_names = extract_community_names(data)
 
@@ -609,46 +632,46 @@ def _plot_ltl_selectivity(output_dir, data):
             plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
         else:
             ax.axis('off')
-    fig_name = _savefig(output_dir, 'selectivity_com_by_com.svg', 'svg')
+    fig_name = _savefig(report_dir, 'selectivity_com_by_com.svg', 'svg')
     plt.close(fig)
 
     return fig_name
 
 
-def _make_fisheries_template(output_dir, css, fishing_path, fishing_config_path, mesh, crs):
+def _make_fisheries_template(report_dir, css, fishing_output_dir, fishing_fishing_config_dir, mesh, crs):
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
     template = env.get_template("template_fisheries.html")
 
-    market, fleet_maps, fleet_summary, fleet_parameters = open_fishing_data(fishing_path)
-    fleet_names = extract_fleet_names(fishing_config_path)
+    market, fleet_maps, fleet_summary, fleet_parameters = open_fishing_data(fishing_output_dir)
+    fleet_names = extract_fleet_names(fishing_fishing_config_dir)
     #fleet_names = ['east_pacific_ps', 'atlantic_ps', 'indian_ps', 'west_pacific_ps', 'longline', 'indian_ss']
 
     outputs = {}
     outputs['css'] = css
-    outputs['fleet_size'] = _plot_fleet_size(output_dir, fleet_summary, fleet_names) #ok
-    outputs['fishing_effective_effort'] = _plot_fishing_effective_effort(output_dir, fleet_maps, fleet_names, mesh, crs) #ok
-    outputs['landing_rate_eez_hs'] = _plot_landing_rate_eez_hs(output_dir, fleet_summary, fleet_names) #ok
-    outputs['landing_rate_total'] = _plot_landing_rate_total(output_dir, fleet_summary, fleet_names) #ok
-    outputs['landing_rate_by_vessels'] = _plot_landing_rate_by_vessels(output_dir, fleet_maps, fleet_names, mesh, crs) #ok
-    outputs['landing_rate_density'] = _plot_landing_rate_density(output_dir, fleet_maps, fleet_names, mesh, crs) #ok
-    outputs['average_fishing_distance'] = _plot_average_fishing_distance(output_dir, fleet_summary, fleet_names) #ok
-    outputs['fuel_use_intensity'] = _plot_fuel_use_intensity(output_dir, fleet_summary, fleet_names) #ok
-    outputs['yearly_profit'] = _plot_yearly_profit(output_dir, fleet_summary, fleet_names) #ok
-    outputs['savings'] = _plot_savings(output_dir, fleet_summary, fleet_names) #ok
-    outputs['fish_price'] = _plot_fish_price(output_dir, market, fleet_names) #ok
-    outputs['capture_landing_rate'] = _plot_capture_landing_rate(output_dir, fleet_summary, fleet_names) #ok
-    outputs['cost_revenue_by_vessels'] = _plot_cost_revenue_by_vessels(output_dir, fleet_summary, fleet_names) #ok
-    outputs['fishing_time_fraction'] = _plot_fishing_time_fraction(output_dir, fleet_summary, fleet_names) #ok
+    outputs['fleet_size'] = _plot_fleet_size(report_dir, fleet_summary, fleet_names) #ok
+    outputs['fishing_effective_effort'] = _plot_fishing_effective_effort(report_dir, fleet_maps, fleet_names, mesh, crs) #ok
+    outputs['landing_rate_eez_hs'] = _plot_landing_rate_eez_hs(report_dir, fleet_summary, fleet_names) #ok
+    outputs['landing_rate_total'] = _plot_landing_rate_total(report_dir, fleet_summary, fleet_names) #ok
+    outputs['landing_rate_by_vessels'] = _plot_landing_rate_by_vessels(report_dir, fleet_maps, fleet_names, mesh, crs) #ok
+    outputs['landing_rate_density'] = _plot_landing_rate_density(report_dir, fleet_maps, fleet_names, mesh, crs) #ok
+    outputs['average_fishing_distance'] = _plot_average_fishing_distance(report_dir, fleet_summary, fleet_names) #ok
+    outputs['fuel_use_intensity'] = _plot_fuel_use_intensity(report_dir, fleet_summary, fleet_names) #ok
+    outputs['yearly_profit'] = _plot_yearly_profit(report_dir, fleet_summary, fleet_names) #ok
+    outputs['savings'] = _plot_savings(report_dir, fleet_summary, fleet_names) #ok
+    outputs['fish_price'] = _plot_fish_price(report_dir, market, fleet_names) #ok
+    outputs['capture_landing_rate'] = _plot_capture_landing_rate(report_dir, fleet_summary, fleet_names) #ok
+    outputs['cost_revenue_by_vessels'] = _plot_cost_revenue_by_vessels(report_dir, fleet_summary, fleet_names) #ok
+    outputs['fishing_time_fraction'] = _plot_fishing_time_fraction(report_dir, fleet_summary, fleet_names) #ok
 
     render = template.render(**outputs)
 
-    output_file = os.path.join(output_dir, 'html', 'fisheries_report.html')
+    output_file = os.path.join(report_dir, 'html', 'fisheries_report.html')
     with open(output_file, "w") as f:
         f.write(render)
 
 
-def _plot_fleet_size(output_dir, fleet_summary, fleet_names):
+def _plot_fleet_size(report_dir, fleet_summary, fleet_names):
 
     n_fleet = len(fleet_summary)
     n_plot = n_fleet
@@ -681,12 +704,12 @@ def _plot_fleet_size(output_dir, fleet_summary, fleet_names):
             ax.axis('off')
     fig.tight_layout()
     plt.legend(loc='best', fontsize=FONT_SIZE)
-    fig_name = _savefig(output_dir, 'fleet_size.png', 'png')
+    fig_name = _savefig(report_dir, 'fleet_size.png', 'png')
     plt.close(fig_name)
     return fig_name
 
 
-def _plot_fishing_effective_effort(output_dir, fleet_maps, fleet_names, mesh, crs_out):
+def _plot_fishing_effective_effort(report_dir, fleet_maps, fleet_names, mesh, crs_out):
 
     crs_in = ccrs.PlateCarree()
 
@@ -727,12 +750,12 @@ def _plot_fishing_effective_effort(output_dir, fleet_maps, fleet_names, mesh, cr
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'fishing_effective_effort.png', 'png')
+    fig_name = _savefig(report_dir, 'fishing_effective_effort.png', 'png')
     plt.close(fig_name)
     return fig_name
 
 
-def _plot_landing_rate_eez_hs(output_dir, fleet_summary, fleet_names):
+def _plot_landing_rate_eez_hs(report_dir, fleet_summary, fleet_names):
 
     n_fleet = len(fleet_summary)
     n_plot = n_fleet
@@ -762,12 +785,12 @@ def _plot_landing_rate_eez_hs(output_dir, fleet_summary, fleet_names):
             ax.axis('off')
     fig.tight_layout()
     plt.legend(loc='best', fontsize=FONT_SIZE)
-    fig_name = _savefig(output_dir, 'landing_rate_eez_hs.png', 'png')
+    fig_name = _savefig(report_dir, 'landing_rate_eez_hs.png', 'png')
     plt.close(fig_name)
     return fig_name
 
 
-def _plot_landing_rate_total(output_dir, fleet_summary, fleet_names):
+def _plot_landing_rate_total(report_dir, fleet_summary, fleet_names):
 
     n_fleet = len(fleet_summary)
     n_plot = n_fleet
@@ -793,12 +816,12 @@ def _plot_landing_rate_total(output_dir, fleet_summary, fleet_names):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'landing_rate_total.png', 'png')
+    fig_name = _savefig(report_dir, 'landing_rate_total.png', 'png')
     plt.close(fig_name)
     return fig_name
 
 
-def _plot_landing_rate_by_vessels(output_dir, fleet_maps, fleet_names, mesh, crs_out):
+def _plot_landing_rate_by_vessels(report_dir, fleet_maps, fleet_names, mesh, crs_out):
 
     crs_in = ccrs.PlateCarree()
 
@@ -840,12 +863,12 @@ def _plot_landing_rate_by_vessels(output_dir, fleet_maps, fleet_names, mesh, crs
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'landing_rate_by_vessels.png', 'png')
+    fig_name = _savefig(report_dir, 'landing_rate_by_vessels.png', 'png')
     plt.close(fig_name)
     return fig_name
 
 
-def _plot_landing_rate_density(output_dir, fleet_maps, fleet_names, mesh, crs_out):
+def _plot_landing_rate_density(report_dir, fleet_maps, fleet_names, mesh, crs_out):
 
     crs_in = ccrs.PlateCarree()
 
@@ -886,12 +909,12 @@ def _plot_landing_rate_density(output_dir, fleet_maps, fleet_names, mesh, crs_ou
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'landing_rate_density.png', 'png')
+    fig_name = _savefig(report_dir, 'landing_rate_density.png', 'png')
     plt.close(fig_name)
     return fig_name
 
 
-def _plot_average_fishing_distance(output_dir, fleet_summary, fleet_names):
+def _plot_average_fishing_distance(report_dir, fleet_summary, fleet_names):
 
     n_fleet = len(fleet_summary)
     n_plot = n_fleet
@@ -917,12 +940,12 @@ def _plot_average_fishing_distance(output_dir, fleet_summary, fleet_names):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'average_fishing_distance.png', 'png')
+    fig_name = _savefig(report_dir, 'average_fishing_distance.png', 'png')
     plt.close(fig_name)
     return fig_name
 
 
-def _plot_fuel_use_intensity(output_dir, fleet_summary, fleet_names):
+def _plot_fuel_use_intensity(report_dir, fleet_summary, fleet_names):
 
     n_fleet = len(fleet_summary)
     n_plot = n_fleet
@@ -947,12 +970,12 @@ def _plot_fuel_use_intensity(output_dir, fleet_summary, fleet_names):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'fuel_use_intensity.png', 'png')
+    fig_name = _savefig(report_dir, 'fuel_use_intensity.png', 'png')
     plt.close(fig_name)
     return fig_name
 
 
-def _plot_yearly_profit(output_dir, fleet_summary, fleet_names):
+def _plot_yearly_profit(report_dir, fleet_summary, fleet_names):
 
     n_fleet = len(fleet_summary)
     n_plot = n_fleet
@@ -978,12 +1001,12 @@ def _plot_yearly_profit(output_dir, fleet_summary, fleet_names):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'yearly_profit.png', 'png')
+    fig_name = _savefig(report_dir, 'yearly_profit.png', 'png')
     plt.close(fig_name)
     return fig_name
 
 
-def _plot_savings(output_dir, fleet_summary, fleet_names):
+def _plot_savings(report_dir, fleet_summary, fleet_names):
 
     n_fleet = len(fleet_summary)
     n_plot = n_fleet
@@ -1009,12 +1032,12 @@ def _plot_savings(output_dir, fleet_summary, fleet_names):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'savings.png', 'png')
+    fig_name = _savefig(report_dir, 'savings.png', 'png')
     plt.close(fig_name)
     return fig_name
 
 
-def _plot_fish_price(output_dir, market, fleet_names):
+def _plot_fish_price(report_dir, market, fleet_names):
 
     n_fleet = len(market['fleet'])
     n_plot = n_fleet
@@ -1042,12 +1065,12 @@ def _plot_fish_price(output_dir, market, fleet_names):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'fish_price.png', 'png')
+    fig_name = _savefig(report_dir, 'fish_price.png', 'png')
     plt.close(fig_name)
     return fig_name
 
 
-def _plot_capture_landing_rate(output_dir, fleet_summary, fleet_names):
+def _plot_capture_landing_rate(report_dir, fleet_summary, fleet_names):
 
     n_fleet = len(fleet_summary)
     n_plot = n_fleet
@@ -1078,12 +1101,12 @@ def _plot_capture_landing_rate(output_dir, fleet_summary, fleet_names):
             ax.axis('off')
     plt.legend(loc='best', fontsize=FONT_SIZE)
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'capture_landing_rate.png', 'png')
+    fig_name = _savefig(report_dir, 'capture_landing_rate.png', 'png')
     plt.close(fig_name)
     return fig_name
 
 
-def _plot_cost_revenue_by_vessels(output_dir, fleet_summary, fleet_names):
+def _plot_cost_revenue_by_vessels(report_dir, fleet_summary, fleet_names):
 
     n_fleet = len(fleet_summary)
     n_plot = n_fleet
@@ -1115,12 +1138,12 @@ def _plot_cost_revenue_by_vessels(output_dir, fleet_summary, fleet_names):
             ax.axis('off')
     plt.legend(loc='best', fontsize=FONT_SIZE)
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'cost_revenue_by_vessels.png', 'png')
+    fig_name = _savefig(report_dir, 'cost_revenue_by_vessels.png', 'png')
     plt.close(fig_name)
     return fig_name
 
 
-def _plot_fishing_time_fraction(output_dir, fleet_summary, fleet_names):
+def _plot_fishing_time_fraction(report_dir, fleet_summary, fleet_names):
 
     n_fleet = len(fleet_summary)
     n_plot = n_fleet
@@ -1147,7 +1170,7 @@ def _plot_fishing_time_fraction(output_dir, fleet_summary, fleet_names):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(output_dir, 'fishing_time_fraction.png', 'png')
+    fig_name = _savefig(report_dir, 'fishing_time_fraction.png', 'png')
     plt.close(fig_name)
     return fig_name
 

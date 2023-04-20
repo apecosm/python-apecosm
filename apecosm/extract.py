@@ -428,3 +428,48 @@ def _squeeze_variable(variable):
         else:
             dictout[dim] = slice(None, None)
     return variable.isel(**dictout)
+
+
+def read_report_params(csv_file_name):
+    file = open(csv_file_name)
+    report_parameters = {'output_dir':'', 'mesh_file':'', 'FONT_SIZE':'', 'LABEL_SIZE':'', 'THIN_LWD':'', 'REGULAR_LWD':'',
+                         'THICK_LWD':'','COL_GRID':'','REGULAR_TRANSP':'','HIGH_TRANSP':'', 'FIG_WIDTH':'','FIG_HEIGHT':'',
+                         'FIG_DPI':'','CB_SHRINK':'','COL_MAP':'','fishing_output_dir':'', 'fishing_config_dir':''}
+    for line in file:
+        fields = line.strip().split(',')
+        if fields[0] == 'output_dir':
+            report_parameters['output_dir'] = fields[1].replace(" ", "")
+        elif fields[0] == 'mesh_file':
+            report_parameters['mesh_file'] = fields[1].replace(" ", "")
+        elif fields[0] == 'FONT_SIZE':
+            report_parameters['FONT_SIZE'] = int(fields[1])
+        elif fields[0] == 'LABEL_SIZE':
+            report_parameters['LABEL_SIZE'] = int(fields[1])
+        elif fields[0] == 'THIN_LWD':
+            report_parameters['THIN_LWD'] = int(fields[1])
+        elif fields[0] == 'REGULAR_LWD':
+            report_parameters['REGULAR_LWD'] = int(fields[1])
+        elif fields[0] == 'THICK_LWD':
+            report_parameters['THICK_LWD'] = int(fields[1])
+        elif fields[0] == 'COL_GRID':
+            report_parameters['COL_GRID'] = (int(fields[1].replace(' (', '').split('/')[0])/256, int(fields[2].replace(' ', '').split('/')[0])/256, int(fields[3].replace(') ','').split('/')[0])/256)
+        elif fields[0] == 'REGULAR_TRANSP':
+            report_parameters['REGULAR_TRANSP'] = float(fields[1])
+        elif fields[0] == 'HIGH_TRANSP':
+            report_parameters['HIGH_TRANSP'] = float(fields[1])
+        elif fields[0] == 'FIG_WIDTH':
+            report_parameters['FIG_WIDTH'] = float(fields[1])
+        elif fields[0] == 'FIG_HEIGHT':
+            report_parameters['FIG_HEIGHT'] = float(fields[1])
+        elif fields[0] == 'FIG_DPI':
+            report_parameters['FIG_DPI'] = int(fields[1])
+        elif fields[0] == 'CB_SHRINK':
+            report_parameters['CB_SHRINK'] = float(fields[1])
+        elif fields[0] == 'COL_MAP':
+            report_parameters['COL_MAP'] = fields[1].replace(" ", "")
+        elif fields[0] == 'fishing_output_dir':
+            report_parameters['fishing_output_dir'] = fields[1].replace(" ", "")
+        elif fields[0] == 'fishing_config_dir':
+            report_parameters['fishing_config_dir'] = fields[1].replace(" ", "")
+
+    return report_parameters
