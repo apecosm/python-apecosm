@@ -41,7 +41,8 @@ fleet_names = apecosm.extract_fleet_names(fishing_config_path)
 # ========================== #
 # REPORT
 # ========================== #
-apecosm.report(output_path, mesh_file, fishing_path, fishing_config_path, crs = ccrs.Mollweide())
+report_parameters = apecosm.read_report_params('report_params_conf1.csv')
+apecosm.report(report_parameters, crs=ccrs.Mollweide())
 
 
 # ========================== #
