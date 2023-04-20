@@ -18,7 +18,7 @@ from .size_spectra import plot_oope_spectra
 plt.rcParams['text.usetex'] = False
 import psutil
 
-global FONT_SIZE, LABEL_SIZE, THIN_LWD, REGULAR_LWD, THICK_LWD, COL_GRID, REGULAR_TRANSP, HIGH_TRANSP, FIG_WIDTH, FIG_HEIGHT, CB_SHRINK, COL_MAP
+global FONT_SIZE, LABEL_SIZE, THIN_LWD, REGULAR_LWD, THICK_LWD, COL_GRID, REGULAR_TRANSP, HIGH_TRANSP, FIG_WIDTH, FIG_HEIGHT, FIG_DPI, CB_SHRINK, COL_MAP
 FONT_SIZE = 25
 LABEL_SIZE = 25
 THIN_LWD = 1
@@ -29,6 +29,7 @@ REGULAR_TRANSP = 0.80
 HIGH_TRANSP = 0.25
 FIG_WIDTH = 12
 FIG_HEIGHT = 6
+FIG_DPI = 300
 CB_SHRINK = 0.7
 COL_MAP = 'RdYlBu_r'
 
@@ -36,13 +37,10 @@ COL_MAP = 'RdYlBu_r'
 def report(input_dir, mesh_file, fishing_path, config_path, domain_file=None, crs=ccrs.PlateCarree(), output_dir='report', filecss='default', xarray_args={}):
 
     mesh = open_mesh_mask(mesh_file)
-    #if('X' in mesh.dims and 'Y' in mesh.dims and 'Z' in mesh.dims):
-    #    mesh = open_mesh_mask(mesh_file, replace_dims={'X': 'x', 'Y': 'y', 'Z': 'z'})
     const = open_constants(input_dir)
     data = open_apecosm_data(input_dir, **xarray_args)
 
-    # If a domain file is provided, extracts it and
-    # store it into a dictionary
+    # If a domain file is provided, extracts it and store it into a dictionary
     if domain_file is None:
         domains = {}
     else:
@@ -52,7 +50,6 @@ def report(input_dir, mesh_file, fishing_path, config_path, domain_file=None, cr
             domains[v] = nc_domains[v]
 
     # create the output architecture
-
     # first create html folder
     html_dir = os.path.join(output_dir, 'html')
     os.makedirs(html_dir, exist_ok=True)
@@ -107,8 +104,8 @@ def report(input_dir, mesh_file, fishing_path, config_path, domain_file=None, cr
     _make_fisheries_template(output_dir, css, fishing_path, config_path, mesh, crs)
     print('fisheries - cpu % used:', psutil.cpu_percent())
     print('fisheries - memory % used:', psutil.virtual_memory()[2])
-    #for domname in domains:
-    #    _make_result_template(output_dir, css, data, const, mesh, crs, domains, domname)
+    for domname in domains:
+        _make_result_template(output_dir, css, data, const, mesh, crs, domains, domname)
 
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
@@ -123,10 +120,10 @@ def report(input_dir, mesh_file, fishing_path, config_path, domain_file=None, cr
         f.write(render)
 
 
-def _savefig(output_dir, figname, format):
-    img_file = os.path.join(output_dir, 'html', 'images', figname)
+def _savefig(output_dir, fig_name, format):
+    img_file = os.path.join(output_dir, 'html', 'images', fig_name)
     plt.savefig(img_file, format=format, bbox_inches='tight')
-    return os.path.join('images', figname)
+    return os.path.join('images', fig_name)
 
 
 def _make_result_template(output_dir, css, data, const, mesh, crs, domains=None, domname=None):
@@ -180,7 +177,7 @@ def _plot_domain_maps(output_dir, mesh, crs_out, maskdom, domname):
     test = (tmask == 1) & (maskdom.values == 1)
     tmask[~test] -= 1
 
-    fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT), dpi=300)
+    fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT), dpi=FIG_DPI)
     ax = plt.axes(projection=crs_out)
     cs = plt.pcolormesh(lonf, latf, tmask[1:, 1:].astype(int), cmap=COL_MAP, transform=crs_in)
     cs.set_clim(0, 1)
@@ -190,14 +187,12 @@ def _plot_domain_maps(output_dir, mesh, crs_out, maskdom, domname):
     plt.title('%s mask' %domname, fontsize=FONT_SIZE)
     ax.add_feature(cfeature.LAND, zorder=100)
     ax.add_feature(cfeature.COASTLINE, zorder=101)
-    fileout = _savefig(output_dir, 'domain_map_%s.svg' %domname, 'svg')
+    fig_name = _savefig(output_dir, 'domain_map_%s.svg' %domname, 'svg')
     plt.close(fig)
-    return fileout
+    return fig_name
 
 
 def _plot_time_series(output_dir, mesh, data, const, maskdom, domname):
-
-    filenames = {}
 
     output = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=True, compute_mean=False)
     output = output.sum(dim='w')
@@ -205,45 +200,47 @@ def _plot_time_series(output_dir, mesh, data, const, maskdom, domname):
 
     community_names = extract_community_names(const)
 
-    nb_community = len(community_names)
+    n_community = len(community_names)
+    n_plot = n_community+1
     n_col = 3
-    n_row = ceil(nb_community/n_col)
+    n_row = ceil(n_plot/n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    ax = plt.subplot(n_row, n_col, 1)
-    total.plot.line(linewidth=THICK_LWD)
-    plt.title('Total', fontsize=FONT_SIZE)
-    plt.ylabel('Joules', fontsize=FONT_SIZE)
-    plt.xticks(rotation=30, ha='right')
-    plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-    ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-    plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-    plt.xlabel('')
-
-    for c in range(data.dims['c']):
-        ax = plt.subplot(n_row, n_col, c+2)
-        output.isel(c=c).plot.line(linewidth=THICK_LWD)
-        plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
-        plt.ylabel('Joules', fontsize=FONT_SIZE)
-        plt.xticks(rotation=30, ha='right')
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        plt.xlabel('')
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1==1:
+            total.plot.line(linewidth=THICK_LWD)
+            plt.title('Total', fontsize=FONT_SIZE)
+            plt.ylabel('Joules', fontsize=FONT_SIZE)
+            plt.xticks(rotation=30, ha='right')
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.xlabel('')
+        elif 2 <= i+1 <= n_plot:
+            c = i-1
+            output.isel(c=c).plot.line(linewidth=THICK_LWD)
+            plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+            plt.ylabel('Joules', fontsize=FONT_SIZE)
+            plt.xticks(rotation=30, ha='right')
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.xlabel('')
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+        else:
+            ax.axis('off')
     fig.tight_layout()
-    filenames['timeseries_bycommunity'] = _savefig(output_dir, 'time_series_com_%s.svg' %domname, 'svg')
+    fig_name = _savefig(output_dir, 'time_series_com_%s.svg' %domname, 'svg')
     plt.close(fig)
 
-    return filenames
+    return fig_name
 
 
 def _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, varname):
 
     mean_size_tot = extract_mean_size(data, const, mesh, varname, maskdom=maskdom, aggregate=True)
     mean_size = extract_mean_size(data, const, mesh, varname, maskdom=maskdom)
-
-    filenames = {}
 
     if varname == 'weight':
         mean_size *= 1000
@@ -256,74 +253,81 @@ def _plot_mean_size(output_dir, mesh, data, const, maskdom, domname, varname):
 
     community_names = extract_community_names(const)
 
-    nb_community = len(community_names)
+    n_community = len(community_names)
+    n_plot = n_community+1
     n_col = 3
-    n_row = ceil((1+nb_community)/n_col)
+    n_row = ceil(n_plot/n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    plt.subplot(n_row, n_col, 1)
-    mean_size_tot.plot.line(linewidth=THICK_LWD)
-    plt.title('Total', fontsize=FONT_SIZE)
-    plt.ylabel(ylabel, fontsize=FONT_SIZE)
-    plt.xlabel('')
-    plt.xticks(rotation=30, ha='right')
-    plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-    plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-
-    for c in range(data.dims['c']):
-        plt.subplot(n_row, n_col, c+2)
-        toplot = mean_size.isel(c=c)
-        toplot.plot.line(linewidth=THICK_LWD)
-        plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
-        plt.ylabel(ylabel, fontsize=FONT_SIZE)
-        plt.xlabel('')
-        plt.xticks(rotation=30, ha='right')
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1 == 1:
+            mean_size_tot.plot.line(linewidth=THICK_LWD)
+            plt.title('Total', fontsize=FONT_SIZE)
+            plt.ylabel(ylabel, fontsize=FONT_SIZE)
+            plt.xlabel('')
+            plt.xticks(rotation=30, ha='right')
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+        elif 2 <= i+1 <= n_plot:
+            c = i-1
+            toplot = mean_size.isel(c=c)
+            toplot.plot.line(linewidth=THICK_LWD)
+            plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+            plt.ylabel(ylabel, fontsize=FONT_SIZE)
+            plt.xlabel('')
+            plt.xticks(rotation=30, ha='right')
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+        else:
+            ax.axis('off')
     fig.tight_layout()
-    filenames['community_and_total'] = _savefig(output_dir, 'mean_%s_comunities_and_total_%s.svg' %(varname, domname), 'svg')
+    fig_name = _savefig(output_dir, 'mean_%s_comunities_and_total_%s.svg' %(varname, domname), 'svg')
     plt.close(fig)
 
-    return filenames
+    return fig_name
 
 
 def _plot_integrated_time_series(output_dir, mesh, data, const, maskdom, domname):
 
-    filenames = {}
     size_prop = compute_size_cumprop(mesh, data, const, maskdom=maskdom)
     size_prop = extract_time_means(size_prop)
 
     community_names = extract_community_names(const)
 
-    nb_community = len(community_names)
+    n_community = len(community_names)
+    n_plot = n_community
     n_col = 3
-    n_row = ceil(nb_community/n_col)
+    n_row = ceil(n_plot/n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for c in range(data.dims['c']):
-        ax = plt.subplot(n_row, n_col, c+1)
-        l = const['length'].isel(c=c)
-        toplot = size_prop.isel(c=c)
-        plt.fill_between(l, 0, toplot, edgecolor='k', facecolor='lightgray', linewidth=THIN_LWD)
-        ax.set_xscale('log')
-        plt.xlim(l.min(), l.max())
-        plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
-        plt.xlabel('Length (log-scale)', fontsize=FONT_SIZE)
-        plt.ylabel('Proportion (%)', fontsize=FONT_SIZE)
-        plt.ylim(0, 100)
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            c = i
+            l = const['length'].isel(c=c)
+            toplot = size_prop.isel(c=c)
+            plt.fill_between(l, 0, toplot, edgecolor='k', facecolor='lightgray', linewidth=THIN_LWD)
+            ax.set_xscale('log')
+            plt.xlim(l.min(), l.max())
+            plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+            plt.xlabel('Length (log-scale)', fontsize=FONT_SIZE)
+            plt.ylabel('Proportion (%)', fontsize=FONT_SIZE)
+            plt.ylim(0, 100)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+        else:
+            ax.axis('off')
     fig.tight_layout()
-    filenames['cumulated_biomass_bycommunity'] = _savefig(output_dir, 'biomass_cumsum_bycom_%s.svg' %domname, 'svg')
+    fig_name = _savefig(output_dir, 'biomass_cumsum_bycom_%s.svg' %domname, 'svg')
     plt.close(fig)
-    return filenames
+    return fig_name
 
 
 def _plot_mean_maps(output_dir, mesh, data, const, crs_out, maskdom, domname):
 
     crs_in = ccrs.PlateCarree()
 
-    filenames = {}
     lonf = np.squeeze(mesh['glamf'].values)
     latf = np.squeeze(mesh['gphif'].values)
 
@@ -331,12 +335,12 @@ def _plot_mean_maps(output_dir, mesh, data, const, crs_out, maskdom, domname):
         maskdom = np.ones(lonf.shape)
     maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
 
-
     community_names = extract_community_names(const)
 
-    nb_community = len(community_names)
+    n_community = len(community_names)
+    n_plot = n_community+1
     n_col = 3
-    n_row = ceil((1+nb_community)/n_col)
+    n_row = ceil(n_plot/n_col)
 
     output = (data['OOPE'] * const['weight_step']).mean(dim='time').sum(dim=['w'])
     output = output.where(output > 0)
@@ -344,41 +348,43 @@ def _plot_mean_maps(output_dir, mesh, data, const, crs_out, maskdom, domname):
     total = output.sum(dim='c')
     total = total.where(total > 0)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    ax = plt.subplot(n_row, n_col, 1, projection=crs_out)
-    cs = plt.pcolormesh(lonf, latf, total.isel(y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
-    cb = plt.colorbar(cs, shrink=CB_SHRINK)
-    cb.ax.tick_params(labelsize=LABEL_SIZE)
-    cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-    cb.set_label('J/m2', fontsize=FONT_SIZE)
-    plt.title('Total', fontsize=FONT_SIZE)
-    ax.add_feature(cfeature.LAND, zorder=100)
-    ax.add_feature(cfeature.COASTLINE, zorder=101)
-
-    for c in range(data.dims['c']):
-        ax = plt.subplot(n_row, n_col, c+2, projection=crs_out)
-        cs = plt.pcolormesh(lonf, latf, output.isel(c=c, y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
-        ax.add_feature(cfeature.LAND, zorder=100)
-        ax.add_feature(cfeature.COASTLINE, zorder=101)
-        cb = plt.colorbar(cs, shrink=CB_SHRINK)
-        cb.ax.tick_params(labelsize=LABEL_SIZE)
-        cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-        cb.set_label('Joules/m2', fontsize=FONT_SIZE)
-        plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, c+1, projection=crs_out)
+        if i+1 == 1:
+            cs = plt.pcolormesh(lonf, latf, total.isel(y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
+            cb = plt.colorbar(cs, shrink=CB_SHRINK)
+            cb.ax.tick_params(labelsize=LABEL_SIZE)
+            cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+            cb.set_label('J/m2', fontsize=FONT_SIZE)
+            plt.title('Total', fontsize=FONT_SIZE)
+            ax.add_feature(cfeature.LAND, zorder=100)
+            ax.add_feature(cfeature.COASTLINE, zorder=101)
+        elif 2 <= i+1 <= n_plot:
+            c = i-1
+            cs = plt.pcolormesh(lonf, latf, output.isel(c=c, y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
+            ax.add_feature(cfeature.LAND, zorder=100)
+            ax.add_feature(cfeature.COASTLINE, zorder=101)
+            cb = plt.colorbar(cs, shrink=CB_SHRINK)
+            cb.ax.tick_params(labelsize=LABEL_SIZE)
+            cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+            cb.set_label('Joules/m2', fontsize=FONT_SIZE)
+            plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+        else:
+            ax.axis('off')
     fig.tight_layout()
-    filenames['mean_maps_bycommunity'] = _savefig(output_dir, 'mean_maps_com_%s.svg' %domname, 'svg')
+    fig_name = _savefig(output_dir, 'mean_maps_com_%s.svg' %domname, 'svg')
     plt.close(fig)
-    return filenames
+    return fig_name
 
 
 def _plot_size_spectra(output_dir, mesh, data, const, maskdom, domname):
 
     # extract data in the entire domain, integrates over space
-    #data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False, replace_dims={}, replace_const_dims={})
     data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
     data = extract_time_means(data)
 
-    fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT), dpi=300)
+    fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT), dpi=FIG_DPI)
     plot_oope_spectra(data, const, output_var='length', linewidth=THICK_LWD)
     plt.gca().set_xscale('log')
     plt.gca().set_yscale('log')
@@ -387,10 +393,9 @@ def _plot_size_spectra(output_dir, mesh, data, const, maskdom, domname):
     plt.tick_params(axis='both', labelsize=LABEL_SIZE)
     plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
     plt.legend(fontsize=FONT_SIZE)
-    figname = _savefig(output_dir, 'size_spectra_%s.svg' %domname, 'svg')
-    plt.close(figname)
-
-    return figname
+    fig_name = _savefig(output_dir, 'size_spectra_%s.svg' %domname, 'svg')
+    plt.close(fig)
+    return fig_name
 
 
 def _plot_weighted_values(output_dir, mesh, data, const, varname, maskdom, domname):
@@ -400,22 +405,32 @@ def _plot_weighted_values(output_dir, mesh, data, const, varname, maskdom, domna
 
     community_names = extract_community_names(const)
 
-    filenames = {}
-    for c in range(data.dims['c']):
-        fig = plt.figure()
-        ax = plt.gca()
-        l = const['length'].isel(c=c)
-        toplot = output.isel(c=c)
-        plt.plot(l, toplot, color='k')
-        ax.set_xscale('log')
-        plt.xlim(l.min(), l.max())
-        plt.title(community_names['Community ' + str(c)])
-        plt.xlabel('Length (log-scale)')
-        plt.ylabel(varname)
-        plt.ylim(toplot.min(), toplot.max())
-        filenames['Community ' + str(c)] = _savefig(output_dir, 'weighted_%s_com_%d_%s.svg' %(varname, c, domname), 'svg')
-        plt.close(fig)
-    return filenames
+    n_community = len(community_names)
+    n_plot = n_community
+    n_col = 3
+    n_row = ceil(n_plot/n_col)
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            c = i
+            l = const['length'].isel(c=c)
+            toplot = output.isel(c=c)
+            plt.plot(l, toplot, color='k', linewidth=THICK_LWD)
+            ax.set_xscale('log')
+            plt.xlim(l.min(), l.max())
+            plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+            plt.xlabel('Length (log-scale)', fontsize=FONT_SIZE)
+            plt.ylabel(varname, fontsize=FONT_SIZE)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.ylim(toplot.min(), toplot.max())
+        else:
+            ax.axis('off')
+    fig_name = _savefig(output_dir, 'weighted_%s_by_com_%s.svg' %(varname, domname), 'svg')
+    plt.close(fig)
+    return fig_name
 
 
 def _plot_diet_values(output_dir, mesh, data, const, maskdom, domname):
@@ -428,28 +443,36 @@ def _plot_diet_values(output_dir, mesh, data, const, maskdom, domname):
 
     community_names = extract_community_names(const)
 
+    n_community = len(community_names)
+    n_plot = n_community
+    n_col = 3
+    n_row = ceil(n_plot/n_col)
+
     legend = LTL_NAMES.copy()
-    for c in range(data.dims['c']):
+    for c in range(n_community):
         legend.append(community_names['Community ' + str(c)])
 
-    filenames = {}
-    for c in range(data.dims['c']):
-        fig = plt.figure()
-        ax = plt.gca()
-        l = const['length'].isel(c=c)
-        toplot = diet.isel(c=c)
-        repf = toplot.sum(dim='prey_group')
-        plt.stackplot(l, toplot.T, edgecolor='k', linewidth=0.5)
-        plt.ylim(0, repf.max())
-        plt.xlim(l.min(), l.max())
-        ax.set_xscale('log')
-        plt.title(community_names['Community ' + str(c)])
-        plt.legend(legend)
-
-        filenames['Community ' + str(c)] = _savefig(output_dir, 'diets_com_%d_%s.svg' %(c, domname), 'svg')
-        plt.close(fig)
-
-    return filenames
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            c = i
+            l = const['length'].isel(c=c)
+            toplot = diet.isel(c=c)
+            repf = toplot.sum(dim='prey_group')
+            plt.stackplot(l, toplot.T, edgecolor='k', linewidth=THIN_LWD)
+            plt.ylim(0, repf.max())
+            plt.xlim(l.min(), l.max())
+            ax.set_xscale('log')
+            plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.legend(legend, fontsize=FONT_SIZE)
+        else:
+            ax.axis('off')
+    fig_name = _savefig(output_dir, 'diets_com_%s.svg' %domname, 'svg')
+    plt.close(fig)
+    return fig_name
 
 
 def _make_meta_template(output_dir, css, data, const):
@@ -483,15 +506,8 @@ def _make_config_template(output_dir, css, data, const):
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
     template = env.get_template("template_config.html")
 
-    dims = data.dims
-    list_dims = [d for d in data.dims if 'prey' not in d]
-
     outputs = {}
     outputs['css'] = css
-    #outputs['dims'] = dims
-    #outputs['list_dims'] = list_dims
-    #outputs['start_date'] = data['time'][0].values
-    #outputs['end_date'] = data['time'][-1].values
     outputs['length_figs'] = _plot_wl_community(output_dir, const, 'length', 'meters')
     outputs['weight_figs'] = _plot_wl_community(output_dir, const, 'weight', 'kilograms')
     outputs['trophic_figs'] = _plot_trophic_interactions(output_dir, const)
@@ -506,18 +522,18 @@ def _make_config_template(output_dir, css, data, const):
 
 def _plot_wl_community(output_dir, data, varname, units):
 
-    output = {}
-
     community_names = extract_community_names(data)
 
-    nb_community = len(community_names)
+    n_community = len(community_names)
+    n_plot = n_community
     n_col = 3
-    n_row = ceil((1 + nb_community) / n_col)
+    n_row = ceil(n_plot/n_col)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for c in range(n_row*n_col):
-        ax = plt.subplot(n_row, n_col, c+1)
-        if c+1 <= data.dims['c']:
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            c = i
             length = data[varname].isel(c=c)
             plt.plot(length.values, linewidth=THICK_LWD)
             plt.xlim(0, length.shape[0]-1)
@@ -527,10 +543,10 @@ def _plot_wl_community(output_dir, data, varname, units):
             plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
         else:
             ax.axis('off')
-    output['wl_bycommunity'] = _savefig(output_dir, '%s_bycommunity.svg' %varname, 'svg')
+    fig_name = _savefig(output_dir, '%s_by_com.svg' %varname, 'svg')
     plt.close(fig)
 
-    return output
+    return fig_name
 
 
 def _plot_trophic_interactions(output_dir, data):
@@ -561,24 +577,25 @@ def _plot_trophic_interactions(output_dir, data):
         ax.set_xticklabels(xlabel, rotation=45)
         ax.set_yticklabels(xlabel, rotation=45)
         ax.set_aspect('equal', 'box')
-    output = _savefig(output_dir, 'trophic_interactions.svg', 'svg')
+    fig_name = _savefig(output_dir, 'trophic_interactions.svg', 'svg')
     plt.close(fig)
-    return output
+    return fig_name
 
 
 def _plot_ltl_selectivity(output_dir, data):
 
     community_names = extract_community_names(data)
 
-    nb_community = len(community_names)
+    n_community = len(community_names)
+    n_plot = n_community
     n_col = 3
-    n_row = ceil(nb_community/n_col)
+    n_row = ceil(n_plot/n_col)
 
-    output = {}
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for c in range(n_row * n_col):
-        ax = plt.subplot(n_row, n_col, c+1)
-        if c+1 <= data.dims['c']:
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            c = i
             length = data['length'].isel(c=c)
             varlist = [v for v in data.variables if v.startswith('select_')]
             for v in varlist:
@@ -592,10 +609,10 @@ def _plot_ltl_selectivity(output_dir, data):
             plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
         else:
             ax.axis('off')
-    output['ltl_selectivity_bycommunity'] = _savefig(output_dir, 'selectivity_com_bycommunity.svg', 'svg')
+    fig_name = _savefig(output_dir, 'selectivity_com_by_com.svg', 'svg')
     plt.close(fig)
 
-    return output
+    return fig_name
 
 
 def _make_fisheries_template(output_dir, css, fishing_path, fishing_config_path, mesh, crs):
@@ -632,448 +649,507 @@ def _make_fisheries_template(output_dir, css, fishing_path, fishing_config_path,
 
 
 def _plot_fleet_size(output_dir, fleet_summary, fleet_names):
-    nb_fleet = len(fleet_summary)
+
+    n_fleet = len(fleet_summary)
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet/n_col)
+    n_row = ceil(n_plot/n_col)
 
     col_1 = (241/256, 140/256, 141/256)
     col_2 = (154/256, 190/256, 219/256)
     col_3 = (165/256, 215/256, 164/256)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300, sharex=True)
-    for i in np.arange(nb_fleet):
-        plt.subplot(n_row, n_col, i + 1)
-        av_1, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['effective_effort'], 365)
-        av_2, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['active_vessels'], 365)
-        av_3, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['total_vessels'], 365)
-        plt.plot(time, av_1, color='black', linewidth=THIN_LWD)
-        plt.plot(time, av_2, color='black', linewidth=THIN_LWD)
-        plt.plot(time, av_3, color='black', linewidth=THIN_LWD)
-        plt.fill_between(time, av_1, color=col_1, alpha=REGULAR_TRANSP, label='Fishing')
-        plt.fill_between(time, av_2, av_1, color=col_2, alpha=REGULAR_TRANSP, label='Sailing')
-        plt.fill_between(time, av_3, av_2, color=col_3, alpha=REGULAR_TRANSP, label='At port')
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        plt.title(fleet_names[i], fontsize=FONT_SIZE)
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        plt.xlabel('Time (years)', fontsize=FONT_SIZE)
-        plt.ylabel('Number of vessels', fontsize=FONT_SIZE)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI, sharex=True)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            av_1, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['effective_effort'], 365)
+            av_2, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['active_vessels'], 365)
+            av_3, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['total_vessels'], 365)
+            plt.plot(time, av_1, color='black', linewidth=THIN_LWD)
+            plt.plot(time, av_2, color='black', linewidth=THIN_LWD)
+            plt.plot(time, av_3, color='black', linewidth=THIN_LWD)
+            plt.fill_between(time, av_1, color=col_1, alpha=REGULAR_TRANSP, label='Fishing')
+            plt.fill_between(time, av_2, av_1, color=col_2, alpha=REGULAR_TRANSP, label='Sailing')
+            plt.fill_between(time, av_3, av_2, color=col_3, alpha=REGULAR_TRANSP, label='At port')
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.title(fleet_names[i], fontsize=FONT_SIZE)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.xlabel('Time (years)', fontsize=FONT_SIZE)
+            plt.ylabel('Number of vessels', fontsize=FONT_SIZE)
+        else:
+            ax.axis('off')
     fig.tight_layout()
     plt.legend(loc='best', fontsize=FONT_SIZE)
-    figname = _savefig(output_dir, 'fleet_size.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'fleet_size.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 def _plot_fishing_effective_effort(output_dir, fleet_maps, fleet_names, mesh, crs_out):
 
     crs_in = ccrs.PlateCarree()
 
-    nb_fleet = len(fleet_maps)
+    n_fleet = len(fleet_maps)
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet/n_col)
+    n_row = ceil(n_plot/n_col)
 
     lonf = np.squeeze(mesh['glamf'].values)
     latf = np.squeeze(mesh['gphif'].values)
 
     cb_qu = 15
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for i in np.arange(nb_fleet):
-        ax = plt.subplot(n_row, n_col, i + 1, projection=crs_out)
-        raw = fleet_maps[i]['effective_effort_density'].isel(time=-1)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
+        if i+1 <= n_plot:
+            raw = fleet_maps[i]['effective_effort_density'].isel(time=-1)
 
-        raw_val = raw.values.copy()
-        raw_val[raw_val == 0] = sys.float_info.min
-        extract = (raw_val != sys.float_info.min) & (np.isnan(raw_val) == False)
-        data = np.log10(raw_val)
-        cb_lb = 0
-        cb_ub = 1
-        if len(data[extract]) > 0:
-            cb_lb = np.percentile(data[extract], cb_qu)
-            cb_ub = np.percentile(data[extract], 100-cb_qu)
+            raw_val = raw.values.copy()
+            raw_val[raw_val == 0] = sys.float_info.min
+            extract = (raw_val != sys.float_info.min) & (np.isnan(raw_val) == False)
+            data = np.log10(raw_val)
+            cb_lb = 0
+            cb_ub = 1
+            if len(data[extract]) > 0:
+                cb_lb = np.percentile(data[extract], cb_qu)
+                cb_ub = np.percentile(data[extract], 100-cb_qu)
 
-        cs = plt.pcolormesh(lonf, latf, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
-        # cs = plt.pcolormesh(lonf[:-1, :-1], latf[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
-        plt.title(fleet_names[i], fontsize=FONT_SIZE)
-        cb = plt.colorbar(cs, shrink=CB_SHRINK)
-        cb.ax.tick_params(labelsize=LABEL_SIZE)
-        cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-        ax.coastlines(zorder=101)
-        ax.add_feature(cfeature.LAND, zorder=100)
+            cs = plt.pcolormesh(lonf, latf, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
+            # cs = plt.pcolormesh(lonf[:-1, :-1], latf[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
+            plt.title(fleet_names[i], fontsize=FONT_SIZE)
+            cb = plt.colorbar(cs, shrink=CB_SHRINK)
+            cb.ax.tick_params(labelsize=LABEL_SIZE)
+            cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+            ax.coastlines(zorder=101)
+            ax.add_feature(cfeature.LAND, zorder=100)
+        else:
+            ax.axis('off')
     fig.tight_layout()
-    figname = _savefig(output_dir, 'fishing_effective_effort.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'fishing_effective_effort.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 def _plot_landing_rate_eez_hs(output_dir, fleet_summary, fleet_names):
-    nb_fleet = len(fleet_summary)
+
+    n_fleet = len(fleet_summary)
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet / n_col)
+    n_row = ceil(n_plot/n_col)
 
     col_1 = (241/256, 140/256, 141/256)
     col_2 = (154/256, 190/256, 219/256)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300, sharex=True)
-    for i in np.arange(nb_fleet):
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI, sharex=True)
+    for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1)
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-        av_1, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * fleet_summary[i]['current_total_landings_rate_from_EEZ'], 365)
-        av_2, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * (fleet_summary[i]['step_landings']-fleet_summary[i]['current_total_landings_rate_from_EEZ']), 365)
-        plt.plot(time, av_1, color='black', linewidth=THIN_LWD)
-        plt.plot(time, av_1+av_2, color='black', linewidth=THIN_LWD)
-        plt.fill_between(time, av_1+av_2, av_1, color=col_2, alpha=REGULAR_TRANSP, label='HS')
-        plt.fill_between(time, av_1, color=col_1, alpha=REGULAR_TRANSP, label='EEZ')
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        plt.title(fleet_names[i], fontsize=FONT_SIZE)
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        plt.xlabel('Time (years)', fontsize=FONT_SIZE)
-        plt.ylabel('Landing rate (MT.years-1)', fontsize=FONT_SIZE)
+        if i+1 <= n_plot:
+            ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+            av_1, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * fleet_summary[i]['current_total_landings_rate_from_EEZ'], 365)
+            av_2, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * (fleet_summary[i]['step_landings']-fleet_summary[i]['current_total_landings_rate_from_EEZ']), 365)
+            plt.plot(time, av_1, color='black', linewidth=THIN_LWD)
+            plt.plot(time, av_1+av_2, color='black', linewidth=THIN_LWD)
+            plt.fill_between(time, av_1+av_2, av_1, color=col_2, alpha=REGULAR_TRANSP, label='HS')
+            plt.fill_between(time, av_1, color=col_1, alpha=REGULAR_TRANSP, label='EEZ')
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.title(fleet_names[i], fontsize=FONT_SIZE)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.xlabel('Time (years)', fontsize=FONT_SIZE)
+            plt.ylabel('Landing rate (MT.years-1)', fontsize=FONT_SIZE)
+        else:
+            ax.axis('off')
     fig.tight_layout()
     plt.legend(loc='best', fontsize=FONT_SIZE)
-    figname = _savefig(output_dir, 'landing_rate_eez_hs.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'landing_rate_eez_hs.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 def _plot_landing_rate_total(output_dir, fleet_summary, fleet_names):
 
-    nb_fleet = len(fleet_summary)
+    n_fleet = len(fleet_summary)
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet / n_col)
+    n_row = ceil(n_plot/n_col)
 
     col_1 = (0/255, 0/255, 255/255)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for i in np.arange(nb_fleet):
-        average, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * fleet_summary[i]['step_landings'], 365)
-        ax = plt.subplot(n_row, n_col, i + 1)
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-        plt.plot(time, average, linewidth=5, color=col_1)
-        plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
-        plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        plt.xlabel('Time (years)', fontsize=FONT_SIZE)
-        plt.ylabel('Landing rate (MT.years-1)', fontsize=FONT_SIZE)
-        plt.title('%s - last year landing rate : %.2f MT.years-1' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            average, maxi, mini, time = compute_mean_min_max_ts(0.000001 * 365 * fleet_summary[i]['step_landings'], 365)
+            ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+            plt.plot(time, average, linewidth=5, color=col_1)
+            plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
+            plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.xlabel('Time (years)', fontsize=FONT_SIZE)
+            plt.ylabel('Landing rate (MT.years-1)', fontsize=FONT_SIZE)
+            plt.title('%s - last year landing rate : %.2f MT.years-1' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
+        else:
+            ax.axis('off')
     fig.tight_layout()
-    figname = _savefig(output_dir, 'landing_rate_total.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'landing_rate_total.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 def _plot_landing_rate_by_vessels(output_dir, fleet_maps, fleet_names, mesh, crs_out):
 
     crs_in = ccrs.PlateCarree()
 
-    nb_fleet = len(fleet_maps)
+    n_fleet = len(fleet_maps)
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet / n_col)
+    n_row = ceil(n_plot/n_col)
 
     lonf = np.squeeze(mesh['glamf'].values)
     latf = np.squeeze(mesh['gphif'].values)
 
     cb_qu = 15
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for i in np.arange(nb_fleet):
-        ax = plt.subplot(n_row, n_col, i + 1, projection=crs_out)
-        raw = fleet_maps[i]['landing_rate_by_vessel'].isel(time=-1)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
+        if i+1 <= n_plot:
+            raw = fleet_maps[i]['landing_rate_by_vessel'].isel(time=-1)
 
-        raw_val = raw.values.copy()
-        raw_val[raw_val == 0] = sys.float_info.min
-        extract = (raw_val != sys.float_info.min) & (np.isnan(raw_val) == False)
-        data = np.log10(raw_val)
-        cb_lb = 0
-        cb_ub = 1
-        if len(data[extract]) > 0:
-            cb_lb = np.percentile(data[extract], cb_qu)
-            cb_ub = np.percentile(data[extract], 100-cb_qu)
+            raw_val = raw.values.copy()
+            raw_val[raw_val == 0] = sys.float_info.min
+            extract = (raw_val != sys.float_info.min) & (np.isnan(raw_val) == False)
+            data = np.log10(raw_val)
+            cb_lb = 0
+            cb_ub = 1
+            if len(data[extract]) > 0:
+                cb_lb = np.percentile(data[extract], cb_qu)
+                cb_ub = np.percentile(data[extract], 100-cb_qu)
 
-        cs = plt.pcolormesh(lonf, latf, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
-        # cs = plt.pcolormesh(lonf[:-1, :-1], latf[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=-13.5, vmax=-10)
-        plt.title(fleet_names[i], fontsize=FONT_SIZE)
-        cb = plt.colorbar(cs, shrink=CB_SHRINK)
-        cb.set_label('T/day-1', fontsize=FONT_SIZE)
-        cb.ax.tick_params(labelsize=LABEL_SIZE)
-        cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-        ax.coastlines(zorder=101)
-        ax.add_feature(cfeature.LAND, zorder=100)
+            cs = plt.pcolormesh(lonf, latf, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
+            # cs = plt.pcolormesh(lonf[:-1, :-1], latf[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=-13.5, vmax=-10)
+            plt.title(fleet_names[i], fontsize=FONT_SIZE)
+            cb = plt.colorbar(cs, shrink=CB_SHRINK)
+            cb.set_label('T/day-1', fontsize=FONT_SIZE)
+            cb.ax.tick_params(labelsize=LABEL_SIZE)
+            cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+            ax.coastlines(zorder=101)
+            ax.add_feature(cfeature.LAND, zorder=100)
+        else:
+            ax.axis('off')
     fig.tight_layout()
-    figname = _savefig(output_dir, 'landing_rate_by_vessels.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'landing_rate_by_vessels.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 def _plot_landing_rate_density(output_dir, fleet_maps, fleet_names, mesh, crs_out):
 
     crs_in = ccrs.PlateCarree()
 
-    nb_fleet = len(fleet_maps)
+    n_fleet = len(fleet_maps)
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet / n_col)
+    n_row = ceil(n_plot/n_col)
 
     lonf = np.squeeze(mesh['glamf'].values)
     latf = np.squeeze(mesh['gphif'].values)
 
     cb_qu = 15
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for i in np.arange(nb_fleet):
-        ax = plt.subplot(n_row, n_col, i + 1, projection=crs_out)
-        raw = fleet_maps[i]['landing_rate'].isel(time=-1)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
+        if i+1 <= n_plot:
+            raw = fleet_maps[i]['landing_rate'].isel(time=-1)
 
-        raw_val = raw.values.copy()
-        raw_val[raw_val == 0] = sys.float_info.min
-        extract = (raw_val != sys.float_info.min) & (np.isnan(raw_val) == False)
-        data = np.log10(raw_val)
-        cb_lb = 0
-        cb_ub = 1
-        if len(data[extract]) > 0:
-            cb_lb = np.percentile(data[extract], cb_qu)
-            cb_ub = np.percentile(data[extract], 100-cb_qu)
+            raw_val = raw.values.copy()
+            raw_val[raw_val == 0] = sys.float_info.min
+            extract = (raw_val != sys.float_info.min) & (np.isnan(raw_val) == False)
+            data = np.log10(raw_val)
+            cb_lb = 0
+            cb_ub = 1
+            if len(data[extract]) > 0:
+                cb_lb = np.percentile(data[extract], cb_qu)
+                cb_ub = np.percentile(data[extract], 100-cb_qu)
 
-        cs = plt.pcolormesh(lonf, latf, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
-        # cs = plt.pcolormesh(lonf[:-1, :-1], latf[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=-13.5, vmax=-10)
-        plt.title(fleet_names[i], fontsize=FONT_SIZE)
-        cb = plt.colorbar(cs, shrink=CB_SHRINK)
-        cb.ax.tick_params(labelsize=LABEL_SIZE)
-        cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-        ax.coastlines(zorder=101)
-        ax.add_feature(cfeature.LAND, zorder=100)
+            cs = plt.pcolormesh(lonf, latf, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
+            # cs = plt.pcolormesh(lonf[:-1, :-1], latf[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=-13.5, vmax=-10)
+            plt.title(fleet_names[i], fontsize=FONT_SIZE)
+            cb = plt.colorbar(cs, shrink=CB_SHRINK)
+            cb.ax.tick_params(labelsize=LABEL_SIZE)
+            cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+            ax.coastlines(zorder=101)
+            ax.add_feature(cfeature.LAND, zorder=100)
+        else:
+            ax.axis('off')
     fig.tight_layout()
-    figname = _savefig(output_dir, 'landing_rate_density.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'landing_rate_density.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 def _plot_average_fishing_distance(output_dir, fleet_summary, fleet_names):
 
-    nb_fleet = len(fleet_summary)
+    n_fleet = len(fleet_summary)
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet / n_col)
+    n_row = ceil(n_plot/n_col)
 
     col_1 = (255/255, 0/255, 0/255)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for i in np.arange(nb_fleet):
-        average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['average_fishing_distance_to_ports_of_active_vessels'], 365)
-        ax = plt.subplot(n_row, n_col, i + 1)
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
-        plt.plot(time, average, linewidth=5, color=col_1)
-        plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
-        plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        plt.xlabel('Time (years)', fontsize=FONT_SIZE)
-        plt.ylabel('Average fishing distance (km)', fontsize=FONT_SIZE)
-        plt.title('%s - last year distance : %.1f km' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['average_fishing_distance_to_ports_of_active_vessels'], 365)
+            ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
+            plt.plot(time, average, linewidth=5, color=col_1)
+            plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
+            plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.xlabel('Time (years)', fontsize=FONT_SIZE)
+            plt.ylabel('Average fishing distance (km)', fontsize=FONT_SIZE)
+            plt.title('%s - last year distance : %.1f km' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
+        else:
+            ax.axis('off')
     fig.tight_layout()
-    figname = _savefig(output_dir, 'average_fishing_distance.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'average_fishing_distance.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 def _plot_fuel_use_intensity(output_dir, fleet_summary, fleet_names):
 
-    nb_fleet = len(fleet_summary)
+    n_fleet = len(fleet_summary)
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet / n_col)
+    n_row = ceil(n_plot/n_col)
 
     col_1 = (160/255, 32/255, 240/255)
 
-    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for i in np.arange(nb_fleet):
-        average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['average_fuel_use_intensity'], 365)
-        plt.subplot(n_row, n_col, i + 1)
-        plt.plot(time, average, linewidth=5, color=col_1)
-        plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
-        plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        plt.xlabel('Time (years)', fontsize=FONT_SIZE)
-        plt.ylabel('Fuel use intensity (kL.T-1)', fontsize=FONT_SIZE)
-        plt.title('%s - last year FUI : %.1f kL.T-1' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
+    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['average_fuel_use_intensity'], 365)
+            plt.plot(time, average, linewidth=5, color=col_1)
+            plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
+            plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.xlabel('Time (years)', fontsize=FONT_SIZE)
+            plt.ylabel('Fuel use intensity (kL.T-1)', fontsize=FONT_SIZE)
+            plt.title('%s - last year FUI : %.1f kL.T-1' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
+        else:
+            ax.axis('off')
     fig.tight_layout()
-    figname = _savefig(output_dir, 'fuel_use_intensity.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'fuel_use_intensity.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 def _plot_yearly_profit(output_dir, fleet_summary, fleet_names):
 
-    nb_fleet = len(fleet_summary)
+    n_fleet = len(fleet_summary)
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet / n_col)
+    n_row = ceil(n_plot/n_col)
 
     col_1 = (255/255, 165/255, 0/255)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for i in np.arange(nb_fleet):
-        average, maxi, mini, time = compute_mean_min_max_ts(0.001 * 365 * fleet_summary[i]['step_profits'], 365)
-        ax = plt.subplot(n_row, n_col, i + 1)
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
-        plt.plot(time, average, linewidth=5, color=col_1)
-        plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
-        plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        plt.xlabel('Time (years)', fontsize=FONT_SIZE)
-        plt.ylabel('Yearly profit (M$.years-1)', fontsize=FONT_SIZE)
-        plt.title('%s - last year profit : %.1f M$.years-1' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            average, maxi, mini, time = compute_mean_min_max_ts(0.001 * 365 * fleet_summary[i]['step_profits'], 365)
+            ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
+            plt.plot(time, average, linewidth=5, color=col_1)
+            plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
+            plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.xlabel('Time (years)', fontsize=FONT_SIZE)
+            plt.ylabel('Yearly profit (M$.years-1)', fontsize=FONT_SIZE)
+            plt.title('%s - last year profit : %.1f M$.years-1' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
+        else:
+            ax.axis('off')
     fig.tight_layout()
-    figname = _savefig(output_dir, 'yearly_profit.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'yearly_profit.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 def _plot_savings(output_dir, fleet_summary, fleet_names):
 
-    nb_fleet = len(fleet_summary)
+    n_fleet = len(fleet_summary)
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet / n_col)
+    n_row = ceil(n_plot/n_col)
 
     col_1 = (0/255, 100/255, 0/255)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for i in np.arange(nb_fleet):
-        average, maxi, mini, time = compute_mean_min_max_ts(0.001 * fleet_summary[i]['savings'], 365)
-        ax = plt.subplot(n_row, n_col, i + 1)
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
-        plt.plot(time, average, linewidth=5, color=col_1)
-        plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
-        plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        plt.xlabel('Time (years)', fontsize=FONT_SIZE)
-        plt.ylabel('Savings (M$)', fontsize=FONT_SIZE)
-        plt.title('%s - last year savings : %.1f M$' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            average, maxi, mini, time = compute_mean_min_max_ts(0.001 * fleet_summary[i]['savings'], 365)
+            ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
+            plt.plot(time, average, linewidth=5, color=col_1)
+            plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
+            plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.xlabel('Time (years)', fontsize=FONT_SIZE)
+            plt.ylabel('Savings (M$)', fontsize=FONT_SIZE)
+            plt.title('%s - last year savings : %.1f M$' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
+        else:
+            ax.axis('off')
     fig.tight_layout()
-    figname = _savefig(output_dir, 'savings.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'savings.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 def _plot_fish_price(output_dir, market, fleet_names):
-    nb_fleet = len(market['fleet'])
+
+    n_fleet = len(market['fleet'])
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet / n_col)
+    n_row = ceil(n_plot/n_col)
 
     col_1 = (167/255, 61/255, 11/255)
 
-    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for i in np.arange(nb_fleet):
-        if i == 4:
-            average, maxi, mini, time = compute_mean_min_max_ts(market['average_price'].isel(fleet=i, community=4), 365)
+    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            if i == 4:
+                average, maxi, mini, time = compute_mean_min_max_ts(market['average_price'].isel(fleet=i, community=4), 365)
+            else:
+                average, maxi, mini, time = compute_mean_min_max_ts(market['average_price'].isel(fleet=i, community=1), 365)
+            plt.plot(time, average, linewidth=5, color=col_1)
+            plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
+            plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.xlabel('Time (years)', fontsize=FONT_SIZE)
+            plt.ylabel('Fish price ($.kg-1)', fontsize=FONT_SIZE)
+            plt.title('%s - last year fish price : %.1f $.kg-1' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
         else:
-            average, maxi, mini, time = compute_mean_min_max_ts(market['average_price'].isel(fleet=i, community=1), 365)
-        plt.subplot(n_row, n_col, i + 1)
-        plt.plot(time, average, linewidth=5, color=col_1)
-        plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
-        plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        plt.xlabel('Time (years)', fontsize=FONT_SIZE)
-        plt.ylabel('Fish price ($.kg-1)', fontsize=FONT_SIZE)
-        plt.title('%s - last year fish price : %.1f $.kg-1' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
+            ax.axis('off')
     fig.tight_layout()
-    figname = _savefig(output_dir, 'fish_price.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'fish_price.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 def _plot_capture_landing_rate(output_dir, fleet_summary, fleet_names):
 
-    nb_fleet = len(fleet_summary)
+    n_fleet = len(fleet_summary)
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet / n_col)
+    n_row = ceil(n_plot/n_col)
 
     col_1 = (0/255, 0/255, 255/255)
     col_2 = (255/255, 0/255, 0/255)
 
-    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for i in np.arange(nb_fleet):
-        average_1, maxi_1, mini_1, time_1 = compute_mean_min_max_ts(fleet_summary[i]['average_capture_rate_by_active_vessel'], 365)
-        average_2, maxi_2, mini_2, time_2 = compute_mean_min_max_ts(fleet_summary[i]['average_landing_rate_by_active_vessel'], 365)
-        plt.subplot(n_row, n_col, i + 1)
-        plt.plot(time_1, average_1, linewidth=5, color=col_1, label='Capture')
-        plt.fill_between(time_1, mini_1, average_1, color=col_1, alpha=HIGH_TRANSP)
-        plt.fill_between(time_1, average_1, maxi_1, color=col_1, alpha=HIGH_TRANSP)
-        plt.plot(time_2, average_2, linewidth=5, color=col_2, label='Landing')
-        plt.fill_between(time_2, mini_2, average_2, color=col_2, alpha=HIGH_TRANSP)
-        plt.fill_between(time_2, average_2, maxi_2, color=col_2, alpha=HIGH_TRANSP)
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        plt.title(fleet_names[i], fontsize=FONT_SIZE)
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        plt.xlabel('Time (years)', fontsize=FONT_SIZE)
-        plt.ylabel('Capture and landing rate (T.day-1)', fontsize=FONT_SIZE)
+    fig, ax = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        if i+1 <= n_plot:
+            average_1, maxi_1, mini_1, time_1 = compute_mean_min_max_ts(fleet_summary[i]['average_capture_rate_by_active_vessel'], 365)
+            average_2, maxi_2, mini_2, time_2 = compute_mean_min_max_ts(fleet_summary[i]['average_landing_rate_by_active_vessel'], 365)
+            plt.subplot(n_row, n_col, i+1)
+            plt.plot(time_1, average_1, linewidth=5, color=col_1, label='Capture')
+            plt.fill_between(time_1, mini_1, average_1, color=col_1, alpha=HIGH_TRANSP)
+            plt.fill_between(time_1, average_1, maxi_1, color=col_1, alpha=HIGH_TRANSP)
+            plt.plot(time_2, average_2, linewidth=5, color=col_2, label='Landing')
+            plt.fill_between(time_2, mini_2, average_2, color=col_2, alpha=HIGH_TRANSP)
+            plt.fill_between(time_2, average_2, maxi_2, color=col_2, alpha=HIGH_TRANSP)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.title(fleet_names[i], fontsize=FONT_SIZE)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.xlabel('Time (years)', fontsize=FONT_SIZE)
+            plt.ylabel('Capture and landing rate (T.day-1)', fontsize=FONT_SIZE)
+        else:
+            ax.axis('off')
     plt.legend(loc='best', fontsize=FONT_SIZE)
     fig.tight_layout()
-    figname = _savefig(output_dir, 'capture_landing_rate.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'capture_landing_rate.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 def _plot_cost_revenue_by_vessels(output_dir, fleet_summary, fleet_names):
 
-    nb_fleet = len(fleet_summary)
+    n_fleet = len(fleet_summary)
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet / n_col)
+    n_row = ceil(n_plot/n_col)
 
     col_1 = (0/255, 0/255, 255/255)
     col_2 = (255/255, 0/255, 0/255)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for i in np.arange(nb_fleet):
-        average_1, maxi_1, mini_1, time_1 = compute_mean_min_max_ts(fleet_summary[i]['average_cost_by_active_vessels'], 365)
-        average_2, maxi_2, mini_2, time_2 = compute_mean_min_max_ts(fleet_summary[i]['average_profit_by_active_vessels']+fleet_summary[i]['average_cost_by_active_vessels'], 365)
-        ax = plt.subplot(n_row, n_col, i + 1)
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
-        plt.plot(time_1, average_1, linewidth=5, color=col_1, label='Cost')
-        plt.fill_between(time_1, mini_1, average_1, color=col_1, alpha=HIGH_TRANSP)
-        plt.fill_between(time_1, average_1, maxi_1, color=col_1, alpha=HIGH_TRANSP)
-        plt.plot(time_2, average_2, linewidth=5, color=col_2, label='Revenue')
-        plt.fill_between(time_2, mini_2, average_2, color=col_2, alpha=HIGH_TRANSP)
-        plt.fill_between(time_2, average_2, maxi_2, color=col_2, alpha=HIGH_TRANSP)
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        plt.title(fleet_names[i], fontsize=FONT_SIZE)
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        plt.xlabel('Time (years)', fontsize=FONT_SIZE)
-        plt.ylabel('Cost and revenue by active vessels (k$.day-1)', fontsize=FONT_SIZE)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            average_1, maxi_1, mini_1, time_1 = compute_mean_min_max_ts(fleet_summary[i]['average_cost_by_active_vessels'], 365)
+            average_2, maxi_2, mini_2, time_2 = compute_mean_min_max_ts(fleet_summary[i]['average_profit_by_active_vessels']+fleet_summary[i]['average_cost_by_active_vessels'], 365)
+            ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
+            plt.plot(time_1, average_1, linewidth=5, color=col_1, label='Cost')
+            plt.fill_between(time_1, mini_1, average_1, color=col_1, alpha=HIGH_TRANSP)
+            plt.fill_between(time_1, average_1, maxi_1, color=col_1, alpha=HIGH_TRANSP)
+            plt.plot(time_2, average_2, linewidth=5, color=col_2, label='Revenue')
+            plt.fill_between(time_2, mini_2, average_2, color=col_2, alpha=HIGH_TRANSP)
+            plt.fill_between(time_2, average_2, maxi_2, color=col_2, alpha=HIGH_TRANSP)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.title(fleet_names[i], fontsize=FONT_SIZE)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.xlabel('Time (years)', fontsize=FONT_SIZE)
+            plt.ylabel('Cost and revenue by active vessels (k$.day-1)', fontsize=FONT_SIZE)
+        else:
+            ax.axis('off')
     plt.legend(loc='best', fontsize=FONT_SIZE)
     fig.tight_layout()
-    figname = _savefig(output_dir, 'cost_revenue_by_vessels.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'cost_revenue_by_vessels.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 def _plot_fishing_time_fraction(output_dir, fleet_summary, fleet_names):
 
-    nb_fleet = len(fleet_summary)
+    n_fleet = len(fleet_summary)
+    n_plot = n_fleet
     n_col = 3
-    n_row = ceil(nb_fleet / n_col)
+    n_row = ceil(n_plot/n_col)
 
     col_1 = (0/255, 104/255, 139/255)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=300)
-    for i in np.arange(nb_fleet):
-        average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['average_fishing_time_fraction_of_active_vessels'], 365)
-        ax = plt.subplot(n_row, n_col, i + 1)
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-        plt.plot(time, average, linewidth=5, color=col_1)
-        plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
-        plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
-        plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
-        plt.tick_params(axis='both', labelsize=LABEL_SIZE)
-        plt.xlabel('Time (years)', fontsize=FONT_SIZE)
-        plt.ylabel('Fishing time fraction', fontsize=FONT_SIZE)
-        plt.ylim([-0.05, 1.05])
-        plt.title('%s - last year fishing time fraction : %.2f' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    for i in range(n_row*n_col):
+        ax = plt.subplot(n_row, n_col, i+1)
+        if i+1 <= n_plot:
+            average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[i]['average_fishing_time_fraction_of_active_vessels'], 365)
+            ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+            plt.plot(time, average, linewidth=5, color=col_1)
+            plt.fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
+            plt.fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
+            plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
+            plt.tick_params(axis='both', labelsize=LABEL_SIZE)
+            plt.xlabel('Time (years)', fontsize=FONT_SIZE)
+            plt.ylabel('Fishing time fraction', fontsize=FONT_SIZE)
+            plt.ylim([-0.05, 1.05])
+            plt.title('%s - last year fishing time fraction : %.2f' % (fleet_names[i], average[-1]), fontsize=FONT_SIZE)
+        else:
+            ax.axis('off')
     fig.tight_layout()
-    figname = _savefig(output_dir, 'fishing_time_fraction.png', 'png')
-    plt.close(figname)
-    return figname
+    fig_name = _savefig(output_dir, 'fishing_time_fraction.png', 'png')
+    plt.close(fig_name)
+    return fig_name
 
 
 if __name__ == '__main__':
