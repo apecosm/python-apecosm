@@ -6,6 +6,7 @@ import numpy as np
 import pkg_resources
 import jinja2
 import psutil
+import tracemalloc
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import xarray as xr
@@ -17,7 +18,6 @@ from .extract import extract_oope_data, extract_time_means, open_apecosm_data, o
 from .misc import extract_community_names, compute_mean_min_max_ts, extract_fleet_names
 from .size_spectra import plot_oope_spectra
 plt.rcParams['text.usetex'] = False
-
 
 def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_dir='report', filecss='default', xarray_args={}):
 
@@ -102,21 +102,13 @@ def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_d
     with open(os.path.join(css_dir, 'styles.css'), 'w') as fout:
         fout.write(css)
 
-    _make_meta_template(report_dir, fishing_config_dir, css, data, const) # in the long run, no need for fshing_config_dir (fleet_names included in const in the future)
-    print('meta - cpu % used:', psutil.cpu_percent())
-    print('meta - memory % used:', psutil.virtual_memory()[2])
-    _make_config_template(report_dir, css, data, const)
-    print('conf - cpu % used:', psutil.cpu_percent())
-    print('conf - memory % used:', psutil.virtual_memory()[2])
+    _make_meta_template(report_dir, fishing_config_dir, css, data, const)
+    _make_config_template(report_dir, css, const)
     _make_result_template(report_dir, css, data, const, mesh, crs)
-    for domname in domains:
-        _make_result_template(report_dir, css, data, const, mesh, crs, domains, domname)
-    print('res - cpu % used:', psutil.cpu_percent())
-    print('res - memory % used:', psutil.virtual_memory()[2])
+    for dom_name in domains:
+        _make_result_template(report_dir, css, data, const, mesh, crs, domains, dom_name)
     if use_fishing == 1:
         _make_fisheries_template(report_dir, css, fishing_output_dir, fishing_config_dir, mesh, crs)
-    print('fisheries - cpu % used:', psutil.cpu_percent())
-    print('fisheries - memory % used:', psutil.virtual_memory()[2])
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
     template = env.get_template("template.html")
@@ -136,47 +128,47 @@ def _savefig(report_dir, fig_name, pic_format):
     return os.path.join('images', fig_name)
 
 
-def _make_result_template(report_dir, css, data, const, mesh, crs, domains=None, domname=None):
+def _make_result_template(report_dir, css, data, const, mesh, crs, domains=None, dom_name=None):
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
     template = env.get_template("template_results.html")
 
     if domains is not None:
-        maskdom = domains[domname]
+        mask_dom = domains[dom_name]
     else:
-        maskdom = np.ones(mesh['nav_lon'].shape)
-        domname = 'global'
-    maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
+        mask_dom = np.ones(mesh['nav_lon'].shape)
+        dom_name = 'global'
+    mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
 
     outputs = {}
     outputs['css'] = css
-    #outputs['domain_figs'] = _plot_domain_maps(report_dir, mesh, crs, maskdom, domname) #ok
-    #outputs['ts_figs'] = _plot_time_series(report_dir, mesh, data, const, maskdom, domname) #ok
-    #outputs['mean_length_figs'] = _plot_mean_size(report_dir, mesh, data, const, maskdom, domname, 'length')  # ok
-    #outputs['mean_weight_figs'] = _plot_mean_size(report_dir, mesh, data, const, maskdom, domname, 'weight')  # ok
-    #outputs['cumbiom_figs'] = _plot_integrated_time_series(report_dir, mesh, data, const, maskdom, domname) #ok
-    #outputs['maps_figs'] = _plot_mean_maps(report_dir, mesh, data, const, crs, maskdom, domname) # nok--> os kill when plotting
-    #outputs['spectra_figs'] = _plot_size_spectra(report_dir, mesh, data, const, maskdom, domname) #ok
+    outputs['domain_figs'] = _plot_domain_maps(report_dir, mesh, crs, mask_dom, dom_name)
+    outputs['ts_figs'] = _plot_time_series(report_dir, mesh, data, const, mask_dom, dom_name)
+    outputs['mean_length_figs'] = _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, 'length')
+    outputs['mean_weight_figs'] = _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, 'weight')
+    outputs['cumbiom_figs'] = _plot_integrated_time_series(report_dir, mesh, data, const, mask_dom, dom_name)
+    outputs['maps_figs'] = _plot_mean_maps(report_dir, mesh, data, const, crs, mask_dom, dom_name)
+    outputs['spectra_figs'] = _plot_size_spectra(report_dir, mesh, data, const, mask_dom, dom_name)
     if 'repfonct_day' in data.variables:
-        outputs['repfonct_figs'] = _plot_weighted_values(report_dir, mesh, data, const, 'repfonct_day', maskdom, domname)
+        outputs['repfonct_figs'] = _plot_weighted_values(report_dir, mesh, data, const, 'repfonct_day', mask_dom, dom_name)
     if 'mort_day' in data.variables:
-        outputs['mort_figs'] = _plot_weighted_values(report_dir, mesh, data, const, 'mort_day', maskdom, domname)
+        outputs['mort_figs'] = _plot_weighted_values(report_dir, mesh, data, const, 'mort_day', mask_dom, dom_name)
     if 'community_diet_values' in data.variables:
-        outputs['diet_figs'] = _plot_diet_values(report_dir, mesh, data, const, maskdom, domname)
+        outputs['diet_figs'] = _plot_diet_values(report_dir, mesh, data, const, mask_dom, dom_name)
 
     render = template.render(**outputs)
 
-    output_file = os.path.join(report_dir, 'html', 'results_report_%s.html' %domname)
+    output_file = os.path.join(report_dir, 'html', 'results_report_%s.html' %dom_name)
     with open(output_file, "w") as f:
         f.write(render)
 
 
-def _plot_domain_maps(report_dir, mesh, crs_out, maskdom, domname):
+def _plot_domain_maps(report_dir, mesh, crs_out, mask_dom, dom_name):
 
     crs_in = ccrs.PlateCarree()
 
-    lonf = np.squeeze(mesh['glamf'].values)
-    latf = np.squeeze(mesh['gphif'].values)
+    lon_f = np.squeeze(mesh['glamf'].values)
+    lat_f = np.squeeze(mesh['gphif'].values)
     if 'tmaskutil' in mesh.variables:
         tmask = mesh['tmaskutil']
     else:
@@ -184,27 +176,28 @@ def _plot_domain_maps(report_dir, mesh, crs_out, maskdom, domname):
 
     tmask = tmask.values.copy()
     tmask = np.ma.masked_where(tmask == 0, tmask)
-    test = (tmask == 1) & (maskdom.values == 1)
+    test = (tmask == 1) & (mask_dom.values == 1)
     tmask[~test] -= 1
 
     fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT), dpi=FIG_DPI)
     ax = plt.axes(projection=crs_out)
-    cs = plt.pcolormesh(lonf, latf, tmask[1:, 1:].astype(int), cmap=COL_MAP, transform=crs_in)
+    cs = plt.pcolormesh(lon_f, lat_f, tmask[1:, 1:].astype(int), cmap=COL_MAP, transform=crs_in)
     cs.set_clim(0, 1)
     cb = plt.colorbar(cs, shrink=CB_SHRINK)
     cb.ax.tick_params(labelsize=LABEL_SIZE)
     cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-    plt.title('%s mask' %domname, fontsize=FONT_SIZE)
+    plt.title('%s mask' %dom_name, fontsize=FONT_SIZE)
     ax.add_feature(cfeature.LAND, zorder=100)
     ax.add_feature(cfeature.COASTLINE, zorder=101)
-    fig_name = _savefig(report_dir, 'domain_map_%s.svg' %domname, 'svg')
+    fig_name = _savefig(report_dir, 'domain_map_%s.svg' %dom_name, 'svg')
+    fig.clear()
     plt.close(fig)
     return fig_name
 
 
-def _plot_time_series(report_dir, mesh, data, const, maskdom, domname):
+def _plot_time_series(report_dir, mesh, data, const, mask_dom, dom_name):
 
-    output = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=True, compute_mean=False)
+    output = extract_oope_data(data, mesh, const, mask_dom=mask_dom, use_wstep=True, compute_mean=False)
     output = output.sum(dim='w')
     total = output.sum(dim='c')
 
@@ -241,16 +234,17 @@ def _plot_time_series(report_dir, mesh, data, const, maskdom, domname):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(report_dir, 'time_series_com_%s.svg' %domname, 'svg')
+    fig_name = _savefig(report_dir, 'time_series_com_%s.svg' %dom_name, 'svg')
+    fig.clear()
     plt.close(fig)
 
     return fig_name
 
 
-def _plot_mean_size(report_dir, mesh, data, const, maskdom, domname, varname):
+def _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, varname):
 
-    mean_size_tot = extract_mean_size(data, const, mesh, varname, maskdom=maskdom, aggregate=True)
-    mean_size = extract_mean_size(data, const, mesh, varname, maskdom=maskdom)
+    mean_size_tot = extract_mean_size(data, const, mesh, varname, mask_dom=mask_dom, aggregate=True)
+    mean_size = extract_mean_size(data, const, mesh, varname, mask_dom=mask_dom)
 
     if varname == 'weight':
         mean_size *= 1000
@@ -292,15 +286,16 @@ def _plot_mean_size(report_dir, mesh, data, const, maskdom, domname, varname):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(report_dir, 'mean_%s_comunities_and_total_%s.svg' %(varname, domname), 'svg')
+    fig_name = _savefig(report_dir, 'mean_%s_comunities_and_total_%s.svg' %(varname, dom_name), 'svg')
+    fig.clear()
     plt.close(fig)
 
     return fig_name
 
 
-def _plot_integrated_time_series(report_dir, mesh, data, const, maskdom, domname):
+def _plot_integrated_time_series(report_dir, mesh, data, const, mask_dom, dom_name):
 
-    size_prop = compute_size_cumprop(mesh, data, const, maskdom=maskdom)
+    size_prop = compute_size_cumprop(mesh, data, const, mask_dom=mask_dom)
     size_prop = extract_time_means(size_prop)
 
     community_names = extract_community_names(const)
@@ -329,21 +324,21 @@ def _plot_integrated_time_series(report_dir, mesh, data, const, maskdom, domname
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(report_dir, 'biomass_cumsum_bycom_%s.svg' %domname, 'svg')
+    fig_name = _savefig(report_dir, 'biomass_cumsum_bycom_%s.svg' %dom_name, 'svg')
+    fig.clear()
     plt.close(fig)
     return fig_name
 
-
-def _plot_mean_maps(report_dir, mesh, data, const, crs_out, maskdom, domname):
+def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
 
     crs_in = ccrs.PlateCarree()
 
-    lonf = np.squeeze(mesh['glamf'].values)
-    latf = np.squeeze(mesh['gphif'].values)
+    lon_f = np.squeeze(mesh['glamf'].values)
+    lat_f = np.squeeze(mesh['gphif'].values)
 
-    if maskdom is None:
-        maskdom = np.ones(lonf.shape)
-    maskdom = xr.DataArray(data=maskdom, dims=['y', 'x'])
+    if mask_dom is None:
+        mask_dom = np.ones(lon_f.shape)
+    mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
 
     community_names = extract_community_names(const)
 
@@ -354,7 +349,7 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, maskdom, domname):
 
     output = (data['OOPE'] * const['weight_step']).mean(dim='time').sum(dim=['w'])
     output = output.where(output > 0)
-    output = output.where(maskdom > 0, drop=False)
+    output = output.where(mask_dom>0, drop=False)
     total = output.sum(dim='c')
     total = total.where(total > 0)
 
@@ -362,7 +357,7 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, maskdom, domname):
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
         if i+1 == 1:
-            cs = plt.pcolormesh(lonf, latf, total.isel(y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
+            cs = plt.pcolormesh(lon_f, lat_f, total.isel(y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
             cb = plt.colorbar(cs, shrink=CB_SHRINK)
             cb.ax.tick_params(labelsize=LABEL_SIZE)
             cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
@@ -372,26 +367,27 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, maskdom, domname):
             ax.add_feature(cfeature.COASTLINE, zorder=101)
         elif 2 <= i+1 <= n_plot:
             c = i-1
-            cs = plt.pcolormesh(lonf, latf, output.isel(c=c, y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
-            ax.add_feature(cfeature.LAND, zorder=100)
-            ax.add_feature(cfeature.COASTLINE, zorder=101)
+            cs = plt.pcolormesh(lon_f, lat_f, output.isel(c=c, y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
             cb = plt.colorbar(cs, shrink=CB_SHRINK)
             cb.ax.tick_params(labelsize=LABEL_SIZE)
             cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-            cb.set_label('Joules/m2', fontsize=FONT_SIZE)
+            cb.set_label('J/m2', fontsize=FONT_SIZE)
             plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+            ax.add_feature(cfeature.LAND, zorder=100)
+            ax.add_feature(cfeature.COASTLINE, zorder=101)
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(report_dir, 'mean_maps_com_%s.svg' %domname, 'svg')
+    fig_name = _savefig(report_dir, 'mean_maps_com_%s.svg' %dom_name, 'svg')
+    fig.clear()
     plt.close(fig)
     return fig_name
 
 
-def _plot_size_spectra(report_dir, mesh, data, const, maskdom, domname):
+def _plot_size_spectra(report_dir, mesh, data, const, mask_dom, dom_name):
 
     # extract data in the entire domain, integrates over space
-    data = extract_oope_data(data, mesh, const, maskdom=maskdom, use_wstep=False, compute_mean=False)
+    data = extract_oope_data(data, mesh, const, mask_dom=mask_dom, use_wstep=False, compute_mean=False)
     data = extract_time_means(data)
 
     fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT), dpi=FIG_DPI)
@@ -403,14 +399,15 @@ def _plot_size_spectra(report_dir, mesh, data, const, maskdom, domname):
     plt.tick_params(axis='both', labelsize=LABEL_SIZE)
     plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
     plt.legend(fontsize=FONT_SIZE)
-    fig_name = _savefig(report_dir, 'size_spectra_%s.svg' %domname, 'svg')
+    fig_name = _savefig(report_dir, 'size_spectra_%s.svg' %dom_name, 'svg')
+    fig.clear()
     plt.close(fig)
     return fig_name
 
 
-def _plot_weighted_values(report_dir, mesh, data, const, varname, maskdom, domname):
+def _plot_weighted_values(report_dir, mesh, data, const, varname, mask_dom, dom_name):
 
-    output = extract_weighted_data(data, const, mesh, varname, maskdom)
+    output = extract_weighted_data(data, const, mesh, varname, mask_dom)
     output = extract_time_means(output)
 
     community_names = extract_community_names(const)
@@ -438,17 +435,18 @@ def _plot_weighted_values(report_dir, mesh, data, const, varname, maskdom, domna
             plt.ylim(toplot.min(), toplot.max())
         else:
             ax.axis('off')
-    fig_name = _savefig(report_dir, 'weighted_%s_by_com_%s.svg' %(varname, domname), 'svg')
+    fig_name = _savefig(report_dir, 'weighted_%s_by_com_%s.svg' %(varname, dom_name), 'svg')
+    fig.clear()
     plt.close(fig)
     return fig_name
 
 
-def _plot_diet_values(report_dir, mesh, data, const, maskdom, domname):
+def _plot_diet_values(report_dir, mesh, data, const, mask_dom, dom_name):
 
     if 'community' in data.dims:
         data = data.rename({'community' : 'c'})
 
-    diet = extract_weighted_data(data, const, mesh, 'community_diet_values', maskdom=maskdom)
+    diet = extract_weighted_data(data, const, mesh, 'community_diet_values', mask_dom=mask_dom)
     diet = extract_time_means(diet)
 
     community_names = extract_community_names(const)
@@ -480,7 +478,8 @@ def _plot_diet_values(report_dir, mesh, data, const, maskdom, domname):
             plt.legend(legend, fontsize=FONT_SIZE)
         else:
             ax.axis('off')
-    fig_name = _savefig(report_dir, 'diets_com_%s.svg' %domname, 'svg')
+    fig_name = _savefig(report_dir, 'diets_com_%s.svg' %dom_name, 'svg')
+    fig.clear()
     plt.close(fig)
     return fig_name
 
@@ -509,7 +508,7 @@ def _make_meta_template(report_dir, fishing_config_dir, css, data, const):
         f.write(render)
 
 
-def _make_config_template(report_dir, css, data, const):
+def _make_config_template(report_dir, css, const):
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
     template = env.get_template("template_config.html")
@@ -552,6 +551,7 @@ def _plot_wl_community(report_dir, data, varname, units):
         else:
             ax.axis('off')
     fig_name = _savefig(report_dir, '%s_by_com.svg' %varname, 'svg')
+    fig.clear()
     plt.close(fig)
 
     return fig_name
@@ -586,6 +586,7 @@ def _plot_trophic_interactions(report_dir, data):
         ax.set_yticklabels(xlabel, rotation=45)
         ax.set_aspect('equal', 'box')
     fig_name = _savefig(report_dir, 'trophic_interactions.svg', 'svg')
+    fig.clear()
     plt.close(fig)
     return fig_name
 
@@ -618,6 +619,7 @@ def _plot_ltl_selectivity(report_dir, data):
         else:
             ax.axis('off')
     fig_name = _savefig(report_dir, 'selectivity_com_by_com.svg', 'svg')
+    fig.clear()
     plt.close(fig)
 
     return fig_name
@@ -690,7 +692,8 @@ def _plot_fleet_size(report_dir, fleet_summary, fleet_names):
     fig.tight_layout()
     plt.legend(loc='best', fontsize=FONT_SIZE)
     fig_name = _savefig(report_dir, 'fleet_size.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
@@ -703,8 +706,8 @@ def _plot_fishing_effective_effort(report_dir, fleet_maps, fleet_names, mesh, cr
     n_col = 3
     n_row = ceil(n_plot/n_col)
 
-    lonf = np.squeeze(mesh['glamf'].values)
-    latf = np.squeeze(mesh['gphif'].values)
+    lon_f = np.squeeze(mesh['glamf'].values)
+    lat_f = np.squeeze(mesh['gphif'].values)
 
     cb_qu = 15
 
@@ -724,8 +727,8 @@ def _plot_fishing_effective_effort(report_dir, fleet_maps, fleet_names, mesh, cr
                 cb_lb = np.percentile(data[extract], cb_qu)
                 cb_ub = np.percentile(data[extract], 100-cb_qu)
 
-            cs = plt.pcolormesh(lonf, latf, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
-            # cs = plt.pcolormesh(lonf[:-1, :-1], latf[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
+            cs = plt.pcolormesh(lon_f, lat_f, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
+            # cs = plt.pcolormesh(lon_f[:-1, :-1], lat_f[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
             plt.title(fleet_names[i], fontsize=FONT_SIZE)
             cb = plt.colorbar(cs, shrink=CB_SHRINK)
             cb.ax.tick_params(labelsize=LABEL_SIZE)
@@ -736,7 +739,8 @@ def _plot_fishing_effective_effort(report_dir, fleet_maps, fleet_names, mesh, cr
             ax.axis('off')
     fig.tight_layout()
     fig_name = _savefig(report_dir, 'fishing_effective_effort.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
@@ -771,7 +775,8 @@ def _plot_landing_rate_eez_hs(report_dir, fleet_summary, fleet_names):
     fig.tight_layout()
     plt.legend(loc='best', fontsize=FONT_SIZE)
     fig_name = _savefig(report_dir, 'landing_rate_eez_hs.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
@@ -802,7 +807,8 @@ def _plot_landing_rate_total(report_dir, fleet_summary, fleet_names):
             ax.axis('off')
     fig.tight_layout()
     fig_name = _savefig(report_dir, 'landing_rate_total.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
@@ -815,8 +821,8 @@ def _plot_landing_rate_by_vessels(report_dir, fleet_maps, fleet_names, mesh, crs
     n_col = 3
     n_row = ceil(n_plot/n_col)
 
-    lonf = np.squeeze(mesh['glamf'].values)
-    latf = np.squeeze(mesh['gphif'].values)
+    lon_f = np.squeeze(mesh['glamf'].values)
+    lat_f = np.squeeze(mesh['gphif'].values)
 
     cb_qu = 15
 
@@ -836,8 +842,8 @@ def _plot_landing_rate_by_vessels(report_dir, fleet_maps, fleet_names, mesh, crs
                 cb_lb = np.percentile(data[extract], cb_qu)
                 cb_ub = np.percentile(data[extract], 100-cb_qu)
 
-            cs = plt.pcolormesh(lonf, latf, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
-            # cs = plt.pcolormesh(lonf[:-1, :-1], latf[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=-13.5, vmax=-10)
+            cs = plt.pcolormesh(lon_f, lat_f, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
+            # cs = plt.pcolormesh(lon_f[:-1, :-1], lat_f[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=-13.5, vmax=-10)
             plt.title(fleet_names[i], fontsize=FONT_SIZE)
             cb = plt.colorbar(cs, shrink=CB_SHRINK)
             cb.set_label('T/day-1', fontsize=FONT_SIZE)
@@ -849,7 +855,8 @@ def _plot_landing_rate_by_vessels(report_dir, fleet_maps, fleet_names, mesh, crs
             ax.axis('off')
     fig.tight_layout()
     fig_name = _savefig(report_dir, 'landing_rate_by_vessels.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
@@ -862,8 +869,8 @@ def _plot_landing_rate_density(report_dir, fleet_maps, fleet_names, mesh, crs_ou
     n_col = 3
     n_row = ceil(n_plot/n_col)
 
-    lonf = np.squeeze(mesh['glamf'].values)
-    latf = np.squeeze(mesh['gphif'].values)
+    lon_f = np.squeeze(mesh['glamf'].values)
+    lat_f = np.squeeze(mesh['gphif'].values)
 
     cb_qu = 15
 
@@ -883,8 +890,8 @@ def _plot_landing_rate_density(report_dir, fleet_maps, fleet_names, mesh, crs_ou
                 cb_lb = np.percentile(data[extract], cb_qu)
                 cb_ub = np.percentile(data[extract], 100-cb_qu)
 
-            cs = plt.pcolormesh(lonf, latf, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
-            # cs = plt.pcolormesh(lonf[:-1, :-1], latf[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=-13.5, vmax=-10)
+            cs = plt.pcolormesh(lon_f, lat_f, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
+            # cs = plt.pcolormesh(lon_f[:-1, :-1], lat_f[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=-13.5, vmax=-10)
             plt.title(fleet_names[i], fontsize=FONT_SIZE)
             cb = plt.colorbar(cs, shrink=CB_SHRINK)
             cb.ax.tick_params(labelsize=LABEL_SIZE)
@@ -895,7 +902,8 @@ def _plot_landing_rate_density(report_dir, fleet_maps, fleet_names, mesh, crs_ou
             ax.axis('off')
     fig.tight_layout()
     fig_name = _savefig(report_dir, 'landing_rate_density.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
@@ -926,7 +934,8 @@ def _plot_average_fishing_distance(report_dir, fleet_summary, fleet_names):
             ax.axis('off')
     fig.tight_layout()
     fig_name = _savefig(report_dir, 'average_fishing_distance.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
@@ -956,7 +965,8 @@ def _plot_fuel_use_intensity(report_dir, fleet_summary, fleet_names):
             ax.axis('off')
     fig.tight_layout()
     fig_name = _savefig(report_dir, 'fuel_use_intensity.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
@@ -987,7 +997,8 @@ def _plot_yearly_profit(report_dir, fleet_summary, fleet_names):
             ax.axis('off')
     fig.tight_layout()
     fig_name = _savefig(report_dir, 'yearly_profit.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
@@ -1018,7 +1029,8 @@ def _plot_savings(report_dir, fleet_summary, fleet_names):
             ax.axis('off')
     fig.tight_layout()
     fig_name = _savefig(report_dir, 'savings.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
@@ -1051,7 +1063,8 @@ def _plot_fish_price(report_dir, market, fleet_names):
             ax.axis('off')
     fig.tight_layout()
     fig_name = _savefig(report_dir, 'fish_price.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
@@ -1087,7 +1100,8 @@ def _plot_capture_landing_rate(report_dir, fleet_summary, fleet_names):
     plt.legend(loc='best', fontsize=FONT_SIZE)
     fig.tight_layout()
     fig_name = _savefig(report_dir, 'capture_landing_rate.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
@@ -1124,7 +1138,8 @@ def _plot_cost_revenue_by_vessels(report_dir, fleet_summary, fleet_names):
     plt.legend(loc='best', fontsize=FONT_SIZE)
     fig.tight_layout()
     fig_name = _savefig(report_dir, 'cost_revenue_by_vessels.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
@@ -1156,7 +1171,8 @@ def _plot_fishing_time_fraction(report_dir, fleet_summary, fleet_names):
             ax.axis('off')
     fig.tight_layout()
     fig_name = _savefig(report_dir, 'fishing_time_fraction.png', 'png')
-    plt.close(fig_name)
+    fig.clear()
+    plt.close(fig)
     return fig_name
 
 
