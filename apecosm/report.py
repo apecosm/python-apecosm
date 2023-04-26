@@ -189,7 +189,7 @@ def _plot_domain_maps(report_dir, mesh, crs_out, mask_dom, dom_name):
     plt.title('%s mask' %dom_name, fontsize=FONT_SIZE)
     ax.add_feature(cfeature.LAND, zorder=100)
     ax.add_feature(cfeature.COASTLINE, zorder=101)
-    fig_name = _savefig(report_dir, 'domain_map_%s.svg' %dom_name, 'svg')
+    fig_name = _savefig(report_dir, 'domain_map_%s.jpg' %dom_name, 'jpg')
     fig.clear()
     plt.close(fig)
     return fig_name
@@ -234,7 +234,7 @@ def _plot_time_series(report_dir, mesh, data, const, mask_dom, dom_name):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(report_dir, 'time_series_com_%s.svg' %dom_name, 'svg')
+    fig_name = _savefig(report_dir, 'time_series_com_%s.jpg' %dom_name, 'jpg')
     fig.clear()
     plt.close(fig)
 
@@ -286,7 +286,7 @@ def _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, varname):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(report_dir, 'mean_%s_comunities_and_total_%s.svg' %(varname, dom_name), 'svg')
+    fig_name = _savefig(report_dir, 'mean_%s_comunities_and_total_%s.jpg' %(varname, dom_name), 'jpg')
     fig.clear()
     plt.close(fig)
 
@@ -324,7 +324,7 @@ def _plot_integrated_time_series(report_dir, mesh, data, const, mask_dom, dom_na
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(report_dir, 'biomass_cumsum_bycom_%s.svg' %dom_name, 'svg')
+    fig_name = _savefig(report_dir, 'biomass_cumsum_bycom_%s.jpg' %dom_name, 'jpg')
     fig.clear()
     plt.close(fig)
     return fig_name
@@ -378,7 +378,7 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
         else:
             ax.axis('off')
     fig.tight_layout()
-    fig_name = _savefig(report_dir, 'mean_maps_com_%s.svg' %dom_name, 'svg')
+    fig_name = _savefig(report_dir, 'mean_maps_com_%s.jpg' %dom_name, 'jpg')
     fig.clear()
     plt.close(fig)
     return fig_name
@@ -399,7 +399,7 @@ def _plot_size_spectra(report_dir, mesh, data, const, mask_dom, dom_name):
     plt.tick_params(axis='both', labelsize=LABEL_SIZE)
     plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
     plt.legend(fontsize=FONT_SIZE)
-    fig_name = _savefig(report_dir, 'size_spectra_%s.svg' %dom_name, 'svg')
+    fig_name = _savefig(report_dir, 'size_spectra_%s.jpg' %dom_name, 'jpg')
     fig.clear()
     plt.close(fig)
     return fig_name
@@ -435,7 +435,7 @@ def _plot_weighted_values(report_dir, mesh, data, const, varname, mask_dom, dom_
             plt.ylim(toplot.min(), toplot.max())
         else:
             ax.axis('off')
-    fig_name = _savefig(report_dir, 'weighted_%s_by_com_%s.svg' %(varname, dom_name), 'svg')
+    fig_name = _savefig(report_dir, 'weighted_%s_by_com_%s.jpg' %(varname, dom_name), 'jpg')
     fig.clear()
     plt.close(fig)
     return fig_name
@@ -478,7 +478,7 @@ def _plot_diet_values(report_dir, mesh, data, const, mask_dom, dom_name):
             plt.legend(legend, fontsize=FONT_SIZE)
         else:
             ax.axis('off')
-    fig_name = _savefig(report_dir, 'diets_com_%s.svg' %dom_name, 'svg')
+    fig_name = _savefig(report_dir, 'diets_com_%s.jpg' %dom_name, 'jpg')
     fig.clear()
     plt.close(fig)
     return fig_name
@@ -550,7 +550,7 @@ def _plot_wl_community(report_dir, data, varname, units):
             plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
         else:
             ax.axis('off')
-    fig_name = _savefig(report_dir, '%s_by_com.svg' %varname, 'svg')
+    fig_name = _savefig(report_dir, '%s_by_com.jpg' %varname, 'jpg')
     fig.clear()
     plt.close(fig)
 
@@ -585,7 +585,7 @@ def _plot_trophic_interactions(report_dir, data):
         ax.set_xticklabels(xlabel, rotation=45)
         ax.set_yticklabels(xlabel, rotation=45)
         ax.set_aspect('equal', 'box')
-    fig_name = _savefig(report_dir, 'trophic_interactions.svg', 'svg')
+    fig_name = _savefig(report_dir, 'trophic_interactions.jpg', 'jpg')
     fig.clear()
     plt.close(fig)
     return fig_name
@@ -618,7 +618,7 @@ def _plot_ltl_selectivity(report_dir, data):
             plt.grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
         else:
             ax.axis('off')
-    fig_name = _savefig(report_dir, 'selectivity_com_by_com.svg', 'svg')
+    fig_name = _savefig(report_dir, 'selectivity_com_by_com.jpg', 'jpg')
     fig.clear()
     plt.close(fig)
 
