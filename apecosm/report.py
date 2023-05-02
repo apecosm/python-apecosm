@@ -6,7 +6,6 @@ import numpy as np
 import pkg_resources
 import jinja2
 import psutil
-import tracemalloc
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import xarray as xr
@@ -29,7 +28,7 @@ def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_d
     use_fishing = 0
     if fishing_output_dir != '' and fishing_config_dir != '':
         use_fishing = 1
-    global FONT_SIZE, LABEL_SIZE, THIN_LWD, REGULAR_LWD, THICK_LWD, COL_GRID, REGULAR_TRANSP, HIGH_TRANSP, FIG_WIDTH, FIG_HEIGHT, FIG_DPI, CB_SHRINK, COL_MAP
+    global FONT_SIZE, LABEL_SIZE, THIN_LWD, REGULAR_LWD, THICK_LWD, COL_GRID, REGULAR_TRANSP, HIGH_TRANSP, FIG_WIDTH, FIG_HEIGHT, FIG_DPI, CB_SHRINK, CB_THRESH, COL_MAP
     FONT_SIZE = report_parameters['FONT_SIZE']
     LABEL_SIZE = report_parameters['LABEL_SIZE']
     THIN_LWD = report_parameters['THIN_LWD']
@@ -42,6 +41,7 @@ def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_d
     FIG_HEIGHT = report_parameters['FIG_HEIGHT']
     FIG_DPI = report_parameters['FIG_DPI']
     CB_SHRINK = report_parameters['CB_SHRINK']
+    CB_THRESH = report_parameters['CB_THRESH']
     COL_MAP = report_parameters['COL_MAP']
 
     mesh = open_mesh_mask(mesh_file)
@@ -107,8 +107,8 @@ def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_d
     _make_result_template(report_dir, css, data, const, mesh, crs)
     for dom_name in domains:
         _make_result_template(report_dir, css, data, const, mesh, crs, domains, dom_name)
-    if use_fishing == 1:
-        _make_fisheries_template(report_dir, css, fishing_output_dir, fishing_config_dir, mesh, crs)
+    #if use_fishing == 1:
+    #    _make_fisheries_template(report_dir, css, fishing_output_dir, fishing_config_dir, mesh, crs)
 
     env = jinja2.Environment(loader=jinja2.PackageLoader("apecosm"), autoescape=jinja2.select_autoescape())
     template = env.get_template("template.html")
@@ -143,7 +143,7 @@ def _make_result_template(report_dir, css, data, const, mesh, crs, domains=None,
     outputs = {}
     outputs['css'] = css
     outputs['domain_figs'] = _plot_domain_maps(report_dir, mesh, crs, mask_dom, dom_name)
-    outputs['ts_figs'] = _plot_time_series(report_dir, mesh, data, const, mask_dom, dom_name)
+    #outputs['ts_figs'] = _plot_time_series(report_dir, mesh, data, const, mask_dom, dom_name)
     outputs['mean_length_figs'] = _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, 'length')
     outputs['mean_weight_figs'] = _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, 'weight')
     outputs['cumbiom_figs'] = _plot_integrated_time_series(report_dir, mesh, data, const, mask_dom, dom_name)
@@ -329,6 +329,7 @@ def _plot_integrated_time_series(report_dir, mesh, data, const, mask_dom, dom_na
     plt.close(fig)
     return fig_name
 
+
 def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
 
     crs_in = ccrs.PlateCarree()
@@ -348,40 +349,94 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
     n_row = ceil(n_plot/n_col)
 
     output = (data['OOPE'] * const['weight_step']).mean(dim='time').sum(dim=['w'])
-    output = output.where(output > 0)
+    #output = output.where(output > 0)
+    output = output.where(output > 0, drop=False)
     output = output.where(mask_dom>0, drop=False)
     total = output.sum(dim='c')
-    total = total.where(total > 0)
+    total = total.where(total > 0, drop=False)
 
-    fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
-    for i in range(n_row*n_col):
-        ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
-        if i+1 == 1:
-            cs = plt.pcolormesh(lon_f, lat_f, total.isel(y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
-            cb = plt.colorbar(cs, shrink=CB_SHRINK)
-            cb.ax.tick_params(labelsize=LABEL_SIZE)
-            cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-            cb.set_label('J/m2', fontsize=FONT_SIZE)
-            plt.title('Total', fontsize=FONT_SIZE)
-            ax.add_feature(cfeature.LAND, zorder=100)
-            ax.add_feature(cfeature.COASTLINE, zorder=101)
-        elif 2 <= i+1 <= n_plot:
-            c = i-1
-            cs = plt.pcolormesh(lon_f, lat_f, output.isel(c=c, y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
-            cb = plt.colorbar(cs, shrink=CB_SHRINK)
-            cb.ax.tick_params(labelsize=LABEL_SIZE)
-            cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-            cb.set_label('J/m2', fontsize=FONT_SIZE)
-            plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
-            ax.add_feature(cfeature.LAND, zorder=100)
-            ax.add_feature(cfeature.COASTLINE, zorder=101)
-        else:
-            ax.axis('off')
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * FIG_WIDTH, n_row * FIG_HEIGHT), dpi=FIG_DPI, subplot_kw={'projection': crs_out})
+    c = 0
+    for i in range(n_row):
+        for j in range(n_col):
+            print("i =", i)
+            print("j =", j)
+            print("cpu% = ", psutil.cpu_percent())
+            print("mem% = ", psutil.virtual_memory().percent)
+            if i+j == 0:
+                print("-------------")
+                print("start - loop 1")
+                cs = axes[i, j].pcolormesh(lon_f, lat_f, total[1:, 1:], cmap=COL_MAP, transform=crs_in, rasterized=True)
+                cb = plt.colorbar(cs, shrink=CB_SHRINK)
+                cb.ax.tick_params(labelsize=LABEL_SIZE)
+                cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+                cb.set_label('J/m2', fontsize=FONT_SIZE)
+                axes[i,j].set_title('Total', fontsize=FONT_SIZE)
+                axes[i,j].add_feature(cfeature.LAND, zorder=100)
+                axes[i,j].add_feature(cfeature.COASTLINE, zorder=101)
+                total.close()
+                del total, cs, cb
+                print("cpu% = ", psutil.cpu_percent())
+                print("mem% = ", psutil.virtual_memory().percent)
+                print("end - loop 1")
+                print("-------------")
+            elif 2 <= i + j + 1 <= n_plot:
+                print("-------------")
+                print("start - loop 2")
+                cs = axes[i, j].pcolormesh(lon_f, lat_f, output.isel(c=c)[1:, 1:], cmap=COL_MAP, transform=crs_in, rasterized=True)
+                cb = plt.colorbar(cs, shrink=CB_SHRINK)
+                cb.ax.tick_params(labelsize=LABEL_SIZE)
+                cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+                cb.set_label('J/m2', fontsize=FONT_SIZE)
+                axes[i,j].set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+                axes[i,j].add_feature(cfeature.LAND, zorder=100)
+                axes[i,j].add_feature(cfeature.COASTLINE, zorder=101)
+                c = c + 1
+                del cs, cb
+                print("cpu% = ", psutil.cpu_percent())
+                print("mem% = ", psutil.virtual_memory().percent)
+                print("end - loop 2")
+                print("-------------")
+            else:
+                print("loop 3")
+                axes[i,j].axis('off')
+    output.close()
+    del output
     fig.tight_layout()
-    fig_name = _savefig(report_dir, 'mean_maps_com_%s.svg' %dom_name, 'svg')
+    fig_name = _savefig(report_dir, 'mean_maps_com_%s.svg' % dom_name, 'svg')
     fig.clear()
     plt.close(fig)
     return fig_name
+
+    #fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
+    #for i in range(n_row*n_col):
+    #    ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
+    #    if i+1 == 1:
+    #        cs = plt.pcolormesh(lon_f, lat_f, total.isel(y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
+    #        cb = plt.colorbar(cs, shrink=CB_SHRINK)
+    #        cb.ax.tick_params(labelsize=LABEL_SIZE)
+    #        cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+    #        cb.set_label('J/m2', fontsize=FONT_SIZE)
+    #        plt.title('Total', fontsize=FONT_SIZE)
+    #        ax.add_feature(cfeature.LAND, zorder=100)
+    #        ax.add_feature(cfeature.COASTLINE, zorder=101)
+    #    elif 2 <= i+1 <= n_plot:
+    #        c = i-1
+    #        cs = plt.pcolormesh(lon_f, lat_f, output.isel(c=c, y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
+    #        cb = plt.colorbar(cs, shrink=CB_SHRINK)
+    #        cb.ax.tick_params(labelsize=LABEL_SIZE)
+    #        cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+    #        cb.set_label('J/m2', fontsize=FONT_SIZE)
+    #        plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+    #        ax.add_feature(cfeature.LAND, zorder=100)
+    #        ax.add_feature(cfeature.COASTLINE, zorder=101)
+    #    else:
+    #        ax.axis('off')
+    #fig.tight_layout()
+    #fig_name = _savefig(report_dir, 'mean_maps_com_%s.svg' %dom_name, 'svg')
+    #fig.clear()
+    #plt.close(fig)
+    #return fig_name
 
 
 def _plot_size_spectra(report_dir, mesh, data, const, mask_dom, dom_name):
@@ -709,8 +764,6 @@ def _plot_fishing_effective_effort(report_dir, fleet_maps, fleet_names, mesh, cr
     lon_f = np.squeeze(mesh['glamf'].values)
     lat_f = np.squeeze(mesh['gphif'].values)
 
-    cb_qu = 15
-
     fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
@@ -724,8 +777,8 @@ def _plot_fishing_effective_effort(report_dir, fleet_maps, fleet_names, mesh, cr
             cb_lb = 0
             cb_ub = 1
             if len(data[extract]) > 0:
-                cb_lb = np.percentile(data[extract], cb_qu)
-                cb_ub = np.percentile(data[extract], 100-cb_qu)
+                cb_lb = np.percentile(data[extract], CB_THRESH)
+                cb_ub = np.percentile(data[extract], 100-CB_THRESH)
 
             cs = plt.pcolormesh(lon_f, lat_f, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
             # cs = plt.pcolormesh(lon_f[:-1, :-1], lat_f[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
@@ -824,8 +877,6 @@ def _plot_landing_rate_by_vessels(report_dir, fleet_maps, fleet_names, mesh, crs
     lon_f = np.squeeze(mesh['glamf'].values)
     lat_f = np.squeeze(mesh['gphif'].values)
 
-    cb_qu = 15
-
     fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
@@ -839,8 +890,8 @@ def _plot_landing_rate_by_vessels(report_dir, fleet_maps, fleet_names, mesh, crs
             cb_lb = 0
             cb_ub = 1
             if len(data[extract]) > 0:
-                cb_lb = np.percentile(data[extract], cb_qu)
-                cb_ub = np.percentile(data[extract], 100-cb_qu)
+                cb_lb = np.percentile(data[extract], CB_THRESH)
+                cb_ub = np.percentile(data[extract], 100-CB_THRESH)
 
             cs = plt.pcolormesh(lon_f, lat_f, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
             # cs = plt.pcolormesh(lon_f[:-1, :-1], lat_f[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=-13.5, vmax=-10)
@@ -872,8 +923,6 @@ def _plot_landing_rate_density(report_dir, fleet_maps, fleet_names, mesh, crs_ou
     lon_f = np.squeeze(mesh['glamf'].values)
     lat_f = np.squeeze(mesh['gphif'].values)
 
-    cb_qu = 15
-
     fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     for i in range(n_row*n_col):
         ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
@@ -887,8 +936,8 @@ def _plot_landing_rate_density(report_dir, fleet_maps, fleet_names, mesh, crs_ou
             cb_lb = 0
             cb_ub = 1
             if len(data[extract]) > 0:
-                cb_lb = np.percentile(data[extract], cb_qu)
-                cb_ub = np.percentile(data[extract], 100-cb_qu)
+                cb_lb = np.percentile(data[extract], CB_THRESH)
+                cb_ub = np.percentile(data[extract], 100-CB_THRESH)
 
             cs = plt.pcolormesh(lon_f, lat_f, data[1:, 1:], cmap=COL_MAP, transform=crs_in, vmin=cb_lb, vmax=cb_ub)
             # cs = plt.pcolormesh(lon_f[:-1, :-1], lat_f[:-1, :-1], test[1:-1, 1:-1],  cmap=COL_MAP, transform=crs_in, vmin=-13.5, vmax=-10)
