@@ -16,6 +16,8 @@ from .diags import compute_size_cumprop
 from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data, extract_mean_size, open_fishing_data
 from .misc import extract_community_names, compute_mean_min_max_ts, extract_fleet_names
 from .size_spectra import plot_oope_spectra
+from dask.diagnostics import ProgressBar
+
 plt.rcParams['text.usetex'] = False
 
 def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_dir='report', filecss='default', xarray_args={}):
@@ -143,18 +145,28 @@ def _make_result_template(report_dir, css, data, const, mesh, crs, domains=None,
     outputs = {}
     outputs['css'] = css
     outputs['domain_figs'] = _plot_domain_maps(report_dir, mesh, crs, mask_dom, dom_name)
-    #outputs['ts_figs'] = _plot_time_series(report_dir, mesh, data, const, mask_dom, dom_name)
+    print('+++++++++++ Plotting domain_figs: check')
+    outputs['ts_figs'] = _plot_time_series(report_dir, mesh, data, const, mask_dom, dom_name)
+    print('+++++++++++ Plotting ts_figs: check')
     outputs['mean_length_figs'] = _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, 'length')
+    print('+++++++++++ Plotting mean_length_figs: check')
     outputs['mean_weight_figs'] = _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, 'weight')
+    print('+++++++++++ Plotting mean_weight_figs: check')
     outputs['cumbiom_figs'] = _plot_integrated_time_series(report_dir, mesh, data, const, mask_dom, dom_name)
+    print('+++++++++++ Plotting cumbiom_figs: check')
     outputs['maps_figs'] = _plot_mean_maps(report_dir, mesh, data, const, crs, mask_dom, dom_name)
+    print('+++++++++++ Plotting maps_figs: check')
     outputs['spectra_figs'] = _plot_size_spectra(report_dir, mesh, data, const, mask_dom, dom_name)
+    print('+++++++++++ Plotting spectra_figs: check')
     if 'repfonct_day' in data.variables:
         outputs['repfonct_figs'] = _plot_weighted_values(report_dir, mesh, data, const, 'repfonct_day', mask_dom, dom_name)
+        print('+++++++++++ Plotting repfonct_figs: check')
     if 'mort_day' in data.variables:
         outputs['mort_figs'] = _plot_weighted_values(report_dir, mesh, data, const, 'mort_day', mask_dom, dom_name)
+        print('+++++++++++ Plotting mort_day: check')
     if 'community_diet_values' in data.variables:
         outputs['diet_figs'] = _plot_diet_values(report_dir, mesh, data, const, mask_dom, dom_name)
+        print('+++++++++++ Plotting diet_figs: check')
 
     render = template.render(**outputs)
 
@@ -198,8 +210,11 @@ def _plot_domain_maps(report_dir, mesh, crs_out, mask_dom, dom_name):
 def _plot_time_series(report_dir, mesh, data, const, mask_dom, dom_name):
 
     output = extract_oope_data(data, mesh, const, mask_dom=mask_dom, use_wstep=True, compute_mean=False)
-    output = output.sum(dim='w')
-    total = output.sum(dim='c')
+    with ProgressBar():
+        output = output.compute()
+
+    output = output.sum(dim='w').compute()
+    total = output.sum(dim='c').compute()
 
     community_names = extract_community_names(const)
 
@@ -244,7 +259,11 @@ def _plot_time_series(report_dir, mesh, data, const, mask_dom, dom_name):
 def _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, varname):
 
     mean_size_tot = extract_mean_size(data, const, mesh, varname, mask_dom=mask_dom, aggregate=True)
+    with ProgressBar():
+        mean_size_tot = mean_size_tot.compute()
     mean_size = extract_mean_size(data, const, mesh, varname, mask_dom=mask_dom)
+    with ProgressBar():
+        mean_size = mean_size.compute()
 
     if varname == 'weight':
         mean_size *= 1000
@@ -296,6 +315,8 @@ def _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, varname):
 def _plot_integrated_time_series(report_dir, mesh, data, const, mask_dom, dom_name):
 
     size_prop = compute_size_cumprop(mesh, data, const, mask_dom=mask_dom)
+    with ProgressBar():
+        size_prop = size_prop.compute()
     size_prop = extract_time_means(size_prop)
 
     community_names = extract_community_names(const)
@@ -349,6 +370,8 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
     n_row = ceil(n_plot/n_col)
 
     output = (data['OOPE'] * const['weight_step']).mean(dim='time').sum(dim=['w'])
+    with ProgressBar():
+        output = output.compute()
     #output = output.where(output > 0)
     output = output.where(output > 0, drop=False)
     output = output.where(mask_dom>0, drop=False)
@@ -443,6 +466,8 @@ def _plot_size_spectra(report_dir, mesh, data, const, mask_dom, dom_name):
 
     # extract data in the entire domain, integrates over space
     data = extract_oope_data(data, mesh, const, mask_dom=mask_dom, use_wstep=False, compute_mean=False)
+    with ProgressBar():
+        data = data.compute()
     data = extract_time_means(data)
 
     fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT), dpi=FIG_DPI)
@@ -463,6 +488,8 @@ def _plot_size_spectra(report_dir, mesh, data, const, mask_dom, dom_name):
 def _plot_weighted_values(report_dir, mesh, data, const, varname, mask_dom, dom_name):
 
     output = extract_weighted_data(data, const, mesh, varname, mask_dom)
+    with ProgressBar():
+        output = output.compute()
     output = extract_time_means(output)
 
     community_names = extract_community_names(const)
