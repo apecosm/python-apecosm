@@ -463,6 +463,8 @@ def read_report_params(csv_file_name):
             report_parameters['FIG_DPI'] = int(fields[1])
         elif fields[0] == 'CB_SHRINK':
             report_parameters['CB_SHRINK'] = float(fields[1])
+        elif fields[0] == 'CB_THRESH':
+            report_parameters['CB_THRESH'] = int(fields[1])
         elif fields[0] == 'COL_MAP':
             report_parameters['COL_MAP'] = fields[1].replace(" ", "")
         elif fields[0] == 'fishing_output_dir':
