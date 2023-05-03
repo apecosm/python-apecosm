@@ -142,20 +142,39 @@ def _make_result_template(report_dir, css, data, const, mesh, crs, domains=None,
         dom_name = 'global'
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
 
+    if 'tmaskutil' in mesh.variables:
+        tmask = mesh['tmaskutil']
+    else:
+        tmask = mesh['tmask']
+
+    # Computation of the full ocean surface within the domain considered
+    surf_ocean = (mesh['e1t'] * mesh['e2t'] * mask_dom * tmask).sum(dim=['x', 'y']).compute()
+
+    # Do some pre-calculationsn
+    # We integrate the biomass over the entire domain: integration, no weight step. J/kg/m2 -> J
+    # Output dimensions: time, c, w
+    spatial_integrated_biomass = extract_oope_data(data, mesh, const, mask_dom=mask_dom, use_wstep=False, compute_mean=False)
+    with ProgressBar():
+        spatial_integrated_biomass = spatial_integrated_biomass.compute()
+    print('+++++++++++ Pre-processing of spatial integral: check')
+
     outputs = {}
     outputs['css'] = css
     outputs['domain_figs'] = _plot_domain_maps(report_dir, mesh, crs, mask_dom, dom_name)
     print('+++++++++++ Plotting domain_figs: check')
-    outputs['ts_figs'] = _plot_time_series(report_dir, mesh, data, const, mask_dom, dom_name)
+    outputs['ts_figs'] = _plot_time_series(spatial_integrated_biomass, report_dir, mesh, data, const, mask_dom, dom_name)
     print('+++++++++++ Plotting ts_figs: check')
-    outputs['mean_length_figs'] = _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, 'length')
+    outputs['mean_length_figs'] = _plot_mean_size(spatial_integrated_biomass, report_dir, mesh, data, const, mask_dom, dom_name, 'length')
     print('+++++++++++ Plotting mean_length_figs: check')
-    outputs['mean_weight_figs'] = _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, 'weight')
+    outputs['mean_weight_figs'] = _plot_mean_size(spatial_integrated_biomass, report_dir, mesh, data, const, mask_dom, dom_name, 'weight')
     print('+++++++++++ Plotting mean_weight_figs: check')
     outputs['cumbiom_figs'] = _plot_integrated_time_series(report_dir, mesh, data, const, mask_dom, dom_name)
     print('+++++++++++ Plotting cumbiom_figs: check')
-    outputs['maps_figs'] = _plot_mean_maps(report_dir, mesh, data, const, crs, mask_dom, dom_name)
-    print('+++++++++++ Plotting maps_figs: check')
+
+    if dom_name is None:
+        outputs['maps_figs'] = _plot_mean_maps(report_dir, mesh, data, const, crs, mask_dom, dom_name)
+        print('+++++++++++ Plotting maps_figs: check')
+
     outputs['spectra_figs'] = _plot_size_spectra(report_dir, mesh, data, const, mask_dom, dom_name)
     print('+++++++++++ Plotting spectra_figs: check')
     if 'repfonct_day' in data.variables:
@@ -207,12 +226,9 @@ def _plot_domain_maps(report_dir, mesh, crs_out, mask_dom, dom_name):
     return fig_name
 
 
-def _plot_time_series(report_dir, mesh, data, const, mask_dom, dom_name):
+def _plot_time_series(spatial_integrated_biomass, report_dir, mesh, data, const, mask_dom, dom_name):
 
-    output = extract_oope_data(data, mesh, const, mask_dom=mask_dom, use_wstep=True, compute_mean=False)
-    with ProgressBar():
-        output = output.compute()
-
+    output = (spatial_integrated_biomass * const['weight_step'])
     output = output.sum(dim='w').compute()
     total = output.sum(dim='c').compute()
 
@@ -256,12 +272,12 @@ def _plot_time_series(report_dir, mesh, data, const, mask_dom, dom_name):
     return fig_name
 
 
-def _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, varname):
+def _plot_mean_size(spatial_integrated_biomass, report_dir, mesh, data, const, mask_dom, dom_name, varname):
 
-    mean_size_tot = extract_mean_size(data, const, mesh, varname, mask_dom=mask_dom, aggregate=True)
-    with ProgressBar():
-        mean_size_tot = mean_size_tot.compute()
-    mean_size = extract_mean_size(data, const, mesh, varname, mask_dom=mask_dom)
+    spatial_integrated_biomass = (spatial_integrated_biomass * const['weight_step']).compute()
+
+    mean_size_tot = (spatial_integrated_biomass * const[varname]).sum(dim=['c', 'w']) / spatial_integrated_biomass.sum(dim=['c', 'w'])
+    mean_size = (spatial_integrated_biomass * const[varname]).sum(dim=['w']) / spatial_integrated_biomass.sum(dim=['w'])
     with ProgressBar():
         mean_size = mean_size.compute()
 
@@ -312,12 +328,13 @@ def _plot_mean_size(report_dir, mesh, data, const, mask_dom, dom_name, varname):
     return fig_name
 
 
-def _plot_integrated_time_series(report_dir, mesh, data, const, mask_dom, dom_name):
+def _plot_integrated_time_series(spatial_integrated_biomass, report_dir, mesh, data, const, mask_dom, dom_name):
 
-    size_prop = compute_size_cumprop(mesh, data, const, mask_dom=mask_dom)
+    spatial_integrated_biomass = spatial_integrated_biomass * const['weight_step']
+    size_prop = size_prop.cumsum(dim='w') / size_prop.sum(dim='w') * 100
+    size_prop = extract_time_means(size_prop)
     with ProgressBar():
         size_prop = size_prop.compute()
-    size_prop = extract_time_means(size_prop)
 
     community_names = extract_community_names(const)
 
