@@ -168,14 +168,14 @@ def _make_result_template(report_dir, css, data, const, mesh, crs, domains=None,
     print('+++++++++++ Plotting mean_length_figs: check')
     outputs['mean_weight_figs'] = _plot_mean_size(spatial_integrated_biomass, report_dir, mesh, data, const, mask_dom, dom_name, 'weight')
     print('+++++++++++ Plotting mean_weight_figs: check')
-    outputs['cumbiom_figs'] = _plot_integrated_time_series(report_dir, mesh, data, const, mask_dom, dom_name)
+    outputs['cumbiom_figs'] = _plot_integrated_time_series(spatial_integrated_biomass, report_dir, mesh, data, const, mask_dom, dom_name)
     print('+++++++++++ Plotting cumbiom_figs: check')
 
-    if dom_name is None:
+    if domains is None:
         outputs['maps_figs'] = _plot_mean_maps(report_dir, mesh, data, const, crs, mask_dom, dom_name)
         print('+++++++++++ Plotting maps_figs: check')
 
-    outputs['spectra_figs'] = _plot_size_spectra(report_dir, mesh, data, const, mask_dom, dom_name)
+    outputs['spectra_figs'] = _plot_size_spectra(spatial_integrated_biomass, report_dir, mesh, data, const, mask_dom, dom_name)
     print('+++++++++++ Plotting spectra_figs: check')
     if 'repfonct_day' in data.variables:
         outputs['repfonct_figs'] = _plot_weighted_values(report_dir, mesh, data, const, 'repfonct_day', mask_dom, dom_name)
@@ -331,7 +331,7 @@ def _plot_mean_size(spatial_integrated_biomass, report_dir, mesh, data, const, m
 def _plot_integrated_time_series(spatial_integrated_biomass, report_dir, mesh, data, const, mask_dom, dom_name):
 
     spatial_integrated_biomass = spatial_integrated_biomass * const['weight_step']
-    size_prop = size_prop.cumsum(dim='w') / size_prop.sum(dim='w') * 100
+    size_prop = spatial_integrated_biomass.cumsum(dim='w') / spatial_integrated_biomass.sum(dim='w') * 100
     size_prop = extract_time_means(size_prop)
     with ProgressBar():
         size_prop = size_prop.compute()
@@ -479,13 +479,9 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
     #return fig_name
 
 
-def _plot_size_spectra(report_dir, mesh, data, const, mask_dom, dom_name):
+def _plot_size_spectra(spatial_integrated_biomass, report_dir, mesh, data, const, mask_dom, dom_name):
 
-    # extract data in the entire domain, integrates over space
-    data = extract_oope_data(data, mesh, const, mask_dom=mask_dom, use_wstep=False, compute_mean=False)
-    with ProgressBar():
-        data = data.compute()
-    data = extract_time_means(data)
+    data = extract_time_means(spatial_integrated_biomass)
 
     fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT), dpi=FIG_DPI)
     plot_oope_spectra(data, const, output_var='length', linewidth=THICK_LWD)
@@ -589,12 +585,15 @@ def _make_meta_template(report_dir, fishing_config_dir, css, data, const):
     template = env.get_template("template_meta.html")
 
     community_names = extract_community_names(const)
-    fleet_names = extract_fleet_names(fishing_config_dir)
+    use_fishing = fishing_config_dir != ''
+    if use_fishing:
+        fleet_names = extract_fleet_names(fishing_config_dir)
 
     outputs = {}
     outputs['css'] = css
     outputs['community_names'] = community_names
-    outputs['fleet_names'] = fleet_names
+    if use_fishing:
+        outputs['fleet_names'] = fleet_names
     outputs['dims'] = data.dims
     outputs['list_dims'] = [d for d in data.dims if 'prey' not in d]
     outputs['start_date'] = data['time'][0].values
