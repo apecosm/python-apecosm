@@ -398,56 +398,43 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
     print('++++++++++ Size integration: check')
 
     #output = output.where(output > 0)
+    output = output.fillna(0)
     output = output.where(output > 0, drop=False)
-    output = output.where(mask_dom>0, drop=False)
     total = output.sum(dim='c')
     total = total.where(total > 0, drop=False)
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * FIG_WIDTH, n_row * FIG_HEIGHT), dpi=FIG_DPI, subplot_kw={'projection': crs_out})
-    c = 0
+    # fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * FIG_WIDTH, n_row * FIG_HEIGHT), dpi=FIG_DPI, subplot_kw={'projection': crs_out})
+    fig = plt.figure(figsize=(n_col * FIG_WIDTH, n_row * FIG_HEIGHT), dpi=FIG_DPI)
+    ccc = 0
     for i in range(n_row):
         for j in range(n_col):
             print("i =", i)
             print("j =", j)
             print("cpu% = ", psutil.cpu_percent())
             print("mem% = ", psutil.virtual_memory().percent)
+            ccc += 1
             if i+j == 0:
-                print("-------------")
-                print("start - loop 1")
-                cs = axes[i, j].pcolormesh(lon_f, lat_f, total[1:, 1:], cmap=COL_MAP, transform=crs_in, rasterized=True)
+                ax = plt.subplot(n_row, n_col, ccc, projection=crs_out)
+                cs = ax.pcolormesh(lon_f, lat_f, total[1:, 1:], cmap=COL_MAP, transform=crs_in)
                 cb = plt.colorbar(cs, shrink=CB_SHRINK)
                 cb.ax.tick_params(labelsize=LABEL_SIZE)
                 cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
                 cb.set_label('J/m2', fontsize=FONT_SIZE)
-                axes[i,j].set_title('Total', fontsize=FONT_SIZE)
-                axes[i,j].add_feature(cfeature.LAND, zorder=100)
-                axes[i,j].add_feature(cfeature.COASTLINE, zorder=101)
+                ax.set_title('Total', fontsize=FONT_SIZE)
                 total.close()
                 del total, cs, cb
-                print("cpu% = ", psutil.cpu_percent())
-                print("mem% = ", psutil.virtual_memory().percent)
-                print("end - loop 1")
-                print("-------------")
             elif 2 <= i + j + 1 <= n_plot:
-                print("-------------")
-                print("start - loop 2")
-                cs = axes[i, j].pcolormesh(lon_f, lat_f, output.isel(c=c)[1:, 1:], cmap=COL_MAP, transform=crs_in, rasterized=True)
+                ax = plt.subplot(n_row, n_col, ccc, projection=crs_out)
+                cs = ax.pcolormesh(lon_f, lat_f, output.isel(c=c)[1:, 1:], cmap=COL_MAP, transform=crs_in)
                 cb = plt.colorbar(cs, shrink=CB_SHRINK)
                 cb.ax.tick_params(labelsize=LABEL_SIZE)
                 cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
                 cb.set_label('J/m2', fontsize=FONT_SIZE)
-                axes[i,j].set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
-                axes[i,j].add_feature(cfeature.LAND, zorder=100)
-                axes[i,j].add_feature(cfeature.COASTLINE, zorder=101)
+                ax.set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
                 c = c + 1
                 del cs, cb
-                print("cpu% = ", psutil.cpu_percent())
-                print("mem% = ", psutil.virtual_memory().percent)
-                print("end - loop 2")
-                print("-------------")
             else:
-                print("loop 3")
-                axes[i,j].axis('off')
+                ax.axis('off')
     output.close()
     del output
     fig.tight_layout()
