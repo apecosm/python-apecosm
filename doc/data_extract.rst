@@ -15,12 +15,14 @@ The Apecosm package provides some tools to open the files from an Apecosm simula
     import sys
     import os
     sys.path.insert(0, os.path.abspath('../'))
+    import matplotlib.pyplot as plt
 
 .. ipython:: python
 
     import os
     import apecosm
     import xarray as xr
+    import matplotlib.pyplot as plt
 
 Then, the mesh file containing the grid informations is loaded:
 
@@ -63,7 +65,7 @@ can be provided in the :py:func:`apecosm.open_apecosm_data` function:
     data_chunked = apecosm.open_apecosm_data('_static/example/data/apecosm', **xarray_args)
     data_chunked
 
-In this case, the chunk size is now `(1, 50, 50, 5, 100)`, while it was `chunksize=(12, 108, 163, 5, 100)` in the above.
+In this case, the chunk size is now `(1, 50, 50, 5, 100)`, while it was `(12, 108, 163, 5, 100)` in the above.
 
 .. warning::
 
@@ -101,12 +103,34 @@ Note that in this case, the spatial integral is computed. In order to obtain the
     spatial_mean = apecosm.normalize_data(spatial_integral)
     spatial_mean
 
-In addition, there is the possibility to provide a regional mask in order to extract the area over a given region:
+In addition, there is the possibility to provide a regional mask in order to extract the area over a given region. For instance, if we have a file containing
+different domains:
+
+.. code-block:: python
+
+    import xarray as xr
+    domain_ds = xr.open_dataset('_static/example/data/domains.nc')
+    domain = domain_ds['domain_1'] * mesh['tmaskutil']
+    domain.plot()
 
 .. ipython:: python
+    :suppress:
 
+    import xarray as xr
     domain_ds = xr.open_dataset('_static/example/data/domains.nc')
-    domain = domain_ds['domain_1']
+    domain = domain_ds['domain_1'] * mesh['tmaskutil']
+    domain.plot()
+    plt.savefig('_static/domains.jpg')
+    plt.savefig('_static/domains.pdf')
+
+.. figure::  _static/domains.*
+    :align: center
+
+    Domains example
+
+We can extract the integrated biomass over this domain as follows:
+
+.. ipython:: python
 
     regional_spatial_integral = apecosm.extract_oope_data(data, mesh, const, domain)
     regional_spatial_integral
