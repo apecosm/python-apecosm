@@ -105,8 +105,7 @@ def open_ltl_data(dirin, replace_dims=None, **kwargs):
 
 
 def extract_ltl_data(data, varname, mesh,
-                     mask_dom=None, compute_mean=False,
-                     depth_max=None):
+                     mask_dom=None, depth_max=None):
 
     """
     Extraction of LTL values on a given domain.
@@ -169,11 +168,10 @@ def extract_ltl_data(data, varname, mesh,
     zdim, ydim, xdim = data.dims[1:]
 
     # integrate spatially and vertically the LTL concentrations
-    data = (data * weight).sum(dim=(zdim, ydim, xdim))  # time
-    data.attrs['norm_weight'] = float(weight.sum(dim=(zdim, ydim, zdim)).compute().values)
+    output = (data * weight).sum(dim=(zdim, ydim, xdim))  # time
+    output.attrs['norm_weight'] = float(weight.sum(dim=(zdim, ydim, xdim)).compute().values)
 
-    return data
-
+    return output
 
 def normalize_data(data):
     norm_data = data / data.attrs['norm_weight']
@@ -321,14 +319,13 @@ def extract_oope_data(data, mesh, const, mask_dom=None):
     :param use_wstep: True if data must be multiplied
         by weight step (conversion from :math:`J.m^{-2}.kg^{-1}`
         to :math:`J.m^{-2}`)
-    :param compute_mean: True if mean, else integral.
 
     :type data: :class:`xarray.Dataset`
     :type mesh: :class:`xarray.Dataset`
     :type const: :class:`xarray.Dataset`
     :type mask_dom: :class:`numpy.array`, optional
     :type use_wstep: bool, optional
-    :type compute_mean: bool, optional
+
 
 
     :return: A tuple with the time-value and the LTL time series
