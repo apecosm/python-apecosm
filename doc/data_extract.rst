@@ -137,20 +137,38 @@ We can extract the integrated biomass over this domain as follows:
 
 
 **********************************************************
-Spatial extraction of biogeochemical data
+Extraction of biogeochemical data
 **********************************************************
 
-The output is provided as a `xarray <http://xarray.pydata.org/en/stable/>`_ Dataset object.
+The 3D extraction of biogeochemical forcing data is achieved by using the :py:func:`apecosm.extract_ltl_data` function as follows:
 
-To extraction of biogeochemical forcing data is achieved by using the :py:func:`apecosm.extract_ltl_data` function as follows:
+.. ipython:: python
 
-.. literalinclude::  _static/example/extract_data_pisces_spatial.py
+    ltl_data = apecosm.open_ltl_data('_static/example/data/pisces')
+    ltl_data
 
-.. program-output:: python _static/example/extract_data_pisces_spatial.py
+.. ipython:: python
+
+    mesh_file = '_static/example/data/mesh_mask.nc'
+    mesh = apecosm.open_mesh_mask(mesh_file)
+    mesh
+
+.. ipython:: python
+
+    spatial_integrated_phy2 = apecosm.extract_ltl_data(ltl_data, 'PHY2', mesh)
+    spatial_integrated_phy2 = spatial_integrated_phy2.compute()
+    spatial_integrated_phy2
 
 .. note
 
-    In this case, the output data is also an xarray Dataset, however it contains only one dimension since there is no other dimensions than depth, latitude, longitude.
+    In this case, the output data is also an xarray Dataarray, however it contains only one dimension since there is no other dimensions than depth, latitude, longitude.
+
+As in the above, this computes the 3D integral. If the mean is needed:
+
+.. ipython:: python
+
+    spatial_mean_phy2 = apecosm.normalize_data(spatial_integrated_phy2)
+    spatial_mean_phy2
 
 **********************************************************
 Time extraction
