@@ -15,7 +15,7 @@ def open_mesh_mask(mesh_file, replace_dims=None):
 
     :param str mesh_file: Full path of the mesh file.
     :param replace_dims: Dictionnary that is used to
-        rename dimensions
+        rename dimension names by other names
     :type replace_dims: dict, optional
     :return: A dataset containing the variables of the
         mesh mask.
@@ -170,11 +170,14 @@ def extract_ltl_data(data, varname, mesh,
 
     # integrate spatially and vertically the LTL concentrations
     data = (data * weight).sum(dim=(zdim, ydim, xdim))  # time
-    if compute_mean:
-        data /= weight.sum(dim=(zdim, ydim, zdim))
+    data.attrs['norm_weight'] = float(weight.sum(dim=(zdim, ydim, zdim)).compute().values)
 
     return data
 
+
+def normalize_data(data):
+    norm_data = data / data.attrs['norm_weight']
+    return norm_data
 
 def _rename_z_dim(var):
 
@@ -215,14 +218,19 @@ def extract_time_means(data, time=None):
 
     return climatology
 
+def compute_cumulated_biomass(spatial_integrated_biomass, const):
 
-def extract_mean_size(data, const, mesh, varname,
+    spatial_integrated_biomass = spatial_integrated_biomass * const['weight_step']
+    size_prop = spatial_integrated_biomass.cumsum(dim='w') / spatial_integrated_biomass.sum(dim='w') * 100
+    return size_prop
+
+def extract_mean_size(spatially_integrated_biomass, const, mesh, varname,
                       mask_dom=None, aggregate=False):
 
     """
     Extracts the mean length or weight.
 
-    :param data: Apecosm dataset
+    :param spatially_integrated_biomass: Biomass integrated over a given region (dim: time, c, w)
     :type data: :class:`xarray.Dataset`
     :param const: Apecosm constants dataset
     :type const: :class:`xarray.Dataset`
@@ -239,27 +247,10 @@ def extract_mean_size(data, const, mesh, varname,
 
     """
 
-    if 'tmaskutil' in mesh.variables:
-        tmask = mesh['tmaskutil']
-    else:
-        tmask = mesh['tmask']
-
-    tmask = _squeeze_variable(tmask)
-    surf = _squeeze_variable(mesh['e1t'] * mesh['e2t'])
-
-    # extract the domain coordinates
-    if mask_dom is None:
-        mask_dom = np.ones(tmask.shape)
-
-    oope = data['OOPE']
-
-    mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
-    tmask = tmask * mask_dom
-
     # time, lat, lon, comm, w
-    weight = tmask * surf * oope * const['weight_step']
+    weight = spatially_integrated_biomass * const['weight_step']
 
-    dims = ['x', 'y', 'w']
+    dims = ['w']
     if aggregate:
         dims += ['c']
 
@@ -316,8 +307,7 @@ def extract_weighted_data(data, const, mesh, varname,
     return output
 
 
-def extract_oope_data(data, mesh, const, mask_dom=None,
-                      use_wstep=True, compute_mean=False):
+def extract_oope_data(data, mesh, const, mask_dom=None):
 
     """
     Extraction of OOPE values on a given domain.
@@ -346,10 +336,7 @@ def extract_oope_data(data, mesh, const, mask_dom=None,
     """
 
     # Extract constant fields and extract weight_step
-    if use_wstep:
-        wstep = const['weight_step']
-    else:
-        wstep = 1
+    wstep = 1
 
     surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
 
@@ -373,13 +360,8 @@ def extract_oope_data(data, mesh, const, mask_dom=None,
 
     data = data['OOPE']
 
-    if use_wstep:
-        data = data * wstep
-
     data = (data * weight).sum(dim=('x', 'y'))  # time, com, w
-
-    if compute_mean:
-        data /= weight.sum(dim=['x', 'y'])
+    data.attrs['norm_weight'] = float(weight.sum(dim=['x', 'y']).compute().values)
 
     return data
 
