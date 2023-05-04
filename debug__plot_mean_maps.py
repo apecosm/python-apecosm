@@ -45,13 +45,30 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
     output = (data['OOPE'] * const['weight_step']).mean(dim='time').sum(dim=['w'])
     #output = output.where(output>0)
     #output = output.where(mask_dom>0, drop=False)
-    output = output.where(output>0, drop=False)
-    output = output.where(mask_dom>0, drop=False)
+    #output_raw = output_raw.where(output_raw>0, drop=False)
+    #output_raw = output_raw.where(mask_dom>0, drop=False)
+    #output = output_raw.compute()
+    #total_raw = output_raw.sum(dim='c')
+    #total_raw = total_raw.where(total_raw > 0)
+    #total = total_raw.compute()
+    #del output_raw, total_raw
+
+    print("def output/total")
+    output = output.where(output > 0, drop=False)
+    output = output.where(mask_dom > 0, drop=False)
     total = output.sum(dim='c')
     total = total.where(total > 0)
 
+    print(output.chunks)
+    print("OUTPUT",output)
+    print("TOTAL",total)
+
+    print("start compute output/total")
+    output = output.compute(chunks={'time': 1, 'x': 10, 'y': 10, 'c': 1})
+    total = total.compute(chunks={'time': 1, 'x': 10, 'y': 10})
+    print("end compute output/total")
+
     fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=100, subplot_kw={'projection': crs_out})
-    #for i in range(n_row * n_col):
     c = 0
     for i in range(n_row):
         for j in range(n_col):
@@ -59,54 +76,36 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
             print("j =",j)
             print("cpu% = ",psutil.cpu_percent())
             print("mem% = ",psutil.virtual_memory().percent)
-            #ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
             if i+j == 0:
                 print("loop 1")
-                ##cs = plt.pcolormesh(lon_f, lat_f, total.isel(y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
                 cs = axes[i, j].pcolormesh(lon_f, lat_f, total[1:, 1:], cmap=COL_MAP, transform=crs_in, rasterized=True)
-                ##cs = axes[i,j].pcolormesh(lon_f, lat_f, total.isel(y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in, rasterized=True)
                 cb = plt.colorbar(cs, shrink=CB_SHRINK)
-                #cb.tick_params(labelsize=LABEL_SIZE)
-                #cb.yaxis.get_offset_text().set(size=FONT_SIZE)
                 cb.ax.tick_params(labelsize=LABEL_SIZE)
                 cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
                 cb.set_label('J/m2', fontsize=FONT_SIZE)
                 axes[i,j].set_title('Total', fontsize=FONT_SIZE)
-                #plt.title('Total', fontsize=FONT_SIZE)
-                ##plt.gca().add_feature(cfeature.LAND, zorder=100)
-                ##plt.gca().add_feature(cfeature.COASTLINE, zorder=101)
                 axes[i,j].add_feature(cfeature.LAND, zorder=100)
                 axes[i,j].add_feature(cfeature.COASTLINE, zorder=101)
                 del total, cs, cb
-                ##ax.remove()
             elif 2 <= i+j+1 <= n_plot:
                 print("loop 2")
                 print("c =",c)
-                ##cs = plt.pcolormesh(lon_f, lat_f, output.isel(c=c, y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
                 cs = axes[i,j].pcolormesh(lon_f, lat_f, output.isel(c=c)[1:,1:], cmap=COL_MAP, transform=crs_in, rasterized=True)
-                ##cs = axes[i, j].pcolormesh(lon_f, lat_f, total.isel(y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in, rasterized=True)
-                ##cs = axes[i,j].pcolormesh(lon_f, lat_f, output.isel(c=c, y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in, rasterized=True)
                 cb = plt.colorbar(cs, shrink=CB_SHRINK)
-                #cb.axes[i,j].tick_params(labelsize=LABEL_SIZE)
-                #cb.axes[i,j].yaxis.get_offset_text().set(size=FONT_SIZE)
                 cb.ax.tick_params(labelsize=LABEL_SIZE)
                 cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
                 cb.set_label('J/m2', fontsize=FONT_SIZE)
                 axes[i,j].set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
-                ##plt.gca().add_feature(cfeature.LAND, zorder=100)
-                ##plt.gca().add_feature(cfeature.COASTLINE, zorder=101)
                 axes[i,j].add_feature(cfeature.LAND, zorder=100)
                 axes[i,j].add_feature(cfeature.COASTLINE, zorder=101)
                 c = c+1
                 del cs, cb
-                ##ax.remove()
             else:
                 print("loop 3")
                 axes[i,j].axis('off')
-                #ax.remove()
     del output
     fig.tight_layout()
-    fig_name = _savefig(report_dir, 'mean_maps_com_%s.svg' %dom_name, 'svg')
+    fig_name = _savefig(report_dir, 'mean_maps_com_%s.jpg' %dom_name, 'jpg')
     fig.clear()
     plt.close(fig)
     return fig_name
