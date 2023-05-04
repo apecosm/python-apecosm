@@ -9,6 +9,7 @@ import psutil
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import xarray as xr
+import cartopy.crs as ccrs
 from apecosm.constants import LTL_NAMES
 from .diags import compute_size_cumprop
 from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data, extract_mean_size, open_fishing_data
@@ -390,16 +391,16 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
     n_col = 3
     n_row = ceil(n_plot/n_col)
 
-    # Computation of the time average for OOPE -> (y, x, c, w)
-    output = data['OOPE'].mean(dim='time')
-    with ProgressBar():
-        output = output.compute()
-    print('++++++++++ Time mean: check')
-
-    output = (output * const['weight_step']).sum(dim=['w'])
+    output = (data['OOPE'] * const['weight_step']).sum(dim=['w'])
     with ProgressBar():
         output = output.compute()
     print('++++++++++ Size integration: check')
+
+    # Computation of the time average for OOPE -> (y, x, c)
+    output = output.mean(dim='time')
+    with ProgressBar():
+        output = output.compute()
+    print('++++++++++ Time mean: check')
 
     #output = output.where(output > 0)
     output = output.fillna(0)
