@@ -149,7 +149,8 @@ The 3D extraction of biogeochemical forcing data is achieved by using the :py:fu
                                     drop_variables=['bounds_nav_lat',
                                                     'bounds_nav_lon',
                                                     'nav_lat',
-                                                    'nav_lon'])
+                                                    'nav_lon'],
+                                    replace_dims={'olevel': 'z'})
     ltl_data
 
 .. ipython:: python
