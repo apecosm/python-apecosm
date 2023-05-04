@@ -171,16 +171,24 @@ As in the above, this computes the 3D integral. If the mean is needed:
     spatial_mean_phy2
 
 **********************************************************
-Time extraction
+Time average
 **********************************************************
 
-There is also the possibility to extract time averages. This is done by using the :py:func:`apecosm.extract_time_means` function. It allows the possibily to compute either full time average, yearly, seasonal or monthly averages.
+There is also the possibility to compute time averages. This is done by using
+the :py:func:`apecosm.extract_time_means` function. It allows the possibily to compute either
+full time average, yearly, seasonal or monthly averages.
 
-.. literalinclude::  _static/example/extract_data_ape_temporal.py
+For the time-average over the entire simulation:
 
-.. program-output:: python _static/example/extract_data_ape_temporal.py
+.. ipython:: python
 
-.. warning::
+    data_temporal_mean = apecosm.extract_time_means(data)
+    data_temporal_mean
 
-    This function takes as argument xarray.Dataset objects. They are either obtained by using the :py:func:`apecosm.extract_oope_data`, :py:func:`apecosm.extract_ltl_data` or
-    by using the :py:func:`xarray.open_dataset` functions.
+To compute the yearly mean, the function must be called with a ``year`` argument:
+
+.. ipython:: python
+    :okwarning:
+
+    data_yearly_mean = apecosm.extract_time_means(data, 'year')
+    data_yearly_mean
