@@ -155,8 +155,8 @@ def extract_ltl_data(data, varname, mesh,
 
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
 
-    tmask = (tmask * mask_dom).compute()  # 0 if land or out of domain, else 1
-    weight = (surf * e3t * tmask).compute()  # (1, z, lat, lon) or (time, z, lat, lon)
+    tmask = (tmask * mask_dom)  # 0 if land or out of domain, else 1
+    weight = (surf * e3t * tmask).fillna(0)  # (1, z, lat, lon) or (time, z, lat, lon)
 
     # clear unused variables
     del(surf, e3t, tmask, mask_dom)
@@ -167,7 +167,7 @@ def extract_ltl_data(data, varname, mesh,
     zdim, ydim, xdim = data.dims[1:]
 
     # integrate spatially and vertically the LTL concentrations
-    output = (data * weight).sum(dim=(zdim, ydim, xdim))  # time
+    output = data.weighted(weight).sum(dim=(zdim, ydim, xdim))  # time
     output['norm_weight'] = weight.sum(dim=(zdim, ydim, xdim)).compute()
 
     return output
@@ -369,11 +369,11 @@ def extract_oope_data(data, mesh, const, mask_dom=None):
     # add virtual dimensions to domain mask and
     # correct landsea mask
     tmask = tmask * mask_dom
-    weight = tmask * surf  # time, lat, lon, comm, w
+    weight = (tmask * surf).fillna(0)  # time, lat, lon, comm, w
 
     data = data['OOPE']
 
-    data = (data * weight).sum(dim=('x', 'y'))  # time, com, w
+    data = data.weighted(weight).sum(dim=('x', 'y'))  # time, com, w
     data['norm_weight'] = weight.sum(dim=['x', 'y']).compute()
 
     return data
