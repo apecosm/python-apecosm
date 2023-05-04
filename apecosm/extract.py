@@ -136,7 +136,6 @@ def extract_ltl_data(data, varname, mesh,
         e3t = mesh['e3t_1d']
 
     data = data[varname]
-    data = _rename_z_dim(data)
 
     if 'gdept_0' in mesh.variables:
         depth = mesh['gdept_0']  # 1, z, lat, lon
@@ -156,8 +155,8 @@ def extract_ltl_data(data, varname, mesh,
 
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
 
-    tmask = tmask * mask_dom  # 0 if land or out of domain, else 1
-    weight = surf * e3t * tmask  # (1, z, lat, lon) or (time, z, lat, lon)
+    tmask = (tmask * mask_dom).compute()  # 0 if land or out of domain, else 1
+    weight = (surf * e3t * tmask).compute()  # (1, z, lat, lon) or (time, z, lat, lon)
 
     # clear unused variables
     del(surf, e3t, tmask, mask_dom)
@@ -169,20 +168,13 @@ def extract_ltl_data(data, varname, mesh,
 
     # integrate spatially and vertically the LTL concentrations
     output = (data * weight).sum(dim=(zdim, ydim, xdim))  # time
-    output.attrs['norm_weight'] = float(weight.sum(dim=(zdim, ydim, xdim)).compute().values)
+    output['norm_weight'] = weight.sum(dim=(zdim, ydim, xdim)).compute()
 
     return output
 
 def normalize_data(data):
-    norm_data = data / data.attrs['norm_weight']
+    norm_data = data / data['norm_weight']
     return norm_data
-
-def _rename_z_dim(var):
-
-    for dims in ['olevel', 'depth', 'deptht', 'depthu', 'depthv']:
-        if dims in var.dims:
-            var = var.rename({dims: 'z'})
-    return var
 
 
 def extract_oope_size_integration(data, const, lmin=None, lmax=None):
@@ -382,7 +374,7 @@ def extract_oope_data(data, mesh, const, mask_dom=None):
     data = data['OOPE']
 
     data = (data * weight).sum(dim=('x', 'y'))  # time, com, w
-    data.attrs['norm_weight'] = float(weight.sum(dim=['x', 'y']).compute().values)
+    data['norm_weight'] = weight.sum(dim=['x', 'y']).compute()
 
     return data
 
