@@ -20,8 +20,6 @@ Apecosm model documentation
    :numbered:
 
    config.rst
-   wgrid.rst
-   zgrid.rst
    data_extract.rst
    api.rst
    biblio.rst

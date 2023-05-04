@@ -1,4 +1,6 @@
 
+.. _data_extraction:
+
 =================================
 Data extraction
 =================================
@@ -61,8 +63,7 @@ can be provided in the :py:func:`apecosm.open_apecosm_data` function:
 
 .. ipython:: python
 
-    xarray_args = {'chunks' : {'time': 1, 'x': 50, 'y': 50}}
-    data_chunked = apecosm.open_apecosm_data('_static/example/data/apecosm', **xarray_args)
+    data_chunked = apecosm.open_apecosm_data('_static/example/data/apecosm',  chunks={'time': 1, 'x': 50, 'y': 50})
     data_chunked
 
 In this case, the chunk size is now `(1, 50, 50, 5, 100)`, while it was `(12, 108, 163, 5, 100)` in the above.
@@ -144,12 +145,16 @@ The 3D extraction of biogeochemical forcing data is achieved by using the :py:fu
 
 .. ipython:: python
 
-    ltl_data = apecosm.open_ltl_data('_static/example/data/pisces')
+    ltl_data = apecosm.open_ltl_data('_static/example/data/pisces',
+                                    drop_variables=['bounds_nav_lat',
+                                                    'bounds_nav_lon',
+                                                    'nav_lat',
+                                                    'nav_lon'])
     ltl_data
 
 .. ipython:: python
 
-    mesh_file = '_static/example/data/mesh_mask.nc'
+    mesh_file = '_static/example/data/pacific_mesh_mask.nc'
     mesh = apecosm.open_mesh_mask(mesh_file)
     mesh
 
@@ -159,7 +164,7 @@ The 3D extraction of biogeochemical forcing data is achieved by using the :py:fu
     spatial_integrated_phy2 = spatial_integrated_phy2.compute()
     spatial_integrated_phy2
 
-.. note
+note
 
     In this case, the output data is also an xarray Dataarray, however it contains only one dimension since there is no other dimensions than depth, latitude, longitude.
 
