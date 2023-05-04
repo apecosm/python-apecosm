@@ -435,7 +435,7 @@ def read_report_params(csv_file_name):
     file = open(csv_file_name)
     report_parameters = {'output_dir':'', 'mesh_file':'', 'FONT_SIZE':'', 'LABEL_SIZE':'', 'THIN_LWD':'', 'REGULAR_LWD':'',
                          'THICK_LWD':'','COL_GRID':'','REGULAR_TRANSP':'','HIGH_TRANSP':'', 'FIG_WIDTH':'','FIG_HEIGHT':'',
-                         'FIG_DPI':'','CB_SHRINK':'','COL_MAP':'','fishing_output_dir':'', 'fishing_config_dir':''}
+                         'FIG_DPI':'','CB_SHRINK':'','COL_MAP':'','FISHING_PERIOD':'','APECOSM_PERIOD':'','fishing_output_dir':'', 'fishing_config_dir':''}
     for line in file:
         fields = line.strip().split(',')
         if fields[0] == 'output_dir':
@@ -470,6 +470,10 @@ def read_report_params(csv_file_name):
             report_parameters['CB_THRESH'] = int(fields[1])
         elif fields[0] == 'COL_MAP':
             report_parameters['COL_MAP'] = fields[1].replace(" ", "")
+        elif fields[0] == 'FISHING_PERIOD':
+            report_parameters['FISHING_PERIOD'] = int(fields[1])
+        elif fields[0] == 'APECOSM_PERIOD':
+            report_parameters['APECOSM_PERIOD'] = int(fields[1])
         elif fields[0] == 'fishing_output_dir':
             report_parameters['fishing_output_dir'] = fields[1].replace(" ", "")
         elif fields[0] == 'fishing_config_dir':
