@@ -7,18 +7,16 @@ import pkg_resources
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import jinja2
-import psutil
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import xarray as xr
-from apecosm.constants import LTL_NAMES
-from .diags import compute_size_cumprop
-from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data, extract_mean_size, open_fishing_data
+from .constants import LTL_NAMES
+from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data, open_fishing_data
 from .misc import extract_community_names, compute_mean_min_max_ts, extract_fleet_names
 from .size_spectra import plot_oope_spectra
 from dask.diagnostics import ProgressBar
-
 plt.rcParams['text.usetex'] = False
+
 
 def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_dir='report', filecss='default', xarray_args={}):
 
@@ -27,10 +25,8 @@ def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_d
     output_dir = report_parameters['output_dir']
     fishing_output_dir = report_parameters['fishing_output_dir']
     fishing_config_dir = report_parameters['fishing_config_dir']
-    use_fishing = 0
-    if fishing_output_dir != '' and fishing_config_dir != '':
-        use_fishing = 1
-    global FONT_SIZE, LABEL_SIZE, THIN_LWD, REGULAR_LWD, THICK_LWD, COL_GRID, REGULAR_TRANSP, HIGH_TRANSP, FIG_WIDTH, FIG_HEIGHT, FIG_DPI, CB_SHRINK, CB_THRESH, COL_MAP, FISHING_PERIOD, APECOSM_PERIOD
+    use_fishing = fishing_output_dir != '' and fishing_config_dir != ''
+    global FONT_SIZE, LABEL_SIZE, THIN_LWD, REGULAR_LWD, THICK_LWD, COL_GRID, REGULAR_TRANSP, HIGH_TRANSP, FIG_WIDTH, FIG_HEIGHT, FIG_DPI, CB_SHRINK, CB_THRESH, COL_MAP, FISHING_PERIOD, APECOSM_PERIOD, LAND_BACKGROUND
     FONT_SIZE = report_parameters['FONT_SIZE']
     LABEL_SIZE = report_parameters['LABEL_SIZE']
     THIN_LWD = report_parameters['THIN_LWD']
@@ -47,6 +43,7 @@ def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_d
     COL_MAP = report_parameters['COL_MAP']
     FISHING_PERIOD = report_parameters['FISHING_PERIOD']
     APECOSM_PERIOD = report_parameters['APECOSM_PERIOD']
+    LAND_BACKGROUND = report_parameters['LAND_BACKGROUND']
 
     mesh = open_mesh_mask(mesh_file)
     const = open_constants(output_dir)
@@ -78,8 +75,7 @@ def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_d
     template = env.get_template('banner.html')
 
     outputs = {'domains': domains}
-    if use_fishing == 1:
-        outputs = {'use_fishing': use_fishing}
+    outputs = {'use_fishing': use_fishing}
     render = template.render(**outputs)
     output_file = os.path.join(report_dir, 'html', 'banner.html')
     with open(output_file, 'w') as f:
@@ -152,10 +148,10 @@ def _make_result_template(report_dir, css, data, const, mesh, crs, domains=None,
     # Computation of the full ocean surface within the domain considered
     surf_ocean = (mesh['e1t'] * mesh['e2t'] * mask_dom * tmask).sum(dim=['x', 'y']).compute()
 
-    # Do some pre-calculationsn
+    # Do some pre-calculations
     # We integrate the biomass over the entire domain: integration, no weight step. J/kg/m2 -> J
     # Output dimensions: time, c, w
-    spatial_integrated_biomass = extract_oope_data(data, mesh, const, mask_dom=mask_dom, use_wstep=False, compute_mean=False)
+    spatial_integrated_biomass = extract_oope_data(data, mesh, const, mask_dom=mask_dom)
     with ProgressBar():
         spatial_integrated_biomass = spatial_integrated_biomass.compute()
     print('+++++++++++ Pre-processing of spatial integral: check')
@@ -172,14 +168,11 @@ def _make_result_template(report_dir, css, data, const, mesh, crs, domains=None,
     print('+++++++++++ Plotting mean_weight_figs: check')
     outputs['cumbiom_figs'] = _plot_integrated_time_series(spatial_integrated_biomass, report_dir, mesh, const, mask_dom, dom_name)
     print('+++++++++++ Plotting cumbiom_figs: check')
-
     if domains is None:
         outputs['maps_figs'] = _plot_mean_maps(report_dir, mesh, data, const, crs, mask_dom, dom_name)
         print('+++++++++++ Plotting maps_figs: check')
-
     outputs['spectra_figs'] = _plot_size_spectra(spatial_integrated_biomass, report_dir, mesh, const, mask_dom, dom_name)
     print('+++++++++++ Plotting spectra_figs: check')
-
     if 'repfonct_day' in data.variables:
         outputs['repfonct_figs'] = _plot_weighted_values(report_dir, mesh, data, const, 'repfonct_day', mask_dom, dom_name)
         print('+++++++++++ Plotting repfonct_figs: check')
@@ -221,8 +214,9 @@ def _plot_domain_maps(report_dir, mesh, crs_out, mask_dom, dom_name):
     cb.ax.tick_params(labelsize=LABEL_SIZE)
     cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
     plt.title('%s mask' %dom_name, fontsize=FONT_SIZE)
-    ax.add_feature(cfeature.LAND, zorder=100)
-    ax.add_feature(cfeature.COASTLINE, zorder=101)
+    if LAND_BACKGROUND:
+        ax.add_feature(cfeature.LAND, zorder=100)
+        ax.add_feature(cfeature.COASTLINE, zorder=101)
     fig_name = _savefig(report_dir, 'domain_map_%s.jpg' %dom_name, 'jpg')
     fig.clear()
     plt.close(fig)
@@ -396,7 +390,6 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
     n_row = ceil(n_plot/n_col)
 
     # Computation of the time average for OOPE -> (y, x, c, w)
-
     output = (data['OOPE'] * const['weight_step']).sum(dim=['w'])
     with ProgressBar():
         output = output.compute()
@@ -407,93 +400,47 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
         output = output.compute()
     print('++++++++++ Time mean: check')
 
-    #output = output.where(output > 0)
     output = output.fillna(0)
     output = output.where(output > 0, drop=False)
-    output = output.where(mask_dom>0, drop=False)
+    output = output.where(mask_dom > 0, drop=False)
     total = output.sum(dim='c')
     total = total.where(total > 0, drop=False)
-    print('start : compute output/total')
-    #output = output.compute()
-    #total = total.compute()
-    #output = output.load()
-    #total = total.load()
-    #output = output.persist()
-    #total = total.persist()
-    output = output.compute(chunks={'time': 1, 'x': 10, 'y': 10, 'c': 1})
-    total = total.compute(chunks={'time': 1, 'x': 10, 'y': 10})
-    print('end : compute output/total')
 
     fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * FIG_WIDTH, n_row * FIG_HEIGHT), dpi=FIG_DPI, subplot_kw={'projection': crs_out})
     c = 0
-    ccc = 0
+    cpt = 0
     for i in range(n_row):
         for j in range(n_col):
-            print("i =", i)
-            print("j =", j)
-            print("cpu% = ", psutil.cpu_percent())
-            print("mem% = ", psutil.virtual_memory().percent)
-            ccc += 1
-            if i+j == 0:
-                ax = plt.subplot(n_row, n_col, ccc, projection=crs_out)
-                cs = ax.pcolormesh(lon_f, lat_f, total[1:, 1:], cmap=COL_MAP, transform=crs_in)
+            cpt = cpt+1
+            if cpt == 1:
+                cs = axes[i, j].pcolormesh(lon_f, lat_f, total[1:, 1:], cmap=COL_MAP, transform=crs_in)
                 cb = plt.colorbar(cs, shrink=CB_SHRINK)
                 cb.ax.tick_params(labelsize=LABEL_SIZE)
                 cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
                 cb.set_label('J/m2', fontsize=FONT_SIZE)
-                ax.set_title('Total', fontsize=FONT_SIZE)
-                total.close()
-                del total, cs, cb
-            elif 2 <= i + j + 1 <= n_plot:
-                ax = plt.subplot(n_row, n_col, ccc, projection=crs_out)
-                cs = ax.pcolormesh(lon_f, lat_f, output.isel(c=c)[1:, 1:], cmap=COL_MAP, transform=crs_in)
+                axes[i, j].set_title('Total', fontsize=FONT_SIZE)
+                if LAND_BACKGROUND:
+                    axes[i, j].add_feature(cfeature.LAND, zorder=100)
+                    axes[i, j].add_feature(cfeature.COASTLINE, zorder=101)
+            elif 2 <= cpt <= n_plot:
+                cs = axes[i, j].pcolormesh(lon_f, lat_f, output.isel(c=c)[1:, 1:], cmap=COL_MAP, transform=crs_in)
                 cb = plt.colorbar(cs, shrink=CB_SHRINK)
                 cb.ax.tick_params(labelsize=LABEL_SIZE)
                 cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
                 cb.set_label('J/m2', fontsize=FONT_SIZE)
-                ax.set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
-                c = c + 1
-                del cs, cb
+                axes[i, j].set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+                if LAND_BACKGROUND:
+                    axes[i, j].add_feature(cfeature.LAND, zorder=100)
+                    axes[i, j].add_feature(cfeature.COASTLINE, zorder=101)
+                c = c+1
             else:
-                ax = plt.subplot(n_row, n_col, ccc)
-                ax.axis('off')
-    output.close()
+                axes[i, j].axis('off')
     del output
     fig.tight_layout()
     fig_name = _savefig(report_dir, 'mean_maps_com_%s.jpg' %dom_name, 'jpg')
     fig.clear()
     plt.close(fig)
     return fig_name
-
-    #fig, _ = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
-    #for i in range(n_row*n_col):
-    #    ax = plt.subplot(n_row, n_col, i+1, projection=crs_out)
-    #    if i+1 == 1:
-    #        cs = plt.pcolormesh(lon_f, lat_f, total.isel(y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
-    #        cb = plt.colorbar(cs, shrink=CB_SHRINK)
-    #        cb.ax.tick_params(labelsize=LABEL_SIZE)
-    #        cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-    #        cb.set_label('J/m2', fontsize=FONT_SIZE)
-    #        plt.title('Total', fontsize=FONT_SIZE)
-    #        ax.add_feature(cfeature.LAND, zorder=100)
-    #        ax.add_feature(cfeature.COASTLINE, zorder=101)
-    #    elif 2 <= i+1 <= n_plot:
-    #        c = i-1
-    #        cs = plt.pcolormesh(lon_f, lat_f, output.isel(c=c, y=slice(1, None), x=slice(1, None)), cmap=COL_MAP, transform=crs_in)
-    #        cb = plt.colorbar(cs, shrink=CB_SHRINK)
-    #        cb.ax.tick_params(labelsize=LABEL_SIZE)
-    #        cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-    #        cb.set_label('J/m2', fontsize=FONT_SIZE)
-    #        plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
-    #        ax.add_feature(cfeature.LAND, zorder=100)
-    #        ax.add_feature(cfeature.COASTLINE, zorder=101)
-    #    else:
-    #        ax.axis('off')
-    #fig.tight_layout()
-    #fig_name = _savefig(report_dir, 'mean_maps_com_%s.svg' %dom_name, 'svg')
-    #fig.clear()
-    #plt.close(fig)
-    #return fig_name
 
 
 def _plot_size_spectra(spatial_integrated_biomass, report_dir, mesh, const, mask_dom, dom_name):
@@ -606,15 +553,11 @@ def _make_meta_template(report_dir, fishing_config_dir, css, data, const):
     template = env.get_template('template_meta.html')
 
     community_names = extract_community_names(const)
-    use_fishing = fishing_config_dir != ''
-    if use_fishing:
-        fleet_names = extract_fleet_names(fishing_config_dir)
-
     outputs = {}
     outputs['css'] = css
     outputs['community_names'] = community_names
-    if use_fishing:
-        outputs['fleet_names'] = fleet_names
+    if fishing_config_dir != '':
+        outputs['fleet_names'] = extract_fleet_names(fishing_config_dir)
     outputs['dims'] = data.dims
     outputs['list_dims'] = [d for d in data.dims if 'prey' not in d]
     outputs['start_date'] = data['time'][0].values
@@ -761,20 +704,34 @@ def _make_fisheries_template(report_dir, css, fishing_output_dir, fishing_config
 
     outputs = {}
     outputs['css'] = css
-    outputs['fleet_size'] = _plot_fleet_size(report_dir, fleet_summary, fleet_names) #ok
-    outputs['fishing_effective_effort'] = _plot_fishing_effective_effort(report_dir, fleet_maps, fleet_names, mesh, crs) #ok
-    outputs['landing_rate_eez_hs'] = _plot_landing_rate_eez_hs(report_dir, fleet_summary, fleet_names) #ok
-    outputs['landing_rate_total'] = _plot_landing_rate_total(report_dir, fleet_summary, fleet_names) #ok
-    outputs['landing_rate_by_vessels'] = _plot_landing_rate_by_vessels(report_dir, fleet_maps, fleet_names, mesh, crs) #ok
-    outputs['landing_rate_density'] = _plot_landing_rate_density(report_dir, fleet_maps, fleet_names, mesh, crs) #ok
-    outputs['average_fishing_distance'] = _plot_average_fishing_distance(report_dir, fleet_summary, fleet_names) #ok
-    outputs['fuel_use_intensity'] = _plot_fuel_use_intensity(report_dir, fleet_summary, fleet_names) #ok
-    outputs['yearly_profit'] = _plot_yearly_profit(report_dir, fleet_summary, fleet_names) #ok
-    outputs['savings'] = _plot_savings(report_dir, fleet_summary, fleet_names) #ok
-    outputs['fish_price'] = _plot_fish_price(report_dir, market, fleet_names) #ok
-    outputs['capture_landing_rate'] = _plot_capture_landing_rate(report_dir, fleet_summary, fleet_names) #ok
-    outputs['cost_revenue_by_vessels'] = _plot_cost_revenue_by_vessels(report_dir, fleet_summary, fleet_names) #ok
-    outputs['fishing_time_fraction'] = _plot_fishing_time_fraction(report_dir, fleet_summary, fleet_names) #ok
+    outputs['fleet_size'] = _plot_fleet_size(report_dir, fleet_summary, fleet_names)
+    print('+++++++++++ Plotting fleet_size: check')
+    outputs['fishing_effective_effort'] = _plot_fishing_effective_effort(report_dir, fleet_maps, fleet_names, mesh, crs)
+    print('+++++++++++ Plotting fishing_effective_effort: check')
+    outputs['landing_rate_eez_hs'] = _plot_landing_rate_eez_hs(report_dir, fleet_summary, fleet_names)
+    print('+++++++++++ Plotting landing_rate_eez_hs: check')
+    outputs['landing_rate_total'] = _plot_landing_rate_total(report_dir, fleet_summary, fleet_names)
+    print('+++++++++++ Plotting landing_rate_total: check')
+    outputs['landing_rate_by_vessels'] = _plot_landing_rate_by_vessels(report_dir, fleet_maps, fleet_names, mesh, crs)
+    print('+++++++++++ Plotting landing_rate_by_vessels: check')
+    outputs['landing_rate_density'] = _plot_landing_rate_density(report_dir, fleet_maps, fleet_names, mesh, crs)
+    print('+++++++++++ Plotting landing_rate_density: check')
+    outputs['average_fishing_distance'] = _plot_average_fishing_distance(report_dir, fleet_summary, fleet_names)
+    print('+++++++++++ Plotting average_fishing_distance: check')
+    outputs['fuel_use_intensity'] = _plot_fuel_use_intensity(report_dir, fleet_summary, fleet_names)
+    print('+++++++++++ Plotting fuel_use_intensity: check')
+    outputs['yearly_profit'] = _plot_yearly_profit(report_dir, fleet_summary, fleet_names)
+    print('+++++++++++ Plotting yearly_profit: check')
+    outputs['savings'] = _plot_savings(report_dir, fleet_summary, fleet_names)
+    print('+++++++++++ Plotting savings: check')
+    outputs['fish_price'] = _plot_fish_price(report_dir, market, fleet_names)
+    print('+++++++++++ Plotting fish_price: check')
+    outputs['capture_landing_rate'] = _plot_capture_landing_rate(report_dir, fleet_summary, fleet_names)
+    print('+++++++++++ Plotting capture_landing_rate: check')
+    outputs['cost_revenue_by_vessels'] = _plot_cost_revenue_by_vessels(report_dir, fleet_summary, fleet_names)
+    print('+++++++++++ Plotting cost_revenue_by_vessels: check')
+    outputs['fishing_time_fraction'] = _plot_fishing_time_fraction(report_dir, fleet_summary, fleet_names)
+    print('+++++++++++ Plotting fishing_time_fraction: check')
 
     render = template.render(**outputs)
 
@@ -862,8 +819,9 @@ def _plot_fishing_effective_effort(report_dir, fleet_maps, fleet_names, mesh, cr
                 cb = plt.colorbar(cs, shrink=CB_SHRINK)
                 cb.ax.tick_params(labelsize=LABEL_SIZE)
                 cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-                axes[i, j].add_feature(cfeature.LAND, zorder=100)
-                axes[i, j].add_feature(cfeature.COASTLINE, zorder=101)
+                if LAND_BACKGROUND:
+                    axes[i, j].add_feature(cfeature.LAND, zorder=100)
+                    axes[i, j].add_feature(cfeature.COASTLINE, zorder=101)
                 f = f+1
             else:
                 axes[i, j].axis('off')
@@ -986,8 +944,9 @@ def _plot_landing_rate_by_vessels(report_dir, fleet_maps, fleet_names, mesh, crs
                 cb.set_label('T/day-1', fontsize=FONT_SIZE)
                 cb.ax.tick_params(labelsize=LABEL_SIZE)
                 cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-                axes[i, j].add_feature(cfeature.LAND, zorder=100)
-                axes[i, j].add_feature(cfeature.COASTLINE, zorder=101)
+                if LAND_BACKGROUND:
+                    axes[i, j].add_feature(cfeature.LAND, zorder=100)
+                    axes[i, j].add_feature(cfeature.COASTLINE, zorder=101)
                 f = f+1
             else:
                 axes[i, j].axis('off')
@@ -1032,8 +991,9 @@ def _plot_landing_rate_density(report_dir, fleet_maps, fleet_names, mesh, crs_ou
                 cb = plt.colorbar(cs, shrink=CB_SHRINK)
                 cb.ax.tick_params(labelsize=LABEL_SIZE)
                 cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
-                axes[i, j].add_feature(cfeature.LAND, zorder=100)
-                axes[i, j].add_feature(cfeature.COASTLINE, zorder=101)
+                if LAND_BACKGROUND:
+                    axes[i, j].add_feature(cfeature.LAND, zorder=100)
+                    axes[i, j].add_feature(cfeature.COASTLINE, zorder=101)
                 f = f+1
             else:
                 axes[i, j].axis('off')

@@ -13,6 +13,7 @@ import os
 import memory_profiler
 import line_profiler
 import psutil
+from dask.diagnostics import ProgressBar
 
 # ========================== #
 # FUNCTIONS
@@ -23,7 +24,84 @@ def _savefig(report_dir, fig_name, pic_format):
     plt.savefig(img_file, format=pic_format, bbox_inches='tight')
     return os.path.join('images', fig_name)
 
-#@profile
+def _plot_mean_maps_2(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
+
+    crs_in = ccrs.PlateCarree()
+
+    lon_f = np.squeeze(mesh['glamf'].values)
+    lat_f = np.squeeze(mesh['gphif'].values)
+
+    if mask_dom is None:
+        mask_dom = np.ones(lon_f.shape)
+    mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
+
+    community_names = apecosm.extract_community_names(const)
+
+    n_community = len(community_names)
+    n_plot = n_community+1
+    n_col = 3
+    n_row = ceil(n_plot/n_col)
+
+    # Computation of the time average for OOPE -> (y, x, c, w)
+
+    output = (data['OOPE'] * const['weight_step']).sum(dim=['w'])
+    with ProgressBar():
+        output = output.compute()
+    print('++++++++++ Size integration: check')
+
+    output = output.mean(dim='time')
+    with ProgressBar():
+        output = output.compute()
+    print('++++++++++ Time mean: check')
+
+    output = output.fillna(0)
+    output = output.where(output > 0, drop=False)
+    output = output.where(mask_dom > 0, drop=False)
+    total = output.sum(dim='c')
+    total = total.where(total > 0, drop=False)
+
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI, subplot_kw={'projection': crs_out})
+    c = 0
+    cpt = 0
+    for i in range(n_row):
+        for j in range(n_col):
+            print("i =", i)
+            print("j =", j)
+            print("cpu% = ", psutil.cpu_percent())
+            print("mem% = ", psutil.virtual_memory().percent)
+            cpt = cpt+1
+            if cpt == 1:
+                #ax = plt.subplot(n_row, n_col, cpt, projection=crs_out)
+                cs = axes[i, j].pcolormesh(lon_f, lat_f, total[1:, 1:], cmap=COL_MAP, transform=crs_in)
+                cb = plt.colorbar(cs, shrink=CB_SHRINK)
+                cb.ax.tick_params(labelsize=LABEL_SIZE)
+                cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+                cb.set_label('J/m2', fontsize=FONT_SIZE)
+                axes[i, j].set_title('Total', fontsize=FONT_SIZE)
+                axes[i, j].add_feature(cfeature.LAND, zorder=100)
+                axes[i, j].add_feature(cfeature.COASTLINE, zorder=101)
+            elif 2 <= cpt <= n_plot:
+                #ax = plt.subplot(n_row, n_col, cpt, projection=crs_out)
+                cs = axes[i, j].pcolormesh(lon_f, lat_f, output.isel(c=c)[1:, 1:], cmap=COL_MAP, transform=crs_in)
+                cb = plt.colorbar(cs, shrink=CB_SHRINK)
+                cb.ax.tick_params(labelsize=LABEL_SIZE)
+                cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
+                cb.set_label('J/m2', fontsize=FONT_SIZE)
+                axes[i, j].set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+                axes[i, j].add_feature(cfeature.LAND, zorder=100)
+                axes[i, j].add_feature(cfeature.COASTLINE, zorder=101)
+                c = c+1
+            else:
+                #ax = plt.subplot(n_row, n_col, cpt)
+                axes[i, j].axis('off')
+    del output
+    fig.tight_layout()
+    fig_name = _savefig(report_dir, 'mean_maps_com_%s.jpg' %dom_name, 'jpg')
+    fig.clear()
+    plt.close(fig)
+    return fig_name
+
+
 def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
 
     crs_in = ccrs.PlateCarree()
@@ -68,7 +146,7 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
     total = total.compute(chunks={'time': 1, 'x': 10, 'y': 10})
     print("end compute output/total")
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=100, subplot_kw={'projection': crs_out})
+    fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI, subplot_kw={'projection': crs_out})
     c = 0
     for i in range(n_row):
         for j in range(n_col):
@@ -151,6 +229,6 @@ dom_name = 'global'
 mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
 
 outputs = {}
-outputs['maps_figs'] = _plot_mean_maps(report_dir, mesh, data, const, crs, mask_dom, dom_name)
+outputs['maps_figs'] = _plot_mean_maps_2(report_dir, mesh, data, const, crs, mask_dom, dom_name)
 
 

@@ -22,7 +22,7 @@ def open_mesh_mask(mesh_file, replace_dims=None):
     :rtype: :class:`xarray.Dataset`
     """
 
-    # open the mesh file, extract tmask, lonT and latT
+    # open the mesh file, extract t_mask, lonT and latT
     mesh = xr.open_dataset(mesh_file)
     if replace_dims is not None:
         mesh = mesh.rename(replace_dims)
@@ -143,10 +143,10 @@ def extract_ltl_data(data, varname, mesh,
     else:
         depth = mesh['gdept_1d']
 
-    tmask = mesh['tmask']
+    t_mask = mesh['tmask']
 
     if 'tmaskutil' in mesh.variables:
-        tmask *= mesh['tmaskutil']
+        t_mask *= mesh['tmaskutil']
 
     lat = _squeeze_variable(mesh['gphit'])
 
@@ -156,11 +156,11 @@ def extract_ltl_data(data, varname, mesh,
 
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
 
-    tmask = tmask * mask_dom  # 0 if land or out of domain, else 1
-    weight = surf * e3t * tmask  # (1, z, lat, lon) or (time, z, lat, lon)
+    t_mask = t_mask * mask_dom  # 0 if land or out of domain, else 1
+    weight = surf * e3t * t_mask  # (1, z, lat, lon) or (time, z, lat, lon)
 
     # clear unused variables
-    del(surf, e3t, tmask, mask_dom)
+    del(surf, e3t, t_mask, mask_dom)
 
     if depth_max is not None:
         weight = weight.where(depth <= depth_max)
@@ -304,24 +304,24 @@ def extract_weighted_data(data, const, mesh, varname,
     """
 
     if 'tmaskutil' in mesh.variables:
-        tmask = mesh['tmaskutil']
+        t_mask = mesh['tmaskutil']
     else:
-        tmask = mesh['tmask']
+        t_mask = mesh['tmask']
 
-    tmask = _squeeze_variable(tmask)
+    t_mask = _squeeze_variable(t_mask)
     surf = _squeeze_variable(mesh['e1t'] * mesh['e2t'])
 
     # extract the domain coordinates
     if mask_dom is None:
-        mask_dom = np.ones(tmask.shape)
+        mask_dom = np.ones(t_mask.shape)
 
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
-    tmask = tmask * mask_dom
+    t_mask = t_mask * mask_dom
 
     oope = data['OOPE']
 
     # time, lat, lon, comm, w
-    weight = tmask * surf * oope * const['weight_step']
+    weight = t_mask * surf * oope * const['weight_step']
 
     dims = ['y', 'x']
 
@@ -362,22 +362,22 @@ def extract_oope_data(data, mesh, const, mask_dom=None):
     surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
 
     if 'tmaskutil' in mesh.variables:
-        tmask = mesh['tmaskutil']
+        t_mask = mesh['tmaskutil']
     else:
-        tmask = mesh['tmask']
+        t_mask = mesh['tmask']
 
-    tmask = _squeeze_variable(tmask)
+    t_mask = _squeeze_variable(t_mask)
 
     # extract the domain coordinates
     if mask_dom is None:
-        mask_dom = np.ones(tmask.shape)
+        mask_dom = np.ones(t_mask.shape)
 
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
 
     # add virtual dimensions to domain mask and
     # correct landsea mask
-    tmask = tmask * mask_dom
-    weight = tmask * surf  # time, lat, lon, comm, w
+    t_mask = t_mask * mask_dom
+    weight = t_mask * surf  # time, lat, lon, comm, w
 
     data = data['OOPE']
 
@@ -474,6 +474,8 @@ def read_report_params(csv_file_name):
             report_parameters['FISHING_PERIOD'] = int(fields[1])
         elif fields[0] == 'APECOSM_PERIOD':
             report_parameters['APECOSM_PERIOD'] = int(fields[1])
+        elif fields[0] == 'LAND_BACKGROUND':
+            report_parameters['LAND_BACKGROUND'] = bool(fields[1])
         elif fields[0] == 'fishing_output_dir':
             report_parameters['fishing_output_dir'] = fields[1].replace(" ", "")
         elif fields[0] == 'fishing_config_dir':
