@@ -5,6 +5,9 @@ Time averaging
 .. ipython:: python
     :suppress:
 
+    import sys
+    import os
+    sys.path.insert(0, os.path.abspath('../'))
     import apecosm
 
     data = apecosm.open_apecosm_data('data/apecosm')

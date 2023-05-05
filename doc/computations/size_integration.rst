@@ -1,8 +1,9 @@
 .. ipython:: python
     :suppress:
 
+    import sys
     import os
-    import apecosm
+    sys.path.insert(0, os.path.abspath('../'))
     import xarray as xr
     import matplotlib.pyplot as plt
 
