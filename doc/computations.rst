@@ -13,3 +13,4 @@ Using the different variables defined in :numref:`data_extraction`, there is dif
    computations/size_integration
    computations/mean_length
    computations/cumulated_biomass
+   computations/size_spectra.rst
