@@ -156,16 +156,18 @@ def extract_ltl_data(data, mesh, varname,
     tmask = (tmask * mask_dom)  # 0 if land or out of domain, else 1
 
     if data.ndim == 4:
-        weight = (surf * e3t * tmask).fillna(0)  # (1, z, lat, lon) or (time, z, lat, lon)
+        weight = (surf * e3t * tmask)  # (1, z, lat, lon) or (time, z, lat, lon)
     elif data.ndim == 3:
         depth_max = None
-        weight = (surf * tmask).fillna(0)  # (1, z, lat, lon) or (time, z, lat, lon)
+        weight = (surf * tmask)  # (1, z, lat, lon) or (time, z, lat, lon)
 
     # clear unused variables
     del(surf, e3t, tmask, mask_dom)
 
     if depth_max is not None:
         weight = weight.where(depth <= depth_max)
+
+    weight = weight.fillna(0)
 
     dim_integration = data.dims[1:]
 
