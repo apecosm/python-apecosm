@@ -11,6 +11,9 @@ Calculations
     import xarray as xr
     import matplotlib.pyplot as plt
 
+    domain_ds = xr.open_dataset('data/domains.nc')
+    domain = domain_ds['domain_1']
+
     mesh_file = 'data/pacific_mesh_mask.nc'
     mesh = apecosm.open_mesh_mask(mesh_file)
     mesh
@@ -35,12 +38,21 @@ Size-integration
 
 The :py:func:`apecosm.extract_oope_size_integration` integrates the biomass along the size-dimension.
 
+.. math::
+
+    B(t, y, x, c) = \sum_{w}  OOPE(t, y, x, c, w) \times \Delta W(c, w)
+
+
 .. ipython:: python
 
     biomass = apecosm.extract_oope_size_integration(data['OOPE'], const)
     biomass
 
 The function can also be called on spatially integrated biomass density:
+
+.. math::
+
+    B(t, c) = \sum_{w}  OOPE(t, c, w) \times \Delta W(c, w)
 
 .. ipython:: python
 
@@ -77,15 +89,43 @@ For biomass greater than 20 cm:
 Computation of mean length
 **********************************************************
 
-The :py:func:`extract_mean_size` computes the mean length or weight over a given area. To compute the mean length
-over the entire basin:
+The :py:func:`apecosm.extract_mean_size` computes the mean length or weight over a given area. It takes as argument the output
+of the :py:func:`apecosm.extract_oope_data` function applied on OOPE.
+
+.. math::
+
+    L_{mean}(t, c) = \dfrac{\sum_{w}  OOPE(t, c, w) \times \Delta W(c, w) \times L(c, w)}{\sum_{w}  OOPE(t, c, w) \times \Delta W(c, w)}
+
+.. math::
+
+    W_{mean}(t, c) = \dfrac{\sum_{w}  OOPE(t, c, w) \times \Delta W(c, w) \times W(c, w)}{\sum_{w}  OOPE(t, c, w) \times \Delta W(c, w)}
+
+To compute the mean length over the entire basin:
 
 .. ipython:: python
 
-    mean_length = apecosm.extract_mean_size(spatial_integral, const, 'length')
+    com_mean_length = apecosm.extract_mean_size(spatial_integral, const, 'length')
+    com_mean_length
 
-To compute the mean length over a given basin, such as the one defined in :numref:`spatial_inte`:
+To compute the mean weight:
 
 .. ipython:: python
 
-    mean_length = apecosm.extract_mean_size(spatial_integral, const, 'length')
+    com_mean_weight = apecosm.extract_mean_size(spatial_integral, const, 'weight')
+    com_mean_weight
+
+To compute the mean length over a given basin, such as the one defined in :numref:`spatial_inte`, the argument
+must be the integral over this given region:
+
+.. ipython:: python
+
+    com_reg_mean_length = apecosm.extract_mean_size(regional_spatial_integral, const, 'length')
+    com_reg_mean_length
+
+Note that the :py:func:`apecosm.extract_mean_size` returns the mean for each community. The :py:func:`compute_community_mean` allows to average
+over the communities
+
+.. ipython:: python
+
+    mean_length = apecosm.compute_community_mean(com_mean_length)
+    mean_length

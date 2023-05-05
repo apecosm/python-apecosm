@@ -273,6 +273,15 @@ def extract_mean_size(spatially_integrated_biomass, const, varname, ):
 
 def compute_community_mean(data):
 
+    '''
+    Computes the community mean.
+
+    :param data: Data array that contains a ``community_weight`` attribute.
+    :type data: :class:`xarray.DataArray`
+    return: The mean computed over the communities.
+
+    '''
+
     weight = data['community_weight']
     output = data.weighted(weight).mean(dim='c')
     return output

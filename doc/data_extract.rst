@@ -118,12 +118,13 @@ different domains:
 .. ipython:: python
     :suppress:
 
-    ax = plt.axes(projection = ccrs.PlateCarree())
+    ax = plt.axes(projection = ccrs.PlateCarree(central_longitude=180))
     domain_ds = xr.open_dataset('data/domains.nc')
-    domain = domain_ds['domain_1']
-    plt.pcolormesh(mesh['glamf'], mesh['gphif'], domain.isel(x=slice(1, None), y=slice(1, None)))
-    plt.savefig('_static/domains.jpg')
-    plt.savefig('_static/domains.pdf')
+    domain = domain_ds['domain_1'] * mesh['tmaskutil']
+    ax.pcolormesh(mesh['glamf'], mesh['gphif'], domain.isel(x=slice(1, None), y=slice(1, None)), transform=ccrs.PlateCarree())
+    ax.add_feature(cfeature.COASTLINE)
+    plt.savefig('_static/domains.jpg', bbox_inches='tight')
+    plt.savefig('_static/domains.pdf', bbox_inches='tight')
 
 .. figure::  _static/domains.*
     :align: center
