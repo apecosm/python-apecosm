@@ -21,5 +21,6 @@ Apecosm model documentation
 
    config.rst
    data_extract.rst
+   computations.rst
    api.rst
    biblio.rst

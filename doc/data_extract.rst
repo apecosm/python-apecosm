@@ -22,15 +22,17 @@ The Apecosm package provides some tools to open the files from an Apecosm simula
 .. ipython:: python
 
     import os
-    import apecosm
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
     import xarray as xr
     import matplotlib.pyplot as plt
+    import apecosm
 
 Then, the mesh file containing the grid informations is loaded:
 
 .. ipython:: python
 
-    mesh_file = '_static/example/data/pacific_mesh_mask.nc'
+    mesh_file = 'data/pacific_mesh_mask.nc'
     mesh = apecosm.open_mesh_mask(mesh_file)
     mesh
 
@@ -40,7 +42,7 @@ Then, the Apecosm constant file, which contains  biological constants (length, w
 
 .. ipython:: python
 
-    const = apecosm.open_constants('_static/example/data/apecosm/')
+    const = apecosm.open_constants('data/apecosm/')
     const
 
 Note that in this case, **a folder** is provided as argument.
@@ -49,7 +51,7 @@ Finally, the Apecosm data are loaded as follows:
 
 .. ipython:: python
 
-    data = apecosm.open_apecosm_data('_static/example/data/apecosm')
+    data = apecosm.open_apecosm_data('data/apecosm')
     data
 
 In this example, the dataset only contains one variable, `OOPE`, i.e. biomass density.
@@ -63,26 +65,27 @@ can be provided in the :py:func:`apecosm.open_apecosm_data` function:
 
 .. ipython:: python
 
-    data_chunked = apecosm.open_apecosm_data('_static/example/data/apecosm',  chunks={'time': 1, 'x': 50, 'y': 50})
+    data_chunked = apecosm.open_apecosm_data('data/apecosm',  chunks={'time': 1, 'x': 50, 'y': 50})
     data_chunked
 
 In this case, the chunk size is now `(1, 50, 50, 5, 100)`, while it was `(12, 108, 163, 5, 100)` in the above.
 
 .. warning::
 
-    The `const`, `mesh` and `data` objects must have the same dimension names. If it is not the case, use the `replace_dims` arguments
-    to rename the dimensions. Commonly accepted dimensions are `time`, `y`, `x`, `c`, `w`.
+    The ``const``, ``mesh`` and ``data`` objects must have the same dimension names. If it is not the case, use the ``replace_dims`` arguments
+    to rename the dimensions. Commonly accepted dimensions are ``time``, ``y``, ``x``, ``c``, ``w``.
+
+.. _spatial_inte:
 
 **********************************************************
-Spatial extraction of OOPE
+Spatial integration
 **********************************************************
 
 OOPE output data can be extracted over a given geographical by using the :py:func:`apecosm.extract_oope_data` function as follows:
 
 .. ipython:: python
 
-    spatial_integral = apecosm.extract_oope_data(data, mesh, const)
-    spatial_integral = spatial_integral.compute()
+    spatial_integral = apecosm.extract_oope_data(data['OOPE'], mesh)
 
 This function returns:
 
@@ -107,20 +110,18 @@ Note that in this case, the spatial integral is computed. In order to obtain the
 In addition, there is the possibility to provide a regional mask in order to extract the area over a given region. For instance, if we have a file containing
 different domains:
 
-.. code-block:: python
+.. ipython:: python
 
-    import xarray as xr
-    domain_ds = xr.open_dataset('_static/example/data/domains.nc')
-    domain = domain_ds['domain_1'] * mesh['tmaskutil']
-    domain.plot()
+    domain_ds = xr.open_dataset('data/domains.nc')
+    domain = domain_ds['domain_1']
 
 .. ipython:: python
     :suppress:
 
-    import xarray as xr
-    domain_ds = xr.open_dataset('_static/example/data/domains.nc')
-    domain = domain_ds['domain_1'] * mesh['tmaskutil']
-    domain.plot()
+    ax = plt.axes(projection = ccrs.PlateCarree())
+    domain_ds = xr.open_dataset('data/domains.nc')
+    domain = domain_ds['domain_1']
+    plt.pcolormesh(mesh['glamf'], mesh['gphif'], domain.isel(x=slice(1, None), y=slice(1, None)))
     plt.savefig('_static/domains.jpg')
     plt.savefig('_static/domains.pdf')
 
@@ -133,7 +134,7 @@ We can extract the integrated biomass over this domain as follows:
 
 .. ipython:: python
 
-    regional_spatial_integral = apecosm.extract_oope_data(data, mesh, const, domain)
+    regional_spatial_integral = apecosm.extract_oope_data(data['OOPE'], mesh, domain)
     regional_spatial_integral
 
 
@@ -145,27 +146,20 @@ The 3D extraction of biogeochemical forcing data is achieved by using the :py:fu
 
 .. ipython:: python
 
-    ltl_data = apecosm.open_ltl_data('_static/example/data/pisces',
+    ltl_data = apecosm.open_ltl_data('data/pisces',
+                                    replace_dims={'olevel': 'z'},
                                     drop_variables=['bounds_nav_lat',
                                                     'bounds_nav_lon',
                                                     'nav_lat',
-                                                    'nav_lon'],
-                                    replace_dims={'olevel': 'z'})
+                                                    'nav_lon'])
     ltl_data
 
 .. ipython:: python
 
-    mesh_file = '_static/example/data/pacific_mesh_mask.nc'
-    mesh = apecosm.open_mesh_mask(mesh_file)
-    mesh
-
-.. ipython:: python
-
-    spatial_integrated_phy2 = apecosm.extract_ltl_data(ltl_data, 'PHY2', mesh)
-    spatial_integrated_phy2 = spatial_integrated_phy2.compute()
+    spatial_integrated_phy2 = apecosm.extract_ltl_data(ltl_data, mesh, 'PHY2')
     spatial_integrated_phy2
 
-note
+.. note::
 
     In this case, the output data is also an xarray Dataarray, however it contains only one dimension since there is no other dimensions than depth, latitude, longitude.
 
