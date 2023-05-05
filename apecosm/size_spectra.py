@@ -96,20 +96,20 @@ def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight', **kwargs
     beta = data / np.log(L[1] / L[0])
     rho = alpha * np.power(wvec2, -1)
     rhoL = beta * np.power(lvec2, -1)
-    
+
     if output_var == 'weight':
         x = wvec
         y = rho
     else:
         x = lvec
         y = rhoL
-        
+
     ax = plt.gca()
     l = plt.plot(x, y.T, **kwargs)
     return l[0]
 
 
-def plot_oope_spectra(data, const, output_var='weight', config=None, **kwargs):
+def plot_oope_spectra(data, const, output_var='weight', **kwargs):
 
     r'''
     Plots the OOPE size spectra. Since OOPE data are
@@ -156,13 +156,13 @@ def plot_oope_spectra(data, const, output_var='weight', config=None, **kwargs):
     if output_var == 'length':
         wstep = const['weight_step']  # kg
         lstep = const['length_step']  # l
-        data = data * wstep / lstep 
+        data = data * wstep / lstep
         xvar = length
     else:
         xvar = weight
-        
+
     comnames = extract_community_names(const)
-    
+
     ax = plt.gca()
     l = []
     for icom in data['c']:
@@ -170,7 +170,7 @@ def plot_oope_spectra(data, const, output_var='weight', config=None, **kwargs):
         lll = ax.plot(xvar.isel(c=icom), data.isel(c=icom).T, color=color, label=comnames['Community %d' %icom], **kwargs)
         l.append(lll[0])
     return l
-    
+
 def set_plot_lim():
 
     '''
