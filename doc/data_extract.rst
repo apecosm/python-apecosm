@@ -103,6 +103,8 @@ We can extract the integrated biomass over this domain as follows:
     regional_spatial_integral
 
 
+.. _extract_ltl:
+
 **********************************************************
 Extraction of biogeochemical data
 **********************************************************
