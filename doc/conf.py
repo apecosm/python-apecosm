@@ -23,6 +23,16 @@ import os
 import sys
 import apecosm
 
+def create_folders():
+
+    path = os.path.join('computations', '_static')
+    # Check whether the specified path exists or not
+    isExist = os.path.exists(path)
+    if not isExist:
+        # Create a new directory because it does not exist
+        os.makedirs(path)
+        print("The new directory is created!")
+
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -109,6 +119,7 @@ numfig = True
 # use sections as a reference for figures: X.1, X.2 with X the section
 numfig_secnum_depth = (1)
 
+create_folders()
 
 import sphinx_rtd_theme
 html_theme = "sphinx_rtd_theme"
