@@ -1,5 +1,5 @@
 **********************************************************
-Cumulated biomass
+Size-spectra
 **********************************************************
 
 .. ipython:: python
@@ -217,4 +217,4 @@ variables are extracted and time averaged:
 .. figure::  _static/spectra_allvars_weight.*
     :align: center
 
-   Size-spectra of LTL and Apecosm variables as a function of weight
+    Size-spectra of LTL and Apecosm variables as a function of weight
