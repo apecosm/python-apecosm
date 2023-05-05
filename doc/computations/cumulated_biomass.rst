@@ -5,7 +5,9 @@ Cumulated biomass
 .. ipython:: python
     :suppress:
 
+    import sys
     import os
+    sys.path.insert(0, os.path.abspath('../'))
     import apecosm
     import xarray as xr
     import matplotlib.pyplot as plt
