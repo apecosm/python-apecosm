@@ -37,7 +37,8 @@ First, the spatial integral is computed, as in :numref:`extract_ltl`:
 
 .. ipython:: python
 
-    ltl_phy2 = apecosm.extract_ltl_data(ltl_data, mesh, 'PHY2')
+    depth_max = 1000
+    ltl_phy2 = apecosm.extract_ltl_data(ltl_data, mesh, 'PHY2', depth_max = 1000)
     ltl_phy2
 
 .. ipython:: python
@@ -184,19 +185,19 @@ variables are extracted and time averaged:
 
     fig = plt.figure(figsize=(10, 8))
     ax = plt.gca()
-    cs = apecosm.plot_oope_spectra(tsmean, const, output_var=output_var)
+    cs = apecosm.plot_oope_spectra(tsmean, const, output_var='weight')
 
     L = [10e-6, 100e-6]
-    apecosm.compute_spectra_ltl(ltl_phy2_mean, L, output_var=output_var, label='PHY2')
+    apecosm.compute_spectra_ltl(ltl_phy2_mean, L, output_var='weight', label='PHY2')
 
     L = [20.e-6, 200.e-6]
-    apecosm.compute_spectra_ltl(ltl_zoo_mean, L, output_var=output_var, label='ZOO')
+    apecosm.compute_spectra_ltl(ltl_zoo_mean, L, output_var='weight', label='ZOO')
 
     L = [200.e-6, 2000.e-6]
-    apecosm.compute_spectra_ltl(ltl_zoo2_mean, L, output_var=output_var, label='ZOO2')
+    apecosm.compute_spectra_ltl(ltl_zoo2_mean, L, output_var='weight', label='ZOO2')
 
     L = [100e-6, 50000.e-6]
-    apecosm.compute_spectra_ltl(ltl_goc_mean, L, output_var=output_var, label='GOC')
+    apecosm.compute_spectra_ltl(ltl_goc_mean, L, output_var='weight', label='GOC')
 
     ax.set_xscale('log')
     ax.set_yscale('log')
