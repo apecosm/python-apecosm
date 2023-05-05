@@ -84,6 +84,7 @@ different domains:
     ax.pcolormesh(lonf, latf, domain.isel(x=slice(1, None), y=slice(1, None)),
                   transform=ccrs.PlateCarree(), cmap=plt.cm.get_cmap('binary'))
     ax.add_feature(cfeature.COASTLINE)
+    ax.add_feature(cfeature.LAND)
     ax.set_extent([lonf.min(), lonf.max(), latf.min(), latf.max()], crs=ccrs.PlateCarree())
     plt.savefig('_static/domains.jpg', bbox_inches='tight')
     plt.savefig('_static/domains.pdf', bbox_inches='tight')
