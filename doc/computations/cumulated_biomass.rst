@@ -68,7 +68,6 @@ we extract the temporal mean of the cumulated biomass.
 Now we can draw the cumulated biomass.
 
 .. ipython:: python
-    :suppress:
 
     fig = plt.figure(figsize=(12, 8))
     plt.subplots_adjust(hspace=0.4)
