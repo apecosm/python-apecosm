@@ -130,7 +130,7 @@ Then, we compute the time mean:
 
     tsmean = apecosm.extract_time_means(ts)
 
-.. ipython::
+.. ipython:: python
 
     fig = plt.figure()
     ax = plt.gca()
