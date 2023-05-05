@@ -17,3 +17,4 @@ doc/_static/**/*.svg
 apecosm/*pdf
 apecosm/*png
 doc/**/*.jpg
+doc/data
