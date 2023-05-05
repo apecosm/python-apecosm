@@ -162,7 +162,7 @@ Size-spectra with all variables
 What has been done for ``PHY2`` can be done also for the othe LTL variables. First, the other
 variables are extracted and time averaged:
 
-.. ipython::
+.. ipython:: python
 
     ltl_zoo2 = apecosm.extract_ltl_data(ltl_data, mesh, 'ZOO2', depth_max=depth_max).compute()
     ltl_zoo = apecosm.extract_ltl_data(ltl_data, mesh, 'ZOO', depth_max=depth_max).compute()
