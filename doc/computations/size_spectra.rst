@@ -62,6 +62,9 @@ Then, the size-spectra is plotted as follows:
     apecosm.compute_spectra_ltl(ltl_phy2_mean, L, output_var='weight', label='PHY2')
     ax.set_xscale('log')
     ax.set_yscale('log')
+    ax.set_ylabel("Biomass")
+    ax.set_xlabel('Weight (kg)')
+    ax.set_title('PHY2 size-spectra')
 
 The ``L`` variable is the lower and upper bound of the LTL length, as used in the Apecosm configuration
 (``forcing.XXX.length.min`` and ``forcing.XXX.length.max`` parameters).
@@ -85,9 +88,12 @@ Note that the size-spectra can also be plotted as a function of length:
     fig = plt.figure()
     ax = plt.gca()
     L = [10e-6, 100e-6]
-    apecosm.compute_spectra_ltl(mean_spatial_integrated_phy2, L, output_var='length', label='PHY2')
+    apecosm.compute_spectra_ltl(ltl_phy2_mean, L, output_var='length', label='PHY2')
     ax.set_xscale('log')
     ax.set_yscale('log')
+    ax.set_ylabel("Biomass")
+    ax.set_xlabel('Length (m)')
+    ax.set_title('PHY2 size-spectra')
 
 .. ipython:: python
     :suppress:
@@ -116,9 +122,7 @@ First, we extract the Apecosm biomass on a given region region:
 .. ipython:: python
     :suppress:
 
-    with ProgressBar():
-        ts = ts.compute()
-    ts
+    ts = ts.compute()
 
 Then, we compute the time mean:
 
@@ -134,6 +138,9 @@ Then, we compute the time mean:
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.set_ylim(1e7, 1e23)
+    ax.set_ylabel("Biomass")
+    ax.set_xlabel('Weight (kg)')
+    ax.set_title('Apecosm size-spectra')
     plt.legend()
 
 .. ipython:: python
@@ -194,6 +201,9 @@ variables are extracted and time averaged:
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.set_ylim(1e7, 1e32)
+    ax.set_ylabel("Biomass")
+    ax.set_xlabel('Weight (kg)')
+    ax.set_title('All variables size-spectra')
     plt.legend()
 
 .. ipython:: python
