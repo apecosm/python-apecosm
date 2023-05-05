@@ -212,7 +212,7 @@ def extract_time_means(data, time=None):
     :param data: Apecosm dataset
     :type data: :class:`xarray.Dataset`
     :param str time: Time mean. Can be time average ('tot'), yearly means ('year'),
-    seasonal means ('season') or monthly means ('monthly')
+     seasonal means ('season') or monthly means ('monthly')
 
     :return: A data array with the given time mean
     """
