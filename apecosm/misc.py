@@ -3,7 +3,7 @@
 import numpy as np
 from .constants import ALLOM_W_L
 import os
-import xarray as xr
+from datetime import datetime
 
 
 def find_percentile(data, percentage=1):
@@ -172,7 +172,33 @@ def compute_mean_min_max_ts(timeserie, period):
     return average, maxi, mini, time
 
 
-def extract_fleet_names(dirin):
+def compute_mean_min_max_xr(data_set, freq):
+
+    '''
+        Compute the mean, min and max value of xarray object data_set over time at frequence freq
+
+        :param data_set: xarray (containing a time field).
+        :param freq: frequence for the computation of the mean, min and max value of data_set. (ex : freq='1AS' for yearly average)
+
+        :type data_set: xarray with a field named time
+        :type freq: str
+    '''
+
+    average = data_set.resample(time=freq).mean()
+    maxi = data_set.resample(time=freq).max()
+    mini = data_set.resample(time=freq).min()
+    time = average.time
+
+    years = [d.year for d in time.values]
+    months = [d.month for d in time.values]
+    days = [d.day for d in time.values]
+
+    date = [datetime(y, m, d) for y, m, d in zip(years, months, days)]
+
+    return average, maxi, mini, date
+
+
+def extract_fleet_names(dir_in):
 
     '''
     Extracts fleet names from the fishing configuration file.
@@ -182,7 +208,7 @@ def extract_fleet_names(dirin):
     :return: The list of fleet names
     '''
 
-    fishing_model = os.path.join(dirin, 'fishing_model.conf')
+    fishing_model = os.path.join(dir_in, 'fishing_model.conf')
     with open(fishing_model) as f:
         for line in f:
             if "nb_fishing_fleets" in line.strip():
@@ -192,7 +218,7 @@ def extract_fleet_names(dirin):
     fleet = {}
     fleet_names = {}
     for i in np.arange(nb_fleet):
-        fleet_fname = os.path.join(dirin, 'fleet_' + str(i) + '.conf')
+        fleet_fname = os.path.join(dir_in, 'fleet_' + str(i) + '.conf')
         with open(fleet_fname) as f:
             for line in f:
                 if "fleet_name" in line.strip():
