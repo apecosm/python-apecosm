@@ -23,7 +23,7 @@ __author_email__ = "nicolas.barrier@ird.fr"
 from .conf import read_config
 from .domains import inpolygon, plot_domains, generate_mask
 from .extract import extract_ltl_data, extract_time_means, extract_oope_data, extract_weighted_data, open_apecosm_data, open_constants, normalize_data, open_mesh_mask, open_ltl_data, open_fishing_data, read_report_params, extract_oope_data, extract_oope_size_integration
-from .misc import find_percentile, compute_daylength, extract_community_names, size_to_weight, weight_to_size, compute_mean_min_max_ts, extract_fleet_names
+from .misc import find_percentile, compute_daylength, extract_community_names, size_to_weight, weight_to_size, compute_mean_min_max_xr, extract_fleet_names
 from .netcdf import rebuild_restart
 from .size_spectra import compute_spectra_ltl, plot_oope_spectra, set_plot_lim
 from .mplot import plot_oope_map

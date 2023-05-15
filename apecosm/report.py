@@ -4,21 +4,23 @@ import urllib
 from math import ceil
 import numpy as np
 import pkg_resources
+import jinja2
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import jinja2
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import xarray as xr
+from dask.diagnostics import ProgressBar
 from .constants import LTL_NAMES
 from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data, open_fishing_data
-from .misc import extract_community_names, compute_mean_min_max_ts, extract_fleet_names
+from .misc import extract_community_names, compute_mean_min_max_xr, extract_fleet_names
 from .size_spectra import plot_oope_spectra
-from dask.diagnostics import ProgressBar
 plt.rcParams['text.usetex'] = False
 
 
-def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_dir='report', filecss='default', xarray_args={}):
+def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_dir='report', file_css='default', xarray_args={}):
 
     # read report parameters
     mesh_file = report_parameters['mesh_file']
@@ -81,22 +83,22 @@ def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_d
     with open(output_file, 'w') as f:
         f.write(render)
 
-    if filecss is None:
+    if file_css is None:
         css = ''
 
     # load default value (one in package)
-    elif filecss == 'default':
-        filecss = pkg_resources.resource_filename('apecosm', os.path.join('templates', 'styles.css'))
-        with open(filecss) as fin:
+    elif file_css == 'default':
+        file_css = pkg_resources.resource_filename('apecosm', os.path.join('templates', 'styles.css'))
+        with open(file_css) as fin:
             css = fin.read()
 
     # load web resource
-    elif filecss.startswith('http'):
-        with urllib.request.urlopen(filecss) as fin:
+    elif file_css.startswith('http'):
+        with urllib.request.urlopen(file_css) as fin:
             css = fin.read().decode('utf-8')
 
     else:
-        with open(filecss) as fin:
+        with open(file_css) as fin:
             css = fin.read()
 
     with open(os.path.join(css_dir, 'styles.css'), 'w') as fout:
@@ -107,7 +109,7 @@ def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_d
     _make_result_template(report_dir, css, data, const, mesh, crs)
     for dom_name in domains:
         _make_result_template(report_dir, css, data, const, mesh, crs, domains, dom_name)
-    if use_fishing == 1:
+    if use_fishing:
         _make_fisheries_template(report_dir, css, fishing_output_dir, fishing_config_dir, mesh, crs)
 
     env = jinja2.Environment(loader=jinja2.PackageLoader('apecosm'), autoescape=jinja2.select_autoescape())
@@ -758,13 +760,13 @@ def _plot_fleet_size(report_dir, fleet_summary, fleet_names):
         for j in range(n_col):
             cpt = cpt+1
             if cpt <= n_plot:
-                av_1, _, _, time = compute_mean_min_max_ts(fleet_summary[f]['effective_effort'], FISHING_PERIOD)
-                av_2, _, _, _ = compute_mean_min_max_ts(fleet_summary[f]['active_vessels'], FISHING_PERIOD)
-                av_3, _, _, _ = compute_mean_min_max_ts(fleet_summary[f]['total_vessels'], FISHING_PERIOD)
-                axes[i, j].plot(time, av_1, color='black', linewidth=THIN_LWD)
-                axes[i, j].plot(time, av_2, color='black', linewidth=THIN_LWD)
-                axes[i, j].plot(time, av_3, color='black', linewidth=THIN_LWD)
-                axes[i, j].fill_between(time, av_1, color=col_1, alpha=REGULAR_TRANSP, label='Fishing')
+                av_1, _, _, time = compute_mean_min_max_xr(fleet_summary[f]['effective_effort'], FISHING_PERIOD)
+                av_2, _, _, _ = compute_mean_min_max_xr(fleet_summary[f]['active_vessels'], FISHING_PERIOD)
+                av_3, _, _, _ = compute_mean_min_max_xr(fleet_summary[f]['total_vessels'], FISHING_PERIOD)
+                axes[i, j].plot(time, av_1, linewidth=THIN_LWD, color='black')
+                axes[i, j].plot(time, av_2, linewidth=THIN_LWD, color='black')
+                axes[i, j].plot(time, av_3, linewidth=THIN_LWD, color='black')
+                axes[i, j].fill_between(time, 0, av_1, color=col_1, alpha=REGULAR_TRANSP, label='Fishing')
                 axes[i, j].fill_between(time, av_2, av_1, color=col_2, alpha=REGULAR_TRANSP, label='Sailing')
                 axes[i, j].fill_between(time, av_3, av_2, color=col_3, alpha=REGULAR_TRANSP, label='At port')
                 axes[i, j].set_xlabel('Time (years)', fontsize=FONT_SIZE)
@@ -849,11 +851,11 @@ def _plot_landing_rate_eez_hs(report_dir, fleet_summary, fleet_names):
         for j in range(n_col):
             cpt = cpt+1
             if cpt <= n_plot:
-                av_1, _, _, time = compute_mean_min_max_ts(0.000001 * 365 * fleet_summary[f]['current_total_landings_rate_from_EEZ'], FISHING_PERIOD)
-                av_2, _, _, _ = compute_mean_min_max_ts(0.000001 * 365 * (fleet_summary[f]['step_landings'] - fleet_summary[f]['current_total_landings_rate_from_EEZ']), FISHING_PERIOD)
+                av_1, _, _, time = compute_mean_min_max_xr(0.000001*365*fleet_summary[f]['current_total_landings_rate_from_EEZ'], FISHING_PERIOD)
+                av_2, _, _, _ = compute_mean_min_max_xr(0.000001*365*(fleet_summary[f]['step_landings'] - fleet_summary[f]['current_total_landings_rate_from_EEZ']), FISHING_PERIOD)
+                axes[i, j].plot(time, av_1, linewidth=THIN_LWD, color='black')
+                axes[i, j].plot(time, av_1+av_2, linewidth=THIN_LWD, color='black')
                 axes[i, j].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-                axes[i, j].plot(time, av_1, color='black', linewidth=THIN_LWD)
-                axes[i, j].plot(time, av_1 + av_2, color='black', linewidth=THIN_LWD)
                 axes[i, j].fill_between(time, av_1 + av_2, av_1, color=col_2, alpha=REGULAR_TRANSP, label='HS')
                 axes[i, j].fill_between(time, av_1, color=col_1, alpha=REGULAR_TRANSP, label='EEZ')
                 axes[i, j].set_title(fleet_names[f], fontsize=FONT_SIZE)
@@ -889,7 +891,7 @@ def _plot_landing_rate_total(report_dir, fleet_summary, fleet_names):
         for j in range(n_col):
             cpt = cpt+1
             if cpt <= n_plot:
-                average, maxi, mini, time = compute_mean_min_max_ts(0.000001*365*fleet_summary[f]['step_landings'], FISHING_PERIOD)
+                average, maxi, mini, time = compute_mean_min_max_xr(0.000001*365*fleet_summary[f]['step_landings'], FISHING_PERIOD)
                 axes[i, j].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
                 axes[i, j].plot(time, average, linewidth=THICK_LWD, color=col_1)
                 axes[i, j].fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
@@ -1020,7 +1022,7 @@ def _plot_average_fishing_distance(report_dir, fleet_summary, fleet_names):
         for j in range(n_col):
             cpt = cpt+1
             if cpt <= n_plot:
-                average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[f]['average_fishing_distance_to_ports_of_active_vessels'], FISHING_PERIOD)
+                average, maxi, mini, time = compute_mean_min_max_xr(fleet_summary[f]['average_fishing_distance_to_ports_of_active_vessels'], FISHING_PERIOD)
                 axes[i, j].yaxis.set_major_formatter(FormatStrFormatter('%d'))
                 axes[i, j].plot(time, average, linewidth=THICK_LWD, color=col_1)
                 axes[i, j].fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
@@ -1056,7 +1058,7 @@ def _plot_fuel_use_intensity(report_dir, fleet_summary, fleet_names):
         for j in range(n_col):
             cpt = cpt+1
             if cpt <= n_plot:
-                average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[f]['average_fuel_use_intensity'], FISHING_PERIOD)
+                average, maxi, mini, time = compute_mean_min_max_xr(fleet_summary[f]['average_fuel_use_intensity'], FISHING_PERIOD)
                 axes[i, j].plot(time, average, linewidth=THICK_LWD, color=col_1)
                 axes[i, j].fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
                 axes[i, j].fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
@@ -1091,7 +1093,7 @@ def _plot_yearly_profit(report_dir, fleet_summary, fleet_names):
         for j in range(n_col):
             cpt = cpt+1
             if cpt <= n_plot:
-                average, maxi, mini, time = compute_mean_min_max_ts(0.001*365*fleet_summary[f]['step_profits'], FISHING_PERIOD)
+                average, maxi, mini, time = compute_mean_min_max_xr(0.001*365*fleet_summary[f]['step_profits'], FISHING_PERIOD)
                 axes[i, j].yaxis.set_major_formatter(FormatStrFormatter('%d'))
                 axes[i, j].plot(time, average, linewidth=THICK_LWD, color=col_1)
                 axes[i, j].fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
@@ -1127,7 +1129,7 @@ def _plot_savings(report_dir, fleet_summary, fleet_names):
         for j in range(n_col):
             cpt = cpt+1
             if cpt <= n_plot:
-                average, maxi, mini, time = compute_mean_min_max_ts(0.001*fleet_summary[f]['savings'], FISHING_PERIOD)
+                average, maxi, mini, time = compute_mean_min_max_xr(0.001*fleet_summary[f]['savings'], FISHING_PERIOD)
                 axes[i, j].yaxis.set_major_formatter(FormatStrFormatter('%d'))
                 axes[i, j].plot(time, average, linewidth=THICK_LWD, color=col_1)
                 axes[i, j].fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
@@ -1164,9 +1166,9 @@ def _plot_fish_price(report_dir, market, fleet_names):
             cpt = cpt+1
             if cpt <= n_plot:
                 if f == 4:
-                    average, maxi, mini, time = compute_mean_min_max_ts(market['average_price'].isel(fleet=f, community=4), FISHING_PERIOD)
+                    average, maxi, mini, time = compute_mean_min_max_xr(market['average_price'].isel(fleet=f, community=4), FISHING_PERIOD)
                 else:
-                    average, maxi, mini, time = compute_mean_min_max_ts(market['average_price'].isel(fleet=f, community=1), FISHING_PERIOD)
+                    average, maxi, mini, time = compute_mean_min_max_xr(market['average_price'].isel(fleet=f, community=1), FISHING_PERIOD)
                 axes[i, j].plot(time, average, linewidth=THICK_LWD, color=col_1)
                 axes[i, j].fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)
                 axes[i, j].fill_between(time, average, maxi, color=col_1, alpha=HIGH_TRANSP)
@@ -1202,14 +1204,14 @@ def _plot_capture_landing_rate(report_dir, fleet_summary, fleet_names):
         for j in range(n_col):
             cpt = cpt+1
             if cpt <= n_plot:
-                average_1, maxi_1, mini_1, time_1 = compute_mean_min_max_ts(fleet_summary[f]['average_capture_rate_by_active_vessel'], FISHING_PERIOD)
-                average_2, maxi_2, mini_2, time_2 = compute_mean_min_max_ts(fleet_summary[f]['average_landing_rate_by_active_vessel'], FISHING_PERIOD)
-                axes[i, j].plot(time_1, average_1, linewidth=THICK_LWD, color=col_1, label='Capture')
-                axes[i, j].fill_between(time_1, mini_1, average_1, color=col_1, alpha=HIGH_TRANSP)
-                axes[i, j].fill_between(time_1, average_1, maxi_1, color=col_1, alpha=HIGH_TRANSP)
-                axes[i, j].plot(time_2, average_2, linewidth=THICK_LWD, color=col_2, label='Landing')
-                axes[i, j].fill_between(time_2, mini_2, average_2, color=col_2, alpha=HIGH_TRANSP)
-                axes[i, j].fill_between(time_2, average_2, maxi_2, color=col_2, alpha=HIGH_TRANSP)
+                average_1, maxi_1, mini_1, time = compute_mean_min_max_xr(fleet_summary[f]['average_capture_rate_by_active_vessel'], FISHING_PERIOD)
+                average_2, maxi_2, mini_2, _ = compute_mean_min_max_xr(fleet_summary[f]['average_landing_rate_by_active_vessel'], FISHING_PERIOD)
+                axes[i, j].plot(time, average_1, linewidth=THICK_LWD, color=col_1, label='Capture')
+                axes[i, j].fill_between(time, mini_1, average_1, color=col_1, alpha=HIGH_TRANSP)
+                axes[i, j].fill_between(time, average_1, maxi_1, color=col_1, alpha=HIGH_TRANSP)
+                axes[i, j].plot(time, average_2, linewidth=THICK_LWD, color=col_2, label='Landing')
+                axes[i, j].fill_between(time, mini_2, average_2, color=col_2, alpha=HIGH_TRANSP)
+                axes[i, j].fill_between(time, average_2, maxi_2, color=col_2, alpha=HIGH_TRANSP)
                 axes[i, j].set_title(fleet_names[f], fontsize=FONT_SIZE)
                 axes[i, j].set_xlabel('Time (years)', fontsize=FONT_SIZE)
                 axes[i, j].set_ylabel('Capture and landing rate (T.day-1)', fontsize=FONT_SIZE)
@@ -1244,15 +1246,15 @@ def _plot_cost_revenue_by_vessels(report_dir, fleet_summary, fleet_names):
         for j in range(n_col):
             cpt = cpt+1
             if cpt <= n_plot:
-                average_1, maxi_1, mini_1, time_1 = compute_mean_min_max_ts(fleet_summary[f]['average_cost_by_active_vessels'], FISHING_PERIOD)
-                average_2, maxi_2, mini_2, time_2 = compute_mean_min_max_ts(fleet_summary[f]['average_profit_by_active_vessels']+fleet_summary[f]['average_cost_by_active_vessels'], FISHING_PERIOD)
+                average_1, maxi_1, mini_1, time = compute_mean_min_max_xr(fleet_summary[f]['average_cost_by_active_vessels'], FISHING_PERIOD)
+                average_2, maxi_2, mini_2, _ = compute_mean_min_max_xr(fleet_summary[f]['average_cost_by_active_vessels']+fleet_summary[f]['average_cost_by_active_vessels'], FISHING_PERIOD)
                 axes[i, j].yaxis.set_major_formatter(FormatStrFormatter('%d'))
-                axes[i, j].plot(time_1, average_1, linewidth=THICK_LWD, color=col_1, label='Cost')
-                axes[i, j].fill_between(time_1, mini_1, average_1, color=col_1, alpha=HIGH_TRANSP)
-                axes[i, j].fill_between(time_1, average_1, maxi_1, color=col_1, alpha=HIGH_TRANSP)
-                axes[i, j].plot(time_2, average_2, linewidth=THICK_LWD, color=col_2, label='Revenue')
-                axes[i, j].fill_between(time_2, mini_2, average_2, color=col_2, alpha=HIGH_TRANSP)
-                axes[i, j].fill_between(time_2, average_2, maxi_2, color=col_2, alpha=HIGH_TRANSP)
+                axes[i, j].plot(time, average_1, linewidth=THICK_LWD, color=col_1, label='Cost')
+                axes[i, j].fill_between(time, mini_1, average_1, color=col_1, alpha=HIGH_TRANSP)
+                axes[i, j].fill_between(time, average_1, maxi_1, color=col_1, alpha=HIGH_TRANSP)
+                axes[i, j].plot(time, average_2, linewidth=THICK_LWD, color=col_2, label='Revenue')
+                axes[i, j].fill_between(time, mini_2, average_2, color=col_2, alpha=HIGH_TRANSP)
+                axes[i, j].fill_between(time, average_2, maxi_2, color=col_2, alpha=HIGH_TRANSP)
                 axes[i, j].set_title(fleet_names[f], fontsize=FONT_SIZE)
                 axes[i, j].set_xlabel('Time (years)', fontsize=FONT_SIZE)
                 axes[i, j].set_ylabel('Cost and revenue by active vessels (k$.day-1)', fontsize=FONT_SIZE)
@@ -1286,7 +1288,7 @@ def _plot_fishing_time_fraction(report_dir, fleet_summary, fleet_names):
         for j in range(n_col):
             cpt = cpt+1
             if cpt <= n_plot:
-                average, maxi, mini, time = compute_mean_min_max_ts(fleet_summary[f]['average_fishing_time_fraction_of_active_vessels'], FISHING_PERIOD)
+                average, maxi, mini, time = compute_mean_min_max_xr(fleet_summary[f]['average_fishing_time_fraction_of_active_vessels'], FISHING_PERIOD)
                 axes[i, j].yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
                 axes[i, j].plot(time, average, linewidth=THICK_LWD, color=col_1)
                 axes[i, j].fill_between(time, mini, average, color=col_1, alpha=HIGH_TRANSP)

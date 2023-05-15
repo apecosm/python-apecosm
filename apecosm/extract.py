@@ -26,50 +26,51 @@ def open_mesh_mask(mesh_file, replace_dims=None):
     mesh = xr.open_dataset(mesh_file)
     if replace_dims is not None:
         mesh = mesh.rename(replace_dims)
+        mesh = mesh.rename(replace_dims)
     if 't' in mesh.dims:
         mesh = mesh.isel(t=0)
 
     return mesh
 
 
-def open_constants(dirin, replace_dims=None):
+def open_constants(dir_in, replace_dims=None):
 
     """
     Opens an Apecosm constant file. It will look for
     a file that contains `Constant`.
 
-    :param dirin: Input directory.
-    :type dirin: str
+    :param dir_in: Input directory.
+    :type dir_in: str
 
     :param replace_dims: Dictionnary that is used to
         rename dimensions
     :type replace_dims: dict, optional
     """
 
-    path = os.path.join(dirin, '*Constant*.nc')
+    path = os.path.join(dir_in, '*Constant*.nc')
     constant = xr.open_mfdataset(path)
     if replace_dims is not None:
         constant = constant.rename(replace_dims)
     return constant
 
 
-def open_apecosm_data(dirin, replace_dims=None, **kwargs):
+def open_apecosm_data(dir_in, replace_dims=None, **kwargs):
 
     """
     Opens Apecosm outputs.
 
-    :param dirin: Input directory.
-    :type dirin: str
+    :param dir_in: Input directory.
+    :type dir_in: str
 
     :param replace_dims: Dictionnary that is used to
         rename dimensions
     :type replace_dims: dict, optional
     """
 
-    pattern = os.path.join(dirin, '*.nc.*')
+    pattern = os.path.join(dir_in, '*.nc.*')
     filelist = glob(pattern)
     if len(filelist) == 0:
-        pattern = os.path.join(dirin, '*.nc')
+        pattern = os.path.join(dir_in, '*.nc')
         filelist = glob(pattern)
         filelist = [f for f in filelist if 'Constant' not in f]
 
@@ -81,20 +82,20 @@ def open_apecosm_data(dirin, replace_dims=None, **kwargs):
     return data
 
 
-def open_ltl_data(dirin, replace_dims=None, **kwargs):
+def open_ltl_data(dir_in, replace_dims=None, **kwargs):
 
     """
     Opens NEMO/PISCES outputs.
 
-    :param dirin: Input directory.
-    :type dirin: str
+    :param dir_in: Input directory.
+    :type dir_in: str
 
     :param replace_dims: Dictionnary that is used to
         rename dimensions
     :type replace_dims: dict, optional
     """
 
-    pattern = os.path.join(dirin, '*.nc')
+    pattern = os.path.join(dir_in, '*.nc')
     filelist = glob(pattern)
     filelist.sort()
 
@@ -387,27 +388,44 @@ def extract_oope_data(data, mesh, const, mask_dom=None):
     return data
 
 
-def open_fishing_data(dirin):
+def open_fishing_data(dir_in):
 
     """
         Opens Apecosm fishing output files : market_result.nc; fleet_maps_2d_X.nc;
         fleet_summary_X.nc; fleet_parameters_X.nc
 
-        :param dirin: Directory of Apecosm fishing outputs.
+        :param dir_in: Directory of Apecosm fishing outputs.
 
-        :type dirin: str
+        :type dir_in: str
     """
 
-    market = xr.open_dataset(os.path.join(dirin, "market_results.nc"))
+    pattern = os.path.join(dir_in, '*market_results*_wtime.nc')
+    filelist = glob(pattern)
+    filelist.sort()
+    market = xr.open_mfdataset(filelist)
     nb_fleet = len(market['fleet'])
 
     fleet_maps = {}
+    for i in np.arange(nb_fleet):
+        pattern = os.path.join(dir_in, '*fleet_maps_2d_'+str(i)+'*_wtime.nc')
+        filelist = glob(pattern)
+        filelist.sort()
+        fleet_maps[i] = xr.open_mfdataset(filelist)
+
     fleet_summary = {}
+    for i in np.arange(nb_fleet):
+        pattern = os.path.join(dir_in, '*fleet_summary_'+str(i)+'*_wtime.nc')
+        filelist = glob(pattern)
+        filelist.sort()
+        fleet_summary[i] = xr.open_mfdataset(filelist)
+        #fleet_summary[i] = xr.decode_cf(fleet_summary[i])
+
     fleet_parameters = {}
     for i in np.arange(nb_fleet):
-        fleet_maps[i] = xr.open_dataset(os.path.join(dirin, 'fleet_maps_2d_' + str(i) + '.nc'))
-        fleet_summary[i] = xr.open_dataset(os.path.join(dirin, 'fleet_summary_' + str(i) + '.nc'))
-        fleet_parameters[i] = xr.open_dataset(os.path.join(dirin, 'fleet_parameters_' + str(i) + '.nc'))
+        pattern = os.path.join(dir_in, '*fleet_parameters_'+str(i)+'*_wtime.nc')
+        filelist = glob(pattern)
+        filelist.sort()
+        fleet_parameters[i] = xr.open_mfdataset(filelist)
 
     return market, fleet_maps, fleet_summary, fleet_parameters
 
@@ -435,7 +453,8 @@ def read_report_params(csv_file_name):
     file = open(csv_file_name)
     report_parameters = {'output_dir':'', 'mesh_file':'', 'FONT_SIZE':'', 'LABEL_SIZE':'', 'THIN_LWD':'', 'REGULAR_LWD':'',
                          'THICK_LWD':'','COL_GRID':'','REGULAR_TRANSP':'','HIGH_TRANSP':'', 'FIG_WIDTH':'','FIG_HEIGHT':'',
-                         'FIG_DPI':'','CB_SHRINK':'','COL_MAP':'','FISHING_PERIOD':'','APECOSM_PERIOD':'','fishing_output_dir':'', 'fishing_config_dir':''}
+                         'FIG_DPI':'','CB_SHRINK':'','COL_MAP':'','FISHING_PERIOD':'','APECOSM_PERIOD':'','fishing_output_dir':'',
+                         'fishing_config_dir':''}
     for line in file:
         fields = line.strip().split(',')
         if fields[0] == 'output_dir':
@@ -471,7 +490,7 @@ def read_report_params(csv_file_name):
         elif fields[0] == 'COL_MAP':
             report_parameters['COL_MAP'] = fields[1].replace(" ", "")
         elif fields[0] == 'FISHING_PERIOD':
-            report_parameters['FISHING_PERIOD'] = int(fields[1])
+            report_parameters['FISHING_PERIOD'] = fields[1].replace(" ", "")
         elif fields[0] == 'APECOSM_PERIOD':
             report_parameters['APECOSM_PERIOD'] = int(fields[1])
         elif fields[0] == 'LAND_BACKGROUND':
