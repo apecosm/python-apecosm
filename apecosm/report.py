@@ -156,7 +156,7 @@ def _make_result_template(report_dir, css, data, const, mesh, crs, domains=None,
     # Do some pre-calculationsn
     # We integrate the biomass over the entire domain: integration, no weight step. J/kg/m2 -> J
     # Output dimensions: time, c, w
-    spatial_integrated_biomass = extract_oope_data(data, mesh, const, mask_dom=mask_dom, use_wstep=False, compute_mean=False)
+    spatial_integrated_biomass = extract_oope_data(data, mesh, const, mask_dom=mask_dom)
     with ProgressBar():
         spatial_integrated_biomass = spatial_integrated_biomass.compute()
     print('+++++++++++ Pre-processing of spatial integral: check')
