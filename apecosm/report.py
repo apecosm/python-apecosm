@@ -8,16 +8,18 @@ import jinja2
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import xarray as xr
+from pyhtml2pdf import converter
+from pypdf import PdfMerger
 from dask.diagnostics import ProgressBar
 from .constants import LTL_NAMES
 from .extract import extract_oope_data, extract_time_means, open_apecosm_data, open_constants, open_mesh_mask, extract_weighted_data, open_fishing_data
 from .misc import extract_community_names, compute_mean_min_max_xr, extract_fleet_names
 from .size_spectra import plot_oope_spectra
 plt.rcParams['text.usetex'] = False
+matplotlib.use('Agg')
 
 
 def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_dir='report', file_css='default', xarray_args={}):
@@ -123,11 +125,31 @@ def report(report_parameters, domain_file=None, crs=ccrs.PlateCarree(), report_d
     with open(os.path.join(report_dir, 'index.html'), 'w') as f:
         f.write(render)
 
+    # Convert html report in pdf report
+    _html2pdf(report_dir)
+
 
 def _savefig(report_dir, fig_name, pic_format):
     img_file = os.path.join(report_dir, 'html', 'images', fig_name)
     plt.savefig(img_file, format=pic_format, bbox_inches='tight')
     return os.path.join('images', fig_name)
+
+
+def _html2pdf(report_dir):
+    html_files = ['/html/config_meta.html', '/html/config_report.html', '/html/fisheries_report.html', '/html/results_report_global.html']
+    for i in range(len(html_files)):
+        file_data = open(report_dir + html_files[i], 'r').read()
+        file_data = file_data.replace('width="150%"', 'width="100%"')
+        open(report_dir+html_files[i], 'w').write(file_data)
+        converter.convert(f'file:///{os.path.abspath(report_dir + html_files[i])}', report_dir+'/report_p%d.pdf' % i,print_options={'scale': 0.85})
+        file_data = file_data.replace('width="100%"', 'width="150%"')
+        open(report_dir + html_files[i], 'w').write(file_data)
+    merger = PdfMerger()
+    for i in range(len(html_files)):
+        merger.append(report_dir + '/report_p%d.pdf' % i)
+        os.remove(report_dir + '/report_p%d.pdf' % i)
+    merger.write(report_dir + '/report.pdf')
+    merger.close()
 
 
 def _make_result_template(report_dir, css, data, const, mesh, crs, domains=None, dom_name=None):
