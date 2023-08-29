@@ -1,5 +1,3 @@
 {
-    "diffEditor.ignoreTrimWhitespace": true,
-    "files.trimTrailingWhitespace": true,
-    "esbonio.sphinx.confDir": ""
+    "esbonio.sphinx.confDir": "doc",
 }
