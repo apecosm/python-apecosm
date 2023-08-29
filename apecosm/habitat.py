@@ -66,7 +66,7 @@ def compute_tpref(tcor, sigm_tcor=0.1):
     return output
 
 
-def compute_tlim(temp_array, t_sup=280.15, t_inf=268.5, ta_lim=200000):
+def compute_tlim(temp_array, t_sup=280.15, t_inf=268.5, ta_lim_sup=200000, ta_lim_inf=200000):
 
     r'''
     Computes the temperature limitation function:
@@ -76,8 +76,8 @@ def compute_tlim(temp_array, t_sup=280.15, t_inf=268.5, ta_lim=200000):
         H_{tlim} = \frac{1}{1+\exp\left(\frac{Ta_{LIM}}{temper}-\frac{Ta_{LIM}}{T_{inf}}\right)} \times \frac{1}{1+\exp\left(\frac{Ta_{LIM}}{T_{sup}}-\frac{Ta_{LIM}}{temper}\right)}
 
     '''
-
-    output = (1. / (1. + np.exp(ta_lim / temp_array - ta_lim / t_inf))) / (1. + np.exp(ta_lim / t_sup - ta_lim / temp_array));
+    
+    output = (1. / (1. + np.exp(ta_lim / temp_array - ta_lim_inf / t_inf))) / (1. + np.exp(ta_lim_sup / t_sup - ta_lim / temp_array));
 
     return output
 
