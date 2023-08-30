@@ -4,7 +4,7 @@ Module for analysing Apecosm outputs
 
 from .extract import extract_oope_data
 
-def compute_size_cumprop(mesh, data, const, mask_dom=None):
+def compute_size_cumprop(data, const):
 
     """
     Computes the cumulated biomass proportion as
@@ -20,6 +20,8 @@ def compute_size_cumprop(mesh, data, const, mask_dom=None):
     :type mask_dom: :class:`numpy.array`
     """
 
-    output = extract_oope_data(data, mesh, const, mask_dom, use_wstep=True)
-    output = output.cumsum(dim='w') / output.sum(dim='w') * 100
+    data = (data * const['weight_step'])
+    output = data.cumsum(dim='w') / data.sum(dim='w') * 100
+    output['community_weight'] = data.sum(dim='w')
+
     return output

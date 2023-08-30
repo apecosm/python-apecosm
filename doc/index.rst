@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 .. only:: html
-    
+
     .. image:: _static/logo-apecosm.*
        :width: 250 px
        :align: center
@@ -20,8 +20,8 @@ Apecosm model documentation
    :numbered:
 
    config.rst
-   wgrid.rst
-   zgrid.rst
+   opening_data.rst
    data_extract.rst
+   computations.rst
    api.rst
    biblio.rst
