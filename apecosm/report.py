@@ -260,7 +260,7 @@ def _plot_time_series(spatial_integrated_biomass, report_dir, mesh, const, mask_
                 axes[i, j].grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
             elif 2 <= cpt <= n_plot:
                 output.isel(c=c).plot.line(ax=axes[i, j], linewidth=THICK_LWD)
-                axes[i, j].set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+                axes[i, j].set_title(community_names[c], fontsize=FONT_SIZE)
                 axes[i, j].set_ylabel('Joules', fontsize=FONT_SIZE)
                 axes[i, j].set_xlabel('')
                 plt.setp(axes[i, j].get_xticklabels(), rotation=30, ha='right')
@@ -319,7 +319,7 @@ def _plot_mean_size(spatial_integrated_biomass, report_dir, mesh, const, mask_do
                 axes[i, j].grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
             elif 2 <= cpt <= n_plot:
                 mean_size.isel(c=c).plot.line(ax=axes[i, j], linewidth=THICK_LWD)
-                axes[i, j].set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+                axes[i, j].set_title(community_names[c], fontsize=FONT_SIZE)
                 axes[i, j].set_ylabel(ylabel, fontsize=FONT_SIZE)
                 axes[i, j].set_xlabel('')
                 plt.setp(axes[i, j].get_xticklabels(), rotation=30, ha='right')
@@ -363,7 +363,7 @@ def _plot_integrated_time_series(spatial_integrated_biomass, report_dir, mesh, c
                 axes[i, j].set_xscale('log')
                 axes[i, j].set_xlim(l.min(), l.max())
                 axes[i, j].set_ylim(0, 100)
-                axes[i, j].set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+                axes[i, j].set_title(community_names[c], fontsize=FONT_SIZE)
                 axes[i, j].set_xlabel('Length (log-scale)', fontsize=FONT_SIZE)
                 axes[i, j].set_ylabel('Proportion (%)', fontsize=FONT_SIZE)
                 axes[i, j].tick_params(axis='both', labelsize=LABEL_SIZE)
@@ -451,7 +451,7 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
                 cb.ax.tick_params(labelsize=LABEL_SIZE)
                 cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
                 cb.set_label('J/m2', fontsize=FONT_SIZE)
-                ax.set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+                ax.set_title(community_names[c], fontsize=FONT_SIZE)
                 c = c + 1
                 del cs, cb
             else:
@@ -484,7 +484,7 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
     #        cb.ax.tick_params(labelsize=LABEL_SIZE)
     #        cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
     #        cb.set_label('J/m2', fontsize=FONT_SIZE)
-    #        plt.title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+    #        plt.title(community_names[c], fontsize=FONT_SIZE)
     #        ax.add_feature(cfeature.LAND, zorder=100)
     #        ax.add_feature(cfeature.COASTLINE, zorder=101)
     #    else:
@@ -540,7 +540,7 @@ def _plot_weighted_values(report_dir, mesh, data, const, varname, mask_dom, dom_
                 output.isel(c=c).plot.line(ax=axes[i, j], color='k', linewidth=THICK_LWD)
                 axes[i, j].set_xscale('log')
                 axes[i, j].set_xlim(l.min(), l.max())
-                axes[i, j].set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+                axes[i, j].set_title(community_names[c], fontsize=FONT_SIZE)
                 axes[i, j].set_xlabel('Length (log-scale)', fontsize=FONT_SIZE)
                 axes[i, j].set_ylabel(varname, fontsize=FONT_SIZE)
                 axes[i, j].tick_params(axis='both', labelsize=LABEL_SIZE)
@@ -571,7 +571,7 @@ def _plot_diet_values(report_dir, mesh, data, const, mask_dom, dom_name):
 
     legend = LTL_NAMES.copy()
     for c in range(n_community):
-        legend.append(community_names['Community ' + str(c)])
+        legend.append(community_names[c])
 
     fig, axes = plt.subplots(n_row, n_col, figsize=(n_col*FIG_WIDTH, n_row*FIG_HEIGHT), dpi=FIG_DPI)
     c = 0
@@ -586,7 +586,7 @@ def _plot_diet_values(report_dir, mesh, data, const, mask_dom, dom_name):
                 axes[i, j].set_xscale('log')
                 axes[i, j].set_xlim(l.min(), l.max())
                 axes[i, j].set_ylim(0, repf.max())
-                axes[i, j].set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+                axes[i, j].set_title(community_names[c], fontsize=FONT_SIZE)
                 axes[i, j].set_xlabel('Length (log-scale)', fontsize=FONT_SIZE)
                 axes[i, j].tick_params(axis='both', labelsize=LABEL_SIZE)
                 axes[i, j].grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
@@ -665,7 +665,7 @@ def _plot_wl_community(report_dir, data, varname, units):
                 length = data[varname].isel(c=c)
                 axes[i, j].plot(length.values, linewidth=THICK_LWD)
                 axes[i, j].set_xlim(0, length.shape[0]-1)
-                axes[i, j].set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+                axes[i, j].set_title(community_names[c], fontsize=FONT_SIZE)
                 axes[i, j].set_ylabel('%s' %units, fontsize=FONT_SIZE)
                 axes[i, j].tick_params(axis='both', labelsize=LABEL_SIZE)
                 axes[i, j].grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
@@ -686,7 +686,7 @@ def _plot_trophic_interactions(report_dir, data):
     community_names = extract_community_names(data)
     xlabel = []
     for c in range(0, trophic_interact[0][0].shape[0]):
-        xlabel.append(community_names['Community ' + str(c)])
+        xlabel.append(community_names[c])
 
     fig = plt.figure()
     plt.subplots_adjust(wspace=0.8)
@@ -737,7 +737,7 @@ def _plot_ltl_selectivity(report_dir, data):
                 axes[i, j].legend(fontsize=FONT_SIZE)
                 axes[i, j].set_xlim(length.min(), length.max())
                 axes[i, j].set_xscale('log')
-                axes[i, j].set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+                axes[i, j].set_title(community_names[c], fontsize=FONT_SIZE)
                 axes[i, j].tick_params(axis='both', labelsize=LABEL_SIZE)
                 axes[i, j].grid(color=COL_GRID, linestyle='dashdot', linewidth=REGULAR_LWD)
                 c = c+1

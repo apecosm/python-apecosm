@@ -92,15 +92,15 @@ def extract_community_names(const):
     :return: The list of community names
     '''
 
-    comnames = {}
+    comnames = []
     attrlist = [attr for attr in const.attrs if attr.startswith('Community_')]
     if len(attrlist) != 0:
         for attr in attrlist:
-            comnames[attr.replace('_', ' ')] = const.attrs[attr]
+            comnames.append(const.attrs[attr])
     else:
         for community_index in range(const.dims['c']):
             name = 'Community %d' % community_index
-            comnames[name] = name
+            comnames.append(name)
     return comnames
 
 

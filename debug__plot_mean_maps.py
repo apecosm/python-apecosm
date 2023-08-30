@@ -95,7 +95,7 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
                 cb.ax.tick_params(labelsize=LABEL_SIZE)
                 cb.ax.yaxis.get_offset_text().set(size=FONT_SIZE)
                 cb.set_label('J/m2', fontsize=FONT_SIZE)
-                axes[i,j].set_title(community_names['Community ' + str(c)], fontsize=FONT_SIZE)
+                axes[i,j].set_title(community_names[c], fontsize=FONT_SIZE)
                 axes[i,j].add_feature(cfeature.LAND, zorder=100)
                 axes[i,j].add_feature(cfeature.COASTLINE, zorder=101)
                 c = c+1
@@ -152,5 +152,3 @@ mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
 
 outputs = {}
 outputs['maps_figs'] = _plot_mean_maps(report_dir, mesh, data, const, crs, mask_dom, dom_name)
-
-
