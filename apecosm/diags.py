@@ -4,7 +4,6 @@ Module for analysing Apecosm outputs
 
 from .extract import extract_oope_data
 
-
 def compute_size_cumprop(mesh, data, const, mask_dom=None):
 
     """
