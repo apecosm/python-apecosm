@@ -23,6 +23,16 @@ import os
 import sys
 import apecosm
 
+def create_folders():
+
+    path = os.path.join('computations', '_static')
+    # Check whether the specified path exists or not
+    isExist = os.path.exists(path)
+    if not isExist:
+        # Create a new directory because it does not exist
+        os.makedirs(path)
+        print("The new directory is created!")
+
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -82,7 +92,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'alias.rst', 'index_private.rst', 'index_public.rst']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'alias.rst', 'index_private.rst', 'index_public.rst', 'wgrid.rst', 'zgrid.rst']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -109,6 +119,7 @@ numfig = True
 # use sections as a reference for figures: X.1, X.2 with X the section
 numfig_secnum_depth = (1)
 
+create_folders()
 
 import sphinx_rtd_theme
 html_theme = "sphinx_rtd_theme"
@@ -127,7 +138,7 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 html_static_path = ['_static']
 
 # see https://github.com/rtfd/sphinx_rtd_theme/issues/117
-#html_context = {'css_files': ['_static/theme_overrides.css']}
+# html_context = {'css_files': ['_static/theme_overrides.css']}
 
 # -- Options for HTMLHelp output ------------------------------------------
 
