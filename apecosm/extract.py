@@ -164,8 +164,6 @@ def extract_ltl_data(data, mesh, varname,
 
     weight = weight.fillna(0)
 
-    dim_integration = data.dims[1:]
-
     if data.ndims == 4:
         # vertically integrate the LTL variable
         data = data.weighted(vertical_weight).sum(dim='z').compute()  # time
@@ -173,7 +171,7 @@ def extract_ltl_data(data, mesh, varname,
     # Horizonal average of the biomass
     output = data.weighted(horizontal_weight).mean(dim=('x', 'y')).compute()  # time
 
-    output.attrs['spatial_norm_weight'] = float(horizontal_weight.sum(dim=(ydim, xdim)).compute().values)
+    output.attrs['spatial_norm_weight'] = float(horizontal_weight.sum(dim=('x', 'y')).compute().values)
 
     return output
 
