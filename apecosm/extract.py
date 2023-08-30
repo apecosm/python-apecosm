@@ -109,7 +109,7 @@ def extract_ltl_data(data, varname, mesh,
 
     """
     Extraction of LTL values on a given domain.
-    LTL is vertically integrated and spatially integrated over
+    LTL is vertically integrated and spatially averaged over
     the domain.
 
     :param data: Apecosm dataset
@@ -119,7 +119,6 @@ def extract_ltl_data(data, varname, mesh,
     :param str varname: LTL variable name
     :param mask_dom: Mask array. If None, full domain is considered
     :type mask_dom: :class:`numpy.array`
-    :param bool compute_mean: If True, mean is computed. If False, integral is provided.
     :param int depth_max: Maximum depth
 
     :return: A xarray dataset
@@ -157,24 +156,34 @@ def extract_ltl_data(data, varname, mesh,
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
 
     tmask = tmask * mask_dom  # 0 if land or out of domain, else 1
-    weight = surf * e3t * tmask  # (1, z, lat, lon) or (time, z, lat, lon)
+    vertical_weight = e3t * tmask  # (1, z, lat, lon) or (time, z, lat, lon)
+    horizontal_weight = (surf * tmask).isel(z=0).fillna(0)
 
     # clear unused variables
     del(surf, e3t, tmask, mask_dom)
 
     if depth_max is not None:
-        weight = weight.where(depth <= depth_max)
+        vertical_weight = vertical_weight.where(depth <= depth_max).fillna(0)
 
     zdim, ydim, xdim = data.dims[1:]
 
-    # integrate spatially and vertically the LTL concentrations
-    output = (data * weight).sum(dim=(zdim, ydim, xdim))  # time
-    output.attrs['norm_weight'] = float(weight.sum(dim=(zdim, ydim, xdim)).compute().values)
+    # vertically integrate the LTL variable
+    output = data.weighted(vertical_weight).sum(dim='z').compute()  # time
+
+    # Horizonal average of the biomass
+    output = output.weighted(horizontal_weight).mean(dim=('x', 'y')).compute()  # time
+
+    output.attrs['spatial_norm_weight'] = float(horizontal_weight.sum(dim=(ydim, xdim)).compute().values)
 
     return output
 
-def normalize_data(data):
-    norm_data = data / data.attrs['norm_weight']
+def spatial_mean_to_integral(data):
+
+    '''
+    Converts a spatial mean into an integral by multiplying by the total surface
+    '''
+
+    norm_data = data * data.attrs['spatial_norm_weight']
     return norm_data
 
 def _rename_z_dim(var):
@@ -270,14 +279,13 @@ def extract_mean_size(spatially_integrated_biomass, const, mesh, varname,
     """
 
     # time, lat, lon, comm, w
-    weight = spatially_integrated_biomass * const['weight_step']
+    weight = (spatially_integrated_biomass * const['weight_step']).fillna(0)
 
     dims = ['w']
     if aggregate:
         dims += ['c']
 
-    variable = (const[varname] * weight).sum(dims)
-    variable /= weight.sum(dims)
+    variable = (const[varname].weighted(weight)).mean(dims)
 
     return variable
 
@@ -321,11 +329,11 @@ def extract_weighted_data(data, const, mesh, varname,
     oope = data['OOPE']
 
     # time, lat, lon, comm, w
-    weight = tmask * surf * oope * const['weight_step']
+    weight = (tmask * surf * oope * const['weight_step']).fillna(0)
 
     dims = ['y', 'x']
 
-    output = (data[varname] * weight).sum(dims) / weight.sum(dims)
+    output = (data[varname].weighted(weight)).mean(dims)
     return output
 
 
@@ -381,8 +389,8 @@ def extract_oope_data(data, mesh, const, mask_dom=None):
 
     data = data['OOPE']
 
-    data = (data * weight).sum(dim=('x', 'y'))  # time, com, w
-    data.attrs['norm_weight'] = float(weight.sum(dim=['x', 'y']).compute().values)
+    data = (data * weight).mean(dim=('x', 'y'))  # time, com, w
+    data.attrs['spatial_norm_weight'] = float(weight.sum(dim=['x', 'y']).compute().values)
 
     return data
 

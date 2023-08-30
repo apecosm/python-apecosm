@@ -20,7 +20,7 @@ plt.rcParams['text.usetex'] = False
 
 PROJIN = ccrs.PlateCarree()
 
-def plot_diet_values(data, const, community_index, **kwargs):
+def plot_diet_values(data, const, community_index, legend_args={}, **kwargs):
 
     community_names = extract_community_names(const)
     n_community = len(community_names)
@@ -30,15 +30,15 @@ def plot_diet_values(data, const, community_index, **kwargs):
         legend.append(community_names[c])
 
     ax = plt.gca()
-    l = const['length'].isel(c=community_index)
+    length = const['length'].isel(c=community_index)
     diet = data['community_diet_values'].isel(c=community_index).compute()
     repf = diet.sum(dim='prey_group')
-    l = ax.stackplot(l, diet.T, edgecolor='k', **kwargs)
+    l = ax.stackplot(length, diet.T, edgecolor='k', **kwargs)
     ax.set_xscale('log')
-    ax.set_xlim(l.min(), l.max())
+    ax.set_xlim(length.min(), length.max())
     ax.set_ylim(0, repf.max())
     ax.set_title(community_names[community_index])
-    ax.legend(legend)
+    ax.legend(legend, **legend_args)
     return l
 
 def plot_oope_map(data, mesh, axis=None, draw_land=True, **kwargs):
