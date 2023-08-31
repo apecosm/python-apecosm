@@ -113,16 +113,16 @@ The 3D extraction of biogeochemical forcing data is achieved by using the :py:fu
 
 .. ipython:: python
 
-    spatial_integrated_phy2 = apecosm.extract_ltl_data(ltl_data, mesh, 'PHY2')
-    spatial_integrated_phy2
+    spatial_mean_phy2 = apecosm.extract_ltl_data(ltl_data, mesh, 'PHY2')
+    spatial_mean_phy2
 
-.. note::
+This function will first vertically **integrate** the LTL biomass (converting from :math:`mmol/m3` into :math:`mmol/m2`). And then
+compute the horizontal **average**. This choice has been made to be consistent with Apecosm outputs. Indeed, OOPE is provided as a vertically
+integrated biomass.
 
-    In this case, the output data is also an xarray Dataarray, however it contains only one dimension since there is no other dimensions than depth, latitude, longitude.
-
-As in the above, this computes the 3D integral. If the mean is needed:
+However, it remains possible to convert the horizontal average into an horizontal integral as follows:
 
 .. ipython:: python
 
-    spatial_mean_phy2 = apecosm.normalize_data(spatial_integrated_phy2)
-    spatial_mean_phy2
+    spatial_integral_phy2 = apecosm.spatial_mean_to_integral(spatial_mean_phy2)
+    spatial_integral_phy2
