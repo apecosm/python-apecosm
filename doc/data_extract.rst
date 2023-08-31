@@ -38,12 +38,13 @@ Apecosm outputs can be extracted over a given geographical by using the :py:func
 This function returns:
 
 .. math::
+    :label: oope_mean
 
-    X_{int}(t, c, w) = \dfrac
-    {\int\limits_{(y, x)\in S} M(y, x) \times X(t, y, x, c, w) \times dS(y, x)}
-    {\int\limits_{(y, x)\in S} M(y, x) \times dS(y, x)}
+    X_{mean}(t, c, w) = \dfrac
+    {\int\limits_{(y, x)\in S} X(t, y, x, c, w) \times dS(y, x)}
+    {\int\limits_{(y, x)\in S} \times dS(y, x)}
 
-with :math:`S` the domain where data are extracted, :math:`M` the value of the land-sea mask and :math:`dS` the surface
+with :math:`S` the domain where data are extracted, and :math:`dS` the surface
 of the :math:`(i, j)` cell, :math:`c` is the community and :math:`w` is the size-class. It is called as follows:
 
 .. ipython:: python
@@ -51,9 +52,11 @@ of the :math:`(i, j)` cell, :math:`c` is the community and :math:`w` is the size
     spatial_mean = apecosm.extract_oope_data(data['OOPE'], mesh)
     spatial_mean
 
-with the first argument being the DataArray from which we extract the integral.
+with the first argument being the DataArray from which we extract the mean.
 
-In order to extract the mean instead of the integral, the :py:func:`apecosm.spatial_mean_to_integral` function need to be called:
+In order to extract the mean instead of the integral,
+the :py:func:`apecosm.spatial_mean_to_integral` function need
+to be called. This function multiply the above calculation by the denominator of :eq:`oope_mean`.
 
 .. ipython:: python
 
