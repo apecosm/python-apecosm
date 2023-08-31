@@ -124,17 +124,9 @@ def extract_ltl_data(data, mesh, varname,
     :return: A xarray dataset
     """
 
-    surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
+    surf = mesh['e2t'] * mesh['e1t']
 
-    if 'e3t' in data.variables:
-        # if VVL, e3t should be read from data
-        e3t = data['e3t']  # time, z, lat, lon
-    elif 'e3t_0' in mesh.variables:
-        e3t = mesh['e3t_0']  # 1, z, lat, lon
-    else:
-        e3t = mesh['e3t_1d']
-
-    data = data[varname]
+    data_array = data[varname]
 
     if 'gdept_0' in mesh.variables:
         depth = mesh['gdept_0']  # 1, z, lat, lon
@@ -146,30 +138,45 @@ def extract_ltl_data(data, mesh, varname,
     if 'tmaskutil' in mesh.variables:
         tmask *= mesh['tmaskutil']
 
+    if data_array.ndim == 4:
+
+        # If data is 4d, assume a depth dimension. We integrate over this dimension
+
+        # First, we extract the cell thickness for the integration
+        if 'e3t' in data.variables:
+            # if VVL, e3t should be read from data
+            e3t = data['e3t']  # time, z, lat, lon
+        elif 'e3t_0' in mesh.variables:
+            e3t = mesh['e3t_0']  # 1, z, lat, lon
+        else:
+            e3t = mesh['e3t_1d']
+
+        # Create a vertical_weight mask
+        vertical_weight = e3t * tmask  # (1, z, lat, lon) or (time, z, lat, lon)
+
+        # If a maximum depth is provide, we mask data below
+        if depth_max is not None:
+            vertical_weight = vertical_weight.where(depth <= depth_max)
+
+        # Replace NaN with 0, especially if VVL is used
+        vertical_weight = vertical_weight.fillna(0)
+
+        # Data is vertically integrated
+        data_array = data_array.weighted(vertical_weight).sum(dim='z').compute()  # time
+
     # extract the domain coordinates
     if mask_dom is None:
         mask_dom = np.ones(tmask[0].shape)
 
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
-
     tmask = tmask * mask_dom  # 0 if land or out of domain, else 1
-    vertical_weight = e3t * tmask  # (1, z, lat, lon) or (time, z, lat, lon)
+
     horizontal_weight = (surf * tmask).isel(z=0).fillna(0)
 
-    # clear unused variables
-    del(surf, e3t, tmask, mask_dom)
-
-    if depth_max is not None:
-        vertical_weight = vertical_weight.where(depth <= depth_max).fillna(0)
-
-    if data.ndim == 4:
-        # vertically integrate the LTL variable
-        data = data.weighted(vertical_weight).sum(dim='z').compute()  # time
-
     # Horizonal average of the biomass
-    output = data.weighted(horizontal_weight).mean(dim=('x', 'y')).compute()  # time
+    output = data_array.weighted(horizontal_weight).mean(dim=('x', 'y')).compute()  # time
 
-    output.attrs['spatial_norm_weight'] = float(horizontal_weight.sum(dim=('x', 'y')).compute().values)
+    output.attrs['horizontal_norm_weight'] = float(horizontal_weight.sum(dim=('x', 'y')).compute().values)
 
     return output
 
@@ -180,7 +187,7 @@ def spatial_mean_to_integral(data):
     Converts a spatial mean into an integral by multiplying by the total surface
     '''
 
-    norm_data = data * data.attrs['spatial_norm_weight']
+    norm_data = data * data.attrs['horizontal_norm_weight']
 
     return norm_data
 
@@ -383,7 +390,7 @@ def extract_oope_data(data, mesh, mask_dom=None):
     weight = (tmask * surf).fillna(0)  # time, lat, lon, comm, w
 
     output = data.weighted(weight).sum(dim=('x', 'y'))  # time, com, w
-    output['spatial_norm_weight'] = weight.sum(dim=['x', 'y']).compute()
+    output['horizontal_norm_weight'] = weight.sum(dim=['x', 'y']).compute()
     output.name = data.name
 
     return output
