@@ -162,7 +162,7 @@ def extract_ltl_data(data, mesh, varname,
         vertical_weight = vertical_weight.fillna(0)
 
         # Data is vertically integrated
-        data_array = data_array.weighted(vertical_weight).sum(dim='z').compute()  # time
+        data_array = data_array.weighted(vertical_weight).sum(dim='z') # time
 
     # extract the domain coordinates
     if mask_dom is None:
@@ -174,7 +174,7 @@ def extract_ltl_data(data, mesh, varname,
     horizontal_weight = (surf * tmask).isel(z=0).fillna(0)
 
     # Horizonal average of the biomass
-    output = data_array.weighted(horizontal_weight).mean(dim=('x', 'y')).compute()  # time
+    output = data_array.weighted(horizontal_weight).mean(dim=('x', 'y')) # time
 
     output.attrs['horizontal_norm_weight'] = float(horizontal_weight.sum(dim=('x', 'y')).compute().values)
 
