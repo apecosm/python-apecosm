@@ -167,7 +167,7 @@ def plot_oope_spectra(data, const, output_var='weight', **kwargs):
     l = []
     for icom in data['c']:
         color = cmap(float(icom) / len(data['c']))
-        lll = ax.plot(xvar.isel(c=icom), data.isel(c=icom).T, color=color, label=comnames['Community %d' %icom], **kwargs)
+        lll = ax.plot(xvar.isel(c=icom), data.isel(c=icom).T, color=color, label=comnames[icom], **kwargs)
         l.append(lll[0])
     return l
 

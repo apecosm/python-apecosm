@@ -5,7 +5,7 @@ Calculations
 
 Using the different variables defined in :numref:`data_extraction`, there is different diagnostics available in the Apecosm python package.
 
-.. toctree::
+.. .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
