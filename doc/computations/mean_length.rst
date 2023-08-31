@@ -27,11 +27,14 @@ Computation of mean length
     data = apecosm.open_apecosm_data(os.path.join('doc', 'data', 'apecosm'))
     data
 
-    spatial_integral = apecosm.extract_oope_data(data['OOPE'], mesh)
-    spatial_integral = spatial_integral.compute()
+    spatial_mean = apecosm.extract_oope_data(data['OOPE'], mesh)
+    spatial_mean = spatial_mean.compute()
 
-    regional_spatial_integral = apecosm.extract_oope_data(data['OOPE'], mesh, domain)
-    regional_spatial_integral = regional_spatial_integral.compute()
+    regional_spatial_mean = apecosm.extract_oope_data(data['OOPE'], mesh, domain)
+    regional_spatial_mean = regional_spatial_mean.compute()
+
+    spatial_integral = apecosm.spatial_mean_to_integral(spatial_mean)
+    regional_spatial_integral = apecosm.spatial_mean_to_integral(regional_spatial_mean)
 
 The :py:func:`apecosm.extract_mean_size` computes the mean length or weight over a given area. It takes as argument the output
 of the :py:func:`apecosm.extract_oope_data` function applied on OOPE.
