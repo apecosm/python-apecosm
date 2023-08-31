@@ -390,7 +390,7 @@ def extract_oope_data(data, mesh, mask_dom=None):
     weight = (tmask * surf).fillna(0)  # time, lat, lon, comm, w
 
     output = data.weighted(weight).sum(dim=('x', 'y'))  # time, com, w
-    output['horizontal_norm_weight'] = weight.sum(dim=['x', 'y']).compute()
+    output.attrs['horizontal_norm_weight'] = weight.sum(dim=['x', 'y']).compute()
     output.name = data.name
 
     return output
