@@ -365,6 +365,7 @@ def extract_weighted_data(data, const, mesh, varname,
     dims = ['y', 'x']
 
     output = (data[varname].weighted(weight)).mean(dims)
+    output.attrs['average_weight'] = weight.sum(dim=dims).compute()
     return output
 
 
@@ -393,14 +394,14 @@ def extract_oope_data(data, mesh, mask_dom=None):
 
     """
 
-    surf = _squeeze_variable(mesh['e2t']) * _squeeze_variable(mesh['e1t'])
+    surf = mesh['e2t'] * mesh['e1t']
 
     if 'tmaskutil' in mesh.variables:
         tmask = mesh['tmaskutil']
     else:
         tmask = mesh['tmask']
 
-    tmask = _squeeze_variable(tmask)
+    tmask = tmask
 
     # extract the domain coordinates
     if mask_dom is None:
@@ -414,7 +415,7 @@ def extract_oope_data(data, mesh, mask_dom=None):
     weight = (tmask * surf).fillna(0)  # time, lat, lon, comm, w
 
     output = data.weighted(weight).sum(dim=('x', 'y'))  # time, com, w
-    output.attrs['horizontal_norm_weight'] = weight.sum(dim=['x', 'y']).compute()
+    output.attrs['horizontal_norm_weight'] = weight.sum(dim=['x', 'y'])
     output.name = data.name
 
     return output
@@ -442,25 +443,6 @@ def open_fishing_data(dirin):
         fleet_parameters[i] = xr.open_dataset(os.path.join(dirin, 'fleet_parameters_' + str(i) + '.nc'))
 
     return market, fleet_maps, fleet_summary, fleet_parameters
-
-
-
-def _squeeze_variable(variable):
-
-    r"""
-    If a variable which is supposed to be 2D (dims=['x', 'y']) but
-    is in fact 3D, we remove the spurious dimensions.
-
-    :return: A data array with the given time mean
-    """
-
-    dictout = {}
-    for dim in variable.dims:
-        if dim not in ['x', 'y']:
-            dictout[dim] = 0
-        else:
-            dictout[dim] = slice(None, None)
-    return variable.isel(**dictout)
 
 
 def read_report_params(csv_file_name):
