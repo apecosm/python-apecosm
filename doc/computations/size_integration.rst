@@ -3,21 +3,22 @@
 
     import sys
     import os
-    sys.path.insert(0, os.path.abspath('../'))
+    sys.path.insert(0, os.path.abspath('..'))
+    import apecosm
     import xarray as xr
     import matplotlib.pyplot as plt
 
-    domain_ds = xr.open_dataset('data/domains.nc')
+    domain_ds = xr.open_dataset(os.path.join('doc', 'data', 'domains.nc'))
     domain = domain_ds['domain_1']
 
-    mesh_file = 'data/pacific_mesh_mask.nc'
+    mesh_file = os.path.join('doc', 'data', 'pacific_mesh_mask.nc')
     mesh = apecosm.open_mesh_mask(mesh_file)
     mesh
 
-    const = apecosm.open_constants('data/apecosm/')
+    const = apecosm.open_constants(os.path.join('doc', 'data', 'apecosm'))
     const
 
-    data = apecosm.open_apecosm_data('data/apecosm')
+    data = apecosm.open_apecosm_data(os.path.join('doc', 'data', 'apecosm'))
     data
 
     spatial_integral = apecosm.extract_oope_data(data['OOPE'], mesh)
@@ -74,8 +75,8 @@ The function can also be called on spatially integrated biomass density:
 .. ipython:: python
     :suppress:
 
-    plt.savefig('computations/_static/integrated_biomass.jpg', bbox_inches='tight')
-    plt.savefig('computations/_static/integrated_biomass.pdf', bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'integrated_biomass.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'integrated_biomass.pdf'), bbox_inches='tight')
     plt.close(fig)
 
 
@@ -109,8 +110,8 @@ length boundaries (**in cm**), using the ``lmin`` and ``lmax`` dimensions. For b
     ax = plt.subplot(3, 2, 6)
     ax.axis('off')
 
-    plt.savefig('computations/_static/integrated_biomass_0_3.jpg', bbox_inches='tight')
-    plt.savefig('computations/_static/integrated_biomass_0_3.pdf', bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'integrated_biomass_0_3.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'integrated_biomass_0_3.pdf'), bbox_inches='tight')
     plt.close(fig)
 
 .. figure::  _static/integrated_biomass_0_3.*
@@ -141,8 +142,8 @@ For biomass between 3 and 20 cm
     ax = plt.subplot(3, 2, 6)
     ax.axis('off')
 
-    plt.savefig('computations/_static/integrated_biomass_3_20.jpg', bbox_inches='tight')
-    plt.savefig('computations/_static/integrated_biomass_3_20.pdf', bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'integrated_biomass_3_20.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'integrated_biomass_3_20.pdf'), bbox_inches='tight')
     plt.close(fig)
 
 .. figure::  _static/integrated_biomass_3_20.*
@@ -173,8 +174,8 @@ For biomass greater than 20 cm:
     ax = plt.subplot(3, 2, 6)
     ax.axis('off')
 
-    plt.savefig('computations/_static/integrated_biomass_20_inf.jpg', bbox_inches='tight')
-    plt.savefig('computations/_static/integrated_biomass_20_inf.pdf', bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'integrated_biomass_20_inf.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'integrated_biomass_20_inf.pdf'), bbox_inches='tight')
     plt.close(fig)
 
 .. figure::  _static/integrated_biomass_20_inf.*
