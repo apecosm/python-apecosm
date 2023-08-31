@@ -162,9 +162,7 @@ def extract_ltl_data(data, mesh, varname,
     if depth_max is not None:
         vertical_weight = vertical_weight.where(depth <= depth_max).fillna(0)
 
-    weight = weight.fillna(0)
-
-    if data.ndims == 4:
+    if data.ndim == 4:
         # vertically integrate the LTL variable
         data = data.weighted(vertical_weight).sum(dim='z').compute()  # time
 
