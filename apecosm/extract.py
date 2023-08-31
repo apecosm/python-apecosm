@@ -194,6 +194,20 @@ def spatial_mean_to_integral(data):
 
 def extract_oope_size_integration(data, const, lmin=None, lmax=None):
 
+    '''
+    Integrates the biomass density between two lengths. The provided data can be either
+    a map of a time-series.
+
+    :param data: Apecosm dataset. **Units must be in :math:`J.kg^{-1}`**
+    :type data: :class:`xarray.DataArray`
+    :param const: Apecosm constant dataset. It must contain `weight_step` and `length`
+    :type const: :class:`xarray.Dataset`
+    :param float lmin: Minimum size to consider (cm). If None, integrates from the beginning of the size spectra
+    :param float lmax: Maximum size to consider (cm). If None, integrates to the end of the size spectra
+
+    :return: A xarray dataset
+    '''
+
     weight_step = const['weight_step']
     length = const['length'] * 100
     if lmin is not None:
@@ -248,6 +262,17 @@ def extract_time_means(data, time=None):
 
 
 def compute_cumulated_biomass(spatial_integrated_biomass, const):
+
+    '''
+    Computes the cumulated biomass, i.e. the biomass proportion
+    for each size class.
+
+    :param spatial_integrated_biomass: OOPE variable
+    :param xarray.Dataset const: Apecosm constant dataset
+
+    :return: A xarray.DataArray
+
+    '''
 
     spatial_integrated_biomass = spatial_integrated_biomass * const['weight_step']
     size_prop = spatial_integrated_biomass.cumsum(dim='w') / spatial_integrated_biomass.sum(dim='w') * 100
@@ -321,10 +346,9 @@ def extract_weighted_data(data, const, mesh, varname,
     if 'tmaskutil' in mesh.variables:
         tmask = mesh['tmaskutil']
     else:
-        tmask = mesh['tmask']
+        tmask = mesh['tmask'].isel(z=0)
 
-    tmask = _squeeze_variable(tmask)
-    surf = _squeeze_variable(mesh['e1t'] * mesh['e2t'])
+    surf = mesh['e1t'] * mesh['e2t']
 
     # extract the domain coordinates
     if mask_dom is None:
