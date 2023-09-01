@@ -7,22 +7,22 @@ Cumulated biomass
 
     import sys
     import os
-    sys.path.insert(0, os.path.abspath('../'))
+    sys.path.insert(0, os.path.abspath('..'))
     import apecosm
     import xarray as xr
     import matplotlib.pyplot as plt
 
-    domain_ds = xr.open_dataset('data/domains.nc')
+    domain_ds = xr.open_dataset(os.path.join('doc', 'data', 'domains.nc'))
     domain = domain_ds['domain_1']
 
-    mesh_file = 'data/pacific_mesh_mask.nc'
+    mesh_file = os.path.join('doc', 'data', 'pacific_mesh_mask.nc')
     mesh = apecosm.open_mesh_mask(mesh_file)
     mesh
 
-    const = apecosm.open_constants('data/apecosm/')
+    const = apecosm.open_constants(os.path.join('doc', 'data', 'apecosm/'))
     const
 
-    data = apecosm.open_apecosm_data('data/apecosm')
+    data = apecosm.open_apecosm_data(os.path.join('doc', 'data', 'apecosm'))
     data
 
     spatial_integral = apecosm.extract_oope_data(data['OOPE'], mesh)
@@ -86,8 +86,8 @@ Now we can draw the cumulated biomass.
 .. ipython:: python
     :suppress:
 
-    plt.savefig('computations/_static/cumulated_biomass.jpg', bbox_inches='tight')
-    plt.savefig('computations/_static/cumulated_biomass.pdf', bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'cumulated_biomass.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'cumulated_biomass.pdf'), bbox_inches='tight')
 
 .. figure::  _static/cumulated_biomass.*
     :align: center

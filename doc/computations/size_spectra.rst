@@ -16,14 +16,14 @@ Size-spectra
     import matplotlib.pyplot as plt
     import apecosm
 
-    mesh_file = 'data/pacific_mesh_mask.nc'
+    mesh_file = os.path.join('doc', 'data', 'pacific_mesh_mask.nc')
     mesh = apecosm.open_mesh_mask(mesh_file)
 
-    const = apecosm.open_constants('data/apecosm/')
+    const = apecosm.open_constants(os.path.join('doc', 'data', 'apecosm/'))
 
-    data = apecosm.open_apecosm_data('data/apecosm')
+    data = apecosm.open_apecosm_data(os.path.join('doc', 'data', 'apecosm'))
 
-    ltl_data = apecosm.open_ltl_data('data/pisces',
+    ltl_data = apecosm.open_ltl_data(os.path.join('doc', 'data', 'pisces'),
                                     replace_dims={'olevel': 'z'})
 
 
@@ -73,8 +73,8 @@ The ``L`` variable is the lower and upper bound of the LTL length, as used in th
 .. ipython:: python
     :suppress:
 
-    plt.savefig('computations/_static/spectra_ltl_phy2_weight.jpg', bbox_inches='tight')
-    plt.savefig('computations/_static/spectra_ltl_phy2_weight.pdf', bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'spectra_ltl_phy2_weight.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'spectra_ltl_phy2_weight.pdf'), bbox_inches='tight')
     plt.close(fig)
 
 .. figure::  _static/spectra_ltl_phy2_weight.*
@@ -99,8 +99,8 @@ Note that the size-spectra can also be plotted as a function of length:
 .. ipython:: python
     :suppress:
 
-    plt.savefig('computations/_static/spectra_ltl_phy2_length.jpg', bbox_inches='tight')
-    plt.savefig('computations/_static/spectra_ltl_phy2_length.pdf', bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'spectra_ltl_phy2_length.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'spectra_ltl_phy2_length.pdf'), bbox_inches='tight')
     plt.close(fig)
 
 .. figure::  _static/spectra_ltl_phy2_length.*
@@ -147,8 +147,8 @@ Then, we compute the time mean:
 .. ipython:: python
     :suppress:
 
-    plt.savefig('computations/_static/spectra_apecosm_weight.jpg', bbox_inches='tight')
-    plt.savefig('computations/_static/spectra_apecosm_weight.pdf', bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'spectra_apecosm_weight.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'spectra_apecosm_weight.pdf'), bbox_inches='tight')
     plt.close(fig)
 
 .. figure::  _static/spectra_apecosm_weight.*
@@ -210,8 +210,8 @@ variables are extracted and time averaged:
 .. ipython:: python
     :suppress:
 
-    plt.savefig('computations/_static/spectra_allvars_weight.jpg', bbox_inches='tight')
-    plt.savefig('computations/_static/spectra_allvars_weight.pdf', bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'spectra_allvars_weight.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', 'computations', '_static', 'spectra_allvars_weight.pdf'), bbox_inches='tight')
     plt.close(fig)
 
 .. figure::  _static/spectra_allvars_weight.*

@@ -16,17 +16,17 @@ Data extraction
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
     import xarray as xr
-    import matplotlib.pyplot as plt
+    import matplotlib as mpl
     import apecosm
 
-    mesh_file = 'data/pacific_mesh_mask.nc'
+    mesh_file = os.path.join('doc', 'data', 'pacific_mesh_mask.nc')
     mesh = apecosm.open_mesh_mask(mesh_file)
 
-    const = apecosm.open_constants('data/apecosm/')
+    const = apecosm.open_constants(os.path.join('doc', 'data', 'apecosm'))
 
-    data = apecosm.open_apecosm_data('data/apecosm')
+    data = apecosm.open_apecosm_data(os.path.join('doc', 'data', 'apecosm'))
 
-    ltl_data = apecosm.open_ltl_data('data/pisces',
+    ltl_data = apecosm.open_ltl_data(os.path.join('doc', 'data', 'pisces'),
                                     replace_dims={'olevel': 'z'})
 
 **********************************************************
@@ -38,25 +38,30 @@ Apecosm outputs can be extracted over a given geographical by using the :py:func
 This function returns:
 
 .. math::
+    :label: oope_mean
 
-    X_{int}(t, c, w) = \int\limits_{(y, x)\in S} M(y, x) \times X(t, y, x, c, w) \times dS(y, x)
+    X_{mean}(t, c, w) = \dfrac
+    {\int\limits_{(y, x)\in S} X(t, y, x, c, w) \times dS(y, x)}
+    {\int\limits_{(y, x)\in S} \times dS(y, x)}
 
-with :math:`S` the domain where data are extracted, :math:`M` the value of the land-sea mask and :math:`dS` the surface
+with :math:`S` the domain where data are extracted, and :math:`dS` the surface
 of the :math:`(i, j)` cell, :math:`c` is the community and :math:`w` is the size-class. It is called as follows:
 
 .. ipython:: python
 
-    spatial_integral = apecosm.extract_oope_data(data['OOPE'], mesh)
-    spatial_integral
+    spatial_mean = apecosm.extract_oope_data(data['OOPE'], mesh)
+    spatial_mean
 
-with the first argument being the DataArray from which we extract the integral.
+with the first argument being the DataArray from which we extract the mean.
 
-In order to extract the mean instead of the integral, the :py:func:`apecosm.normalize_data` function need to be called:
+In order to extract the mean instead of the integral,
+the :py:func:`apecosm.spatial_mean_to_integral` function need
+to be called. This function multiply the above calculation by the denominator of :eq:`oope_mean`.
 
 .. ipython:: python
 
-    spatial_mean = apecosm.normalize_data(spatial_integral)
-    spatial_mean
+    spatial_integral = apecosm.spatial_mean_to_integral(spatial_mean)
+    spatial_integral
 
 .. _spatial_inte:
 
@@ -69,7 +74,7 @@ different domains:
 
 .. ipython:: python
 
-    domain_ds = xr.open_dataset('data/domains.nc')
+    domain_ds = xr.open_dataset(os.path.join('doc', 'data', 'domains.nc'))
     domain = domain_ds['domain_1']
 
 .. ipython:: python
@@ -79,15 +84,15 @@ different domains:
     lonf = mesh['glamf']
     latf = mesh['gphif']
     ax = plt.axes(projection = ccrs.PlateCarree(central_longitude=180))
-    domain_ds = xr.open_dataset('data/domains.nc')
+    domain_ds = xr.open_dataset(os.path.join('doc', 'data', 'domains.nc'))
     domain = domain_ds['domain_1'] * mesh['tmaskutil']
     ax.pcolormesh(lonf, latf, domain.isel(x=slice(1, None), y=slice(1, None)),
-                  transform=ccrs.PlateCarree(), cmap=plt.cm.get_cmap('binary'))
+                  transform=ccrs.PlateCarree(), cmap=mpl.colormaps['binary'])
     ax.add_feature(cfeature.COASTLINE)
     ax.add_feature(cfeature.LAND)
     ax.set_extent([lonf.min(), lonf.max(), latf.min(), latf.max()], crs=ccrs.PlateCarree())
-    plt.savefig('_static/domains.jpg', bbox_inches='tight')
-    plt.savefig('_static/domains.pdf', bbox_inches='tight')
+    plt.savefig(os.path.join('doc', '_static', 'domains.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', '_static', 'domains.pdf'), bbox_inches='tight')
     plt.close(fig)
 
 .. figure::  _static/domains.*
@@ -95,12 +100,12 @@ different domains:
 
     Example of a spatial domain
 
-We can extract the integrated biomass over this domain as follows:
+We can extract the mean biomass over this domain as follows:
 
 .. ipython:: python
 
-    regional_spatial_integral = apecosm.extract_oope_data(data['OOPE'], mesh, domain)
-    regional_spatial_integral
+    regional_spatial_mean = apecosm.extract_oope_data(data['OOPE'], mesh, domain)
+    regional_spatial_mean
 
 
 .. _extract_ltl:
@@ -113,16 +118,16 @@ The 3D extraction of biogeochemical forcing data is achieved by using the :py:fu
 
 .. ipython:: python
 
-    spatial_integrated_phy2 = apecosm.extract_ltl_data(ltl_data, mesh, 'PHY2')
-    spatial_integrated_phy2
+    spatial_mean_phy2 = apecosm.extract_ltl_data(ltl_data, mesh, 'PHY2')
+    spatial_mean_phy2
 
-.. note::
+This function will first vertically **integrate** the LTL biomass (converting from :math:`mmol/m3` into :math:`mmol/m2`). And then
+compute the horizontal **average**. This choice has been made to be consistent with Apecosm outputs. Indeed, OOPE is provided as a vertically
+integrated biomass.
 
-    In this case, the output data is also an xarray Dataarray, however it contains only one dimension since there is no other dimensions than depth, latitude, longitude.
-
-As in the above, this computes the 3D integral. If the mean is needed:
+However, it remains possible to convert the horizontal average into an horizontal integral as follows:
 
 .. ipython:: python
 
-    spatial_mean_phy2 = apecosm.normalize_data(spatial_integrated_phy2)
-    spatial_mean_phy2
+    spatial_integral_phy2 = apecosm.spatial_mean_to_integral(spatial_mean_phy2)
+    spatial_integral_phy2

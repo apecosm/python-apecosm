@@ -7,10 +7,10 @@ Time averaging
 
     import sys
     import os
-    sys.path.insert(0, os.path.abspath('../'))
+    sys.path.insert(0, os.path.abspath('..'))
     import apecosm
 
-    data = apecosm.open_apecosm_data('data/apecosm')
+    data = apecosm.open_apecosm_data(os.path.join('doc', 'data', 'apecosm'))
     data
 
 There is also the possibility to compute time averages. This is done by using

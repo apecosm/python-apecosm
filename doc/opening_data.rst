@@ -32,7 +32,7 @@ Then, the mesh file containing the grid informations is loaded:
 
 .. ipython:: python
 
-    mesh_file = 'data/pacific_mesh_mask.nc'
+    mesh_file = os.path.join('doc', 'data', 'pacific_mesh_mask.nc')
     mesh = apecosm.open_mesh_mask(mesh_file)
     mesh
 
@@ -46,7 +46,7 @@ Then, the Apecosm constant file, which contains  biological constants (length, w
 
 .. ipython:: python
 
-    const = apecosm.open_constants('data/apecosm/')
+    const = apecosm.open_constants(os.path.join('doc', 'data', 'apecosm/'))
     const
 
 Note that in this case, **a folder** is provided as argument.
@@ -59,7 +59,7 @@ Finally, the Apecosm data are loaded as follows:
 
 .. ipython:: python
 
-    data = apecosm.open_apecosm_data('data/apecosm')
+    data = apecosm.open_apecosm_data(os.path.join('doc', 'data', 'apecosm'))
     data
 
 In this example, the dataset only contains one variable, `OOPE`, i.e. biomass density.
@@ -75,7 +75,7 @@ For instance in case of very heavy simulations (global simulations for instance)
 
 .. ipython:: python
 
-    data_chunked = apecosm.open_apecosm_data('data/apecosm',  chunks={'time': 1, 'x': 50, 'y': 50})
+    data_chunked = apecosm.open_apecosm_data(os.path.join('doc', 'data', 'apecosm'),  chunks={'time': 1, 'x': 50, 'y': 50})
     data_chunked
 
 In this case, the chunk size is now `(1, 50, 50, 5, 100)`, while it was `(12, 108, 163, 5, 100)` in the above.
@@ -94,7 +94,7 @@ The :py:func:`apecosm.open_ltl_data` alows to extract Pisces data files:
 
 .. ipython:: python
 
-    ltl_data = apecosm.open_ltl_data('data/pisces',
+    ltl_data = apecosm.open_ltl_data(os.path.join('doc', 'data', 'pisces'),
                                     replace_dims={'olevel': 'z'})
     ltl_data
 

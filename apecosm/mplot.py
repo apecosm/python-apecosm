@@ -31,7 +31,7 @@ def plot_diet_values(data, const, community_index, legend_args={}, **kwargs):
 
     ax = plt.gca()
     length = const['length'].isel(c=community_index)
-    diet = data['community_diet_values'].isel(c=community_index).compute()
+    diet = data['community_diet_values'].isel(c=community_index)#.compute()
     repf = diet.sum(dim='prey_group')
     l = ax.stackplot(length, diet.T, edgecolor='k', **kwargs)
     ax.set_xscale('log')
