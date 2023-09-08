@@ -82,7 +82,7 @@ def read_ape_grid(filename):
 
      .. todo::
 
-        Add correction: in the new version, the :samp:`.txt` file 
+        Add correction: in the new version, the :samp:`.txt` file
         provides the lower edge of the T grid
 
     '''
@@ -109,15 +109,15 @@ def partial_step_ape(ape_grid, mesh_file_nemo):
     data = xr.open_dataset(mesh_file_nemo)
     tmask = np.squeeze(data['tmask'].values)
     tmask = tmask[0]
-    
+
     adepth, deltaz = read_ape_grid(ape_grid)
     nlevel = len(adepth)
     nlat, nlon = tmask.shape
 
-    output_depth = np.zeros((nlevel, nlat, nlon), dtype=np.float) - 1000
-    output_deltaz = np.zeros((nlevel, nlat, nlon), dtype=np.float) - 1000
-    output_bottom = np.zeros((nlat, nlon), dtype=np.int)
-    output_mask = np.zeros((nlevel, nlat, nlon), dtype=np.int)
+    output_depth = np.zeros((nlevel, nlat, nlon), dtype=float) - 1000
+    output_deltaz = np.zeros((nlevel, nlat, nlon), dtype=float) - 1000
+    output_bottom = np.zeros((nlat, nlon), dtype=int)
+    output_mask = np.zeros((nlevel, nlat, nlon), dtype=int)
 
     iok = np.nonzero(tmask == 1)
 
@@ -128,11 +128,11 @@ def partial_step_ape(ape_grid, mesh_file_nemo):
         output_bottom[ilat, ilon] = temp['apecosm']['bottom']
         output_mask[:temp['apecosm']['bottom'], ilat, ilon] = 1
 
-    output = {'bottom': output_bottom, 
-              'depth': output_depth, 
+    output = {'bottom': output_bottom,
+              'depth': output_depth,
               'deltaz': output_deltaz,
               'mask': output_mask}
-    
+
     return output
 
 
@@ -150,7 +150,7 @@ def _partial_step_ape_grid(adepth, deltaz, data_mesh_file_nemo, ilat, ilon):
     deltaz = deltaz.copy()
 
     nlevel = len(adepth)
-    
+
     if 'e3t_1d' in data_mesh_file_nemo.data_vars.keys():
         # new nemo formatting
         #print('New nemo formatting for vertical scale factors')
@@ -236,7 +236,7 @@ def plot_grid_nemo_ape(ape_grid, mesh_file_nemo, ilat, ilon):
     Draws the NEMO and Apecosm vertical grid
     at points `ilat`, `ilon`.
     '''
-    
+
     # Reads the NEMO mesh file to extract all
     # the data that are needed.
     data = xr.open_dataset(mesh_file_nemo)
