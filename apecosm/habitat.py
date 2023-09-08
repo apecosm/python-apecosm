@@ -107,7 +107,7 @@ def compute_lightpref(par, daylen, opt_light=1.0e2, sigm_light=1.7e2, same_dayni
 
     '''
 
-    nfactor = np.ones((2), dtype=np.float)   # init the nfactor with ones
+    nfactor = np.ones((2), dtype=float)   # init the nfactor with ones
 
     if(not(same_daynight)):
         nfactor[1] = nfact    # if not same_daynight -> change nfactor for night (dn = 1)
@@ -156,7 +156,7 @@ if __name__ == '__main__':
     ######################## group = 0
     daylen = compute_daylength(lat)   # doy, lat, lon
     time = np.arange(par.shape[0]) * 5 + 2.5
-    time = time.round().astype(np.int)
+    time = time.round().astype(int)
     daylen = daylen[time, np.newaxis, :, :]
     daylen[daylen < 1 / 24.] = 1/24.
 
