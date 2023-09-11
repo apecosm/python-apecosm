@@ -30,10 +30,11 @@ Data extraction
                                     replace_dims={'olevel': 'z'})
 
 **********************************************************
-Spatial integration over the entire domain
+Spatial average of Apecosm outputs
 **********************************************************
 
-Apecosm outputs can be extracted over a given geographical by using the :py:func:`apecosm.extract_oope_data` function.
+Apecosm outputs can be extracted over a given
+geographical by using the :py:func:`apecosm.extract_oope_data` function.
 
 This function returns:
 
@@ -42,7 +43,7 @@ This function returns:
 
     X_{mean}(t, c, w) = \dfrac
     {\int\limits_{(y, x)\in S} X(t, y, x, c, w) \times dS(y, x)}
-    {\int\limits_{(y, x)\in S} \times dS(y, x)}
+    {\int\limits_{(y, x)\in S} dS(y, x)}
 
 with :math:`S` the domain where data are extracted, and :math:`dS` the surface
 of the :math:`(i, j)` cell, :math:`c` is the community and :math:`w` is the size-class. It is called as follows:
@@ -52,11 +53,15 @@ of the :math:`(i, j)` cell, :math:`c` is the community and :math:`w` is the size
     spatial_mean = apecosm.extract_oope_data(data['OOPE'], mesh)
     spatial_mean
 
-with the first argument being the DataArray from which we extract the mean.
+with the first argument being the ``DataArray`` from which we extract the mean
+and the second argument being the mesh object
+(obtained with the :py:func:`apecosm.open_mesh_mask` function).
 
-In order to extract the mean instead of the integral,
+In order to extract the integral instead of the mean,
 the :py:func:`apecosm.spatial_mean_to_integral` function need
-to be called. This function multiply the above calculation by the denominator of :eq:`oope_mean`.
+to be called. This function multiply the above calculation by
+the denominator of :eq:`oope_mean`, which is stored as
+the ``horizontal_norm_weight`` attribute
 
 .. ipython:: python
 
@@ -69,8 +74,9 @@ to be called. This function multiply the above calculation by the denominator of
 Spatial integration over the a given subregion
 **********************************************************
 
-In addition, there is the possibility to provide a regional mask in order to extract the area over a given region. For instance, if we have a file containing
-different domains:
+In addition, there is the possibility to provide a regional
+mask in order to extract the data over a given region. For instance, if we
+have a file containing different domains:
 
 .. ipython:: python
 
@@ -114,20 +120,36 @@ We can extract the mean biomass over this domain as follows:
 Extraction of biogeochemical data
 **********************************************************
 
-The 3D extraction of biogeochemical forcing data is achieved by using the :py:func:`apecosm.extract_ltl_data` function as follows:
+The extraction of 3D biogeochemical forcing data is
+achieved by using the :py:func:`apecosm.extract_ltl_data` function as follows:
 
 .. ipython:: python
 
     spatial_mean_phy2 = apecosm.extract_ltl_data(ltl_data, mesh, 'PHY2')
     spatial_mean_phy2
 
-This function will first vertically **integrate** the LTL biomass (converting from :math:`mmol/m3` into :math:`mmol/m2`). And then
-compute the horizontal **average**. This choice has been made to be consistent with Apecosm outputs. Indeed, OOPE is provided as a vertically
+This function will first vertically **integrate** the LTL biomass
+(converting from :math:`mmol/m3` into :math:`mmol/m2`). And then
+compute the horizontal **average**. This choice has been made to be consistent
+with Apecosm outputs. Indeed, OOPE is provided as a vertically
 integrated biomass.
 
-However, it remains possible to convert the horizontal average into an horizontal integral as follows:
+However, it remains possible to convert the horizontal average into an
+horizontal integral as follows:
 
 .. ipython:: python
 
     spatial_integral_phy2 = apecosm.spatial_mean_to_integral(spatial_mean_phy2)
     spatial_integral_phy2
+
+There is also the possibility to control the depth at which the average is performed
+and also the domain. For instance, to compute the average between 0 and 200m over the
+domain defined above:
+
+.. ipython:: python
+
+    spatial_0_200_reg_mean_phy2 = apecosm.spatial_mean_to_integral(spatial_mean_phy2,
+                                                                   mask_dom=domain,
+                                                                   depth_min=0,
+                                                                   depth_max=200)
+    spatial_0_200_reg_mean_phy2
