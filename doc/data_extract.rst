@@ -149,7 +149,7 @@ domain defined above:
 
 .. ipython:: python
 
-    spatial_0_200_reg_mean_phy2 = apecosm.spatial_mean_to_integral(spatial_mean_phy2,
+    spatial_0_200_reg_mean_phy2 = apecosm.extract_ltl_data(ltl_data, mesh, 'PHY2',
                                                                    mask_dom=domain,
                                                                    depth_min=0,
                                                                    depth_max=200)
