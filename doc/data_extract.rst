@@ -142,8 +142,9 @@ horizontal integral as follows:
     spatial_integral_phy2 = apecosm.spatial_mean_to_integral(spatial_mean_phy2)
     spatial_integral_phy2
 
-There is also the possibility to control the depth at which the average is performed
-and also the domain. For instance, to compute the average between 0 and 200m over the
+There is also the possibility to control the depth at which the
+average is performed and also the domain. For instance, to compute the
+average between 0 and 200m over the
 domain defined above:
 
 .. ipython:: python
