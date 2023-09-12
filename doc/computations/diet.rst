@@ -122,7 +122,7 @@ must be done over the `c` dimension:
         draw_legend = (c == 0)
         l = apecosm.plot_diet_values(time_average_mean_diet, const, c,
                                      colors=colors, alpha=0.5, draw_legend=draw_legend,
-                                     legend_args={'ncol': 2, 'fontsize': 6, 'framealpha': 1})
+                                     legend_args={'ncol': 3, 'fontsize': 6, 'framealpha': 0.5, 'loc': 'lower right'})
         ax.set_xlabel('Length (m)')
         ax.set_xlim(const['length'].min(), const['length'].max())
 
