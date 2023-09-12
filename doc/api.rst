@@ -40,7 +40,6 @@ Data extraction
    extract_oope_data
    generate_mask
    spatial_mean_to_integral
-   compute_community_mean
    extract_mean_size
    extract_weighted_data
 

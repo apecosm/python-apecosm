@@ -76,14 +76,7 @@ by using the :py:func:`apecosm.extract_mean_size` function as follows:
     com_mean_length
 
 Note that the :py:func:`apecosm.extract_mean_size` returns the mean
-for each community. The :py:func:`apecosm.compute_community_mean` allows
-to average over the communities, hence returning an array that only depends
-on time:
-
-.. ipython:: python
-
-    mean_length = apecosm.compute_community_mean(com_mean_length)
-    mean_length
+for each community.
 
 Finally, the mean length time-series can be plotted as follows:
 
@@ -96,10 +89,6 @@ Finally, the mean length time-series can be plotted as follows:
         com_mean_length.isel(c=c).plot()
         ax.set_title('Mean length (m), c = %d' %c)
         ax.grid(True)
-    ax = plt.subplot(3, 2, 6)
-    mean_length.plot()
-    ax.set_title('Mean length (m), all com.')
-    ax.grid(True)
 
 .. ipython:: python
     :suppress:
@@ -121,11 +110,6 @@ To compute the mean weight:
     com_mean_weight
 
 .. ipython:: python
-
-    mean_weight = apecosm.compute_community_mean(com_mean_weight)
-    mean_weight
-
-.. ipython:: python
     :suppress:
 
     fig = plt.figure(figsize=(12, 8))
@@ -135,10 +119,7 @@ To compute the mean weight:
         com_mean_weight.isel(c=c).plot()
         ax.set_title('Mean weight (kg), c = %d' %c)
         ax.grid(True)
-    ax = plt.subplot(3, 2, 6)
-    mean_weight.plot()
-    ax.set_title('Mean weight (kg), all com.')
-    ax.grid(True)
+
     plt.savefig(os.path.join('doc', 'computations', '_static', 'mean_weight.jpg'), bbox_inches='tight')
     plt.savefig(os.path.join('doc', 'computations', '_static', 'mean_weight.pdf'), bbox_inches='tight')
     plt.close(fig)
@@ -148,10 +129,15 @@ To compute the mean weight:
 
     Mean weight
 
-To compute the mean length over a given basin, the argument
+To compute the mean length or weight over a given basin, the argument
 must be the integral over this given region:
 
 .. ipython:: python
 
     com_reg_mean_length = apecosm.extract_mean_size(regional_spatial_integral, const, 'length')
     com_reg_mean_length
+
+.. ipython:: python
+
+    com_reg_mean_weight = apecosm.extract_mean_size(regional_spatial_integral, const, 'weight')
+    com_reg_mean_weight
