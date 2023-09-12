@@ -74,6 +74,7 @@ Now we can draw the cumulated biomass.
         ax.set_title('Cumulated proportion, c = %d' %c)
         ax.set_ylabel('%')
         ax.set_ylim(0, 100)
+        ax.set_xlim(const['length'].min(), const['length'].max())
         ax.set_xscale('log')
         ax.grid(True)
 

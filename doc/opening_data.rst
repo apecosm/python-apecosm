@@ -38,7 +38,9 @@ Then, the mesh file containing the grid informations is loaded:
     mesh
 
 The :py:func:`apecosm.open_mesh_mask` opens the file and
-remove an eventual unsused time dimension. Dimension names can be
+removes an eventual time dimension.
+
+Dimension names can be
 replaced using the `replace_dims` argument, which is a dictionary
 with keys being the current dimension names and values being the new names:
 
@@ -118,7 +120,7 @@ was `(12, 108, 163, 5, 100)` in the above.
 
 
 **********************************************************
-Opening the Pisces data files
+Opening the NEMO/Pisces data files
 **********************************************************
 
 The :py:func:`apecosm.open_ltl_data` function

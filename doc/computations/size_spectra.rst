@@ -33,7 +33,7 @@ Plotting of LTL size spectra
 The size-spectra associated with a given LTL can be plotted using the
 :py:func:`compute_spectra_ltl` function.
 
-First, the spatial integral is computed, as in :numref:`extract_ltl`:
+First, the spatial mean is computed, as in :numref:`extract_ltl`:
 
 .. ipython:: python
 
@@ -46,7 +46,7 @@ First, the spatial integral is computed, as in :numref:`extract_ltl`:
 
     ltl_phy2 = ltl_phy2.compute()
 
-And we compute the time mean:
+And the time-mean is then computed:
 
 .. ipython:: python
 
@@ -67,8 +67,9 @@ Then, the size-spectra is plotted as follows:
     ax.set_xlabel('Weight (kg)')
     ax.set_title('PHY2 size-spectra')
 
-The ``L`` variable is the lower and upper bound of the LTL length, as used in the Apecosm configuration
-(``forcing.XXX.length.min`` and ``forcing.XXX.length.max`` parameters).
+The ``L`` variable is the lower and upper bound of the LTL length,
+as used in the Apecosm configuration (``forcing.XXX.length.min``
+and ``forcing.XXX.length.max`` parameters).
 
 .. ipython:: python
     :suppress:
@@ -82,7 +83,8 @@ The ``L`` variable is the lower and upper bound of the LTL length, as used in th
 
     Diatoms size-spectra as a function of weight
 
-Note that the size-spectra can also be plotted as a function of length:
+Note that the size-spectra can also be plotted as a function of length
+by setting the ``output_var`` argument to ``length``.
 
 .. ipython:: python
 
@@ -119,6 +121,7 @@ First, we extract the Apecosm biomass on a given region region:
 .. ipython:: python
 
     ts = apecosm.extract_oope_data(data['OOPE'], mesh)
+    ts
 
 .. ipython:: python
     :suppress:
@@ -130,6 +133,10 @@ Then, we compute the time mean:
 .. ipython:: python
 
     tsmean = apecosm.extract_time_means(ts)
+    tsmean
+
+The size-spectrum can now be plotted using the
+:py:func:`apecosm.plot_oope_spectra` function as follows:
 
 .. ipython:: python
 
@@ -157,11 +164,12 @@ Then, we compute the time mean:
     Apecosm size-spectra as a function of weight
 
 
-Size-spectra with all variables
+Size-spectra including LTL/HTL
 ###############################################
 
-What has been done for ``PHY2`` can be done also for the othe LTL variables. First, the other
-variables are extracted and time averaged:
+In ordert to draw the size-spectra for all LTL variables and Apecosm
+outputs, we first need to extract all LTL variables over the
+same regions, as done for PHY2 in the above:
 
 .. ipython:: python
 
@@ -180,6 +188,10 @@ variables are extracted and time averaged:
     ltl_zoo_mean = ltl_zoo_mean.compute()
     ltl_zoo2_mean = ltl_zoo2_mean.compute()
 
+When this is done, we call all the
+:py:func:`apecosm.plot_oope_spectra` and the
+:py:func:`apecosm.compute_spectra_ltl` functions on the
+same axis:
 
 .. ipython:: python
 
