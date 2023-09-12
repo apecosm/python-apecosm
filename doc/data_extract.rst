@@ -113,7 +113,7 @@ We can extract the mean biomass over this domain as follows:
 .. _extract_ltl:
 
 **********************************************************
-Extraction of biogeochemical data
+Spatial average of NEMO/Pisces outputs
 **********************************************************
 
 The extraction of 3D biogeochemical forcing data is
@@ -130,6 +130,20 @@ compute the horizontal **average**. This choice has been made to be consistent
 with Apecosm outputs. Indeed, OOPE is provided as a vertically
 integrated biomass.
 
+.. ipython:: python
+    :suppress:
+
+    fig = plt.figure()
+    spatial_mean_phy2.plot()
+    plt.savefig(os.path.join('doc', '_static', 'mean_phy2.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', '_static', 'mean_phy2.pdf'), bbox_inches='tight')
+    plt.close(fig)
+
+.. figure::  _static/mean_phy2.*
+    :align: center
+
+    Mean concentration of PHY2
+
 However, it remains possible to convert the horizontal average into an
 horizontal integral as follows:
 
@@ -138,6 +152,8 @@ horizontal integral as follows:
     spatial_integral_phy2 = apecosm.spatial_mean_to_integral(spatial_mean_phy2)
     spatial_integral_phy2
 
+
+
 There is also the possibility to control the depth at which the
 average is performed and the domain used for the averaging. For instance, to compute the
 average between 0 and 200m over the
@@ -145,8 +161,25 @@ domain defined above:
 
 .. ipython:: python
 
-    spatial_0_200_reg_mean_phy2 = apecosm.extract_ltl_data(ltl_data, mesh, 'PHY2',
-                                                                   mask_dom=domain,
-                                                                   depth_min=0,
-                                                                   depth_max=200)
+    spatial_0_200_reg_mean_phy2 = apecosm.extract_ltl_data(ltl_data,
+                                                           mesh, 'PHY2',
+                                                           mask_dom=domain,
+                                                           depth_min=0,
+                                                           depth_max=200)
     spatial_0_200_reg_mean_phy2
+
+
+.. ipython:: python
+    :suppress:
+
+    fig = plt.figure()
+    spatial_0_200_reg_mean_phy2.plot()
+    plt.savefig(os.path.join('doc', '_static', 'mean_phy2_reg_0_200.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', '_static', 'mean_phy2_reg_0_200.pdf'), bbox_inches='tight')
+    plt.close(fig)
+
+.. figure::  _static/mean_phy2_reg_0_200.*
+    :align: center
+
+    Mean concentration of PHY2 over the subregion and
+    between 0 and 200m

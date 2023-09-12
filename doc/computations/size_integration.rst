@@ -45,8 +45,8 @@ biomass along the size-dimension.
     biomass_maps = apecosm.extract_oope_size_integration(data['OOPE'], const)
     biomass_maps
 
-The function can also be called on spatially averaged biomass density,
-computed using the :py:func:`apecosm.extract_oope_data`:
+The function can also be called on spatially averaged or integrated
+biomass density, computed using the :py:func:`apecosm.extract_oope_data`:
 
 .. math::
 
@@ -76,7 +76,9 @@ The biomass time-series can then be plotted as folllows:
         ax.set_title('Averaged biomass, c = %s' %comnames[c])
         ax.grid(True)
     ax = plt.subplot(3, 2, 6)
-    ax.axis('off')
+    biomass_timeseries.sum(dim='c').plot()
+    ax.set_title('Averaged biomass, tot.')
+    ax.grid(True)
 
 .. ipython:: python
     :suppress:
@@ -114,7 +116,9 @@ length boundaries (**in cm**), using the ``lmin`` and ``lmax`` dimensions. For b
         ax.set_title('0-3cm biomass, c = %s' %comnames[c])
         ax.grid(True)
     ax = plt.subplot(3, 2, 6)
-    ax.axis('off')
+    biomass_timeseries_0_3.sum(dim='c').plot()
+    ax.set_title('0-3cm biomass, tot.')
+    ax.grid(True)
 
     plt.savefig(os.path.join('doc', 'computations', '_static', 'mean_biomass_0_3.jpg'), bbox_inches='tight')
     plt.savefig(os.path.join('doc', 'computations', '_static', 'mean_biomass_0_3.pdf'), bbox_inches='tight')
@@ -146,7 +150,9 @@ For biomass between 3 and 20 cm
         ax.set_title('3-20cm biomass, c = %s' %comnames[c])
         ax.grid(True)
     ax = plt.subplot(3, 2, 6)
-    ax.axis('off')
+    mean_biomass_3_20.sum(dim='c').plot()
+    ax.set_title('3-20cm biomass, tot.')
+    ax.grid(True)
 
     plt.savefig(os.path.join('doc', 'computations', '_static', 'mean_biomass_3_20.jpg'), bbox_inches='tight')
     plt.savefig(os.path.join('doc', 'computations', '_static', 'mean_biomass_3_20.pdf'), bbox_inches='tight')
@@ -178,7 +184,9 @@ For biomass greater than 20 cm:
         ax.set_title('>20cm biomass, c = %s' %comnames[c])
         ax.grid(True)
     ax = plt.subplot(3, 2, 6)
-    ax.axis('off')
+    mean_biomass_20_inf.sum(dim='c').plot()
+    ax.set_title('>20cm biomass, tot.')
+    ax.grid(True)
 
     plt.savefig(os.path.join('doc', 'computations', '_static', 'mean_biomass_20_inf.jpg'), bbox_inches='tight')
     plt.savefig(os.path.join('doc', 'computations', '_static', 'mean_biomass_20_inf.pdf'), bbox_inches='tight')
