@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from .misc import extract_community_names
 from .constants import LTL_NAMES
 from math import ceil
+import numpy as np
 
 plt.rcParams['text.usetex'] = False
 
@@ -88,17 +89,43 @@ def plot_oope_map(data, mesh, axis=None, draw_land=True, **kwargs):
         axis = plt.gca()
     lonf = mesh['glamf'].values
     latf = mesh['gphif'].values
-    var_to_plot = data.isel(x=slice(1, None), y=slice(1, None))
+    tmask = mesh['tmask'].isel(z=0).values
+    var_to_plot_temp = data.values
+    nlat_grid, nlon_grid = lonf.shape
+    nlat_data, nlon_data = var_to_plot_temp.shape
+
+    # If the data array does not have the save dimension as the grid,
+    # i.e. new Nemo format, we reconstruct the zonal cyclicity
+    if (nlon_data == nlon_grid - 2) & (nlat_data == nlat_grid - 1):
+        # init an array of the same size as the grid except for
+        # the northfold band (top row)
+        var_to_plot = np.zeros((nlat_data, nlon_grid), dtype=float)
+
+        # fill inner bound
+        var_to_plot[:, 1:-1] = var_to_plot_temp
+
+        # add cyclicity
+        var_to_plot[:, 0] = var_to_plot[:, -2]
+        var_to_plot[:, -1] = var_to_plot[:, 1]
+
+        # Remove upper row
+        lonf = lonf[:-1, :]
+        latf = latf[:-1, :]
+        tmask = tmask[:-1, :]
+
+    else:
+        var_to_plot = var_to_plot_temp
+
+    var_to_plot = np.ma.masked_where(tmask == 0, var_to_plot)
 
     if isinstance(axis, geoaxes.GeoAxesSubplot):
         projected = True
-        quadmesh = plt.pcolormesh(lonf, latf, var_to_plot,
+        quadmesh = plt.pcolormesh(lonf, latf, var_to_plot[1:, 1:],
                                   transform=PROJIN, **kwargs)
     else:
         projected = False
-        quadmesh = plt.pcolormesh(lonf, latf, var_to_plot, **kwargs)
-    if projected:
-        if draw_land:
+        quadmesh = plt.pcolormesh(var_to_plot, **kwargs)
+    if projected and draw_land:
             axis.add_feature(cfeature.LAND, zorder=1000)
             axis.add_feature(cfeature.COASTLINE, zorder=1001)
 

@@ -136,7 +136,8 @@ function:
     spatial_mean_phy2
 
 This function will first vertically **integrate** the LTL biomass
-(converting from :math:`mmol/m3` into :math:`mmol/m2`). Then
+(converting from :math:`mmol/m3` into :math:`mmol/m2`, term in
+brackets in :eq:`pisces_mean`). Then
 the horizontal **average** is computed. This choice has been made to
 be consistent with Apecosm outputs. Indeed, OOPE is provided as a vertically
 integrated biomass. Therefore, vertical integration need to be performed
