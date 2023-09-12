@@ -148,8 +148,7 @@ To compute the mean weight:
 
     Mean weight
 
-To compute the mean length over a given basin,
-such as the one defined in :numref:`spatial_inte`, the argument
+To compute the mean length over a given basin, the argument
 must be the integral over this given region:
 
 .. ipython:: python
