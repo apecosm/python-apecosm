@@ -11,8 +11,8 @@
 
 |
 
-Apecosm model documentation
-================================
+Apecosm python package documentation
+=================================================
 
 .. toctree::
    :maxdepth: 2
