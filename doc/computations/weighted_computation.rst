@@ -85,7 +85,7 @@ First, we compute the time average:
         ax.set_xlim(const['length'].min(), const['length'].max())
         ax.set_ylim(0, 1)
         ax.grid(True)
-        ax.set_yscale('log')
+        ax.set_xscale('log')
         ax.set_title('Repfonct, c = %d' %c)
     plt.savefig(os.path.join('doc', 'computations', '_static', 'mean_repfonct.jpg'), bbox_inches='tight')
     plt.savefig(os.path.join('doc', 'computations', '_static', 'mean_repfonct.pdf'), bbox_inches='tight')
