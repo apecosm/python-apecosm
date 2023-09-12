@@ -421,7 +421,7 @@ def extract_oope_data(data, mesh, mask_dom=None):
     tmask = tmask * mask_dom
     weight = (tmask * surf).fillna(0)  # time, lat, lon, comm, w
 
-    output = data.weighted(weight).sum(dim=('x', 'y'))  # time, com, w
+    output = data.weighted(weight).mean(dim=('x', 'y'))  # time, com, w
     output.attrs['horizontal_norm_weight'] = weight.sum(dim=['x', 'y'])
     output.name = data.name
 
