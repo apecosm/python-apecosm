@@ -68,11 +68,7 @@ the ``horizontal_norm_weight`` attribute
     spatial_integral = apecosm.spatial_mean_to_integral(spatial_mean)
     spatial_integral
 
-.. _spatial_inte:
 
-**********************************************************
-Spatial integration over the a given subregion
-**********************************************************
 
 In addition, there is the possibility to provide a regional
 mask in order to extract the data over a given region. For instance, if we
@@ -143,7 +139,7 @@ horizontal integral as follows:
     spatial_integral_phy2
 
 There is also the possibility to control the depth at which the
-average is performed and also the domain. For instance, to compute the
+average is performed and the domain used for the averaging. For instance, to compute the
 average between 0 and 200m over the
 domain defined above:
 
