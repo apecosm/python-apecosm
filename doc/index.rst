@@ -14,6 +14,10 @@
 Apecosm python package documentation
 =================================================
 
+In the present document, the use of the Apecosm python package is described.
+The reading of Apecosm outputs as long as some computations
+(size-spectra, computation of mean length, diet matrix) are presented.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:

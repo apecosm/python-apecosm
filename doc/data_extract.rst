@@ -46,7 +46,8 @@ This function returns:
     {\int\limits_{(y, x)\in S} dS(y, x)}
 
 with :math:`S` the domain where data are extracted, and :math:`dS` the surface
-of the :math:`(i, j)` cell, :math:`c` is the community and :math:`w` is the size-class. It is called as follows:
+of the :math:`(i, j)` cell, :math:`c` is the community and
+:math:`w` is the size-class. It is called as follows:
 
 .. ipython:: python
 
@@ -68,16 +69,22 @@ the ``horizontal_norm_weight`` attribute
     spatial_integral = apecosm.spatial_mean_to_integral(spatial_mean)
     spatial_integral
 
-
-
 In addition, there is the possibility to provide a regional
 mask in order to extract the data over a given region. For instance, if we
-have a file containing different domains:
+have a file containing different domains masks:
 
 .. ipython:: python
 
     domain_ds = xr.open_dataset(os.path.join('doc', 'data', 'domains.nc'))
-    domain = domain_ds['domain_1']
+    domain_ds
+
+We can extract the mean biomass over this domain as follows:
+
+.. ipython:: python
+    .. ipython:: python
+
+    regional_spatial_mean = apecosm.extract_oope_data(data['OOPE'], mesh, domain_ds['domain_1'])
+    regional_spatial_mean
 
 .. ipython:: python
     :suppress:
@@ -102,13 +109,6 @@ have a file containing different domains:
 
     Example of a spatial domain
 
-We can extract the mean biomass over this domain as follows:
-
-.. ipython:: python
-
-    regional_spatial_mean = apecosm.extract_oope_data(data['OOPE'], mesh, domain)
-    regional_spatial_mean
-
 
 .. _extract_ltl:
 
@@ -116,8 +116,19 @@ We can extract the mean biomass over this domain as follows:
 Spatial average of NEMO/Pisces outputs
 **********************************************************
 
-The extraction of 3D biogeochemical forcing data is
-achieved by using the :py:func:`apecosm.extract_ltl_data` function as follows:
+The extraction of 3D biogeochemical forcing data is achieved
+by applying the following formula:
+
+.. math::
+    :label: pisces_mean
+
+    X_{mean}(t) = \dfrac
+    {\int\limits_{(y, x)\in S} \left[\sum_{z=z_{min}}^{z_{max}}X(t, z, y, x) dZ(z)\right]\times dS(y, x)}
+    {\int\limits_{(y, x)\in S} dS(y, x)}
+
+
+It is achieved by using the :py:func:`apecosm.extract_ltl_data`
+function:
 
 .. ipython:: python
 
@@ -125,10 +136,11 @@ achieved by using the :py:func:`apecosm.extract_ltl_data` function as follows:
     spatial_mean_phy2
 
 This function will first vertically **integrate** the LTL biomass
-(converting from :math:`mmol/m3` into :math:`mmol/m2`). And then
-compute the horizontal **average**. This choice has been made to be consistent
-with Apecosm outputs. Indeed, OOPE is provided as a vertically
-integrated biomass.
+(converting from :math:`mmol/m3` into :math:`mmol/m2`). Then
+the horizontal **average** is computed. This choice has been made to
+be consistent with Apecosm outputs. Indeed, OOPE is provided as a vertically
+integrated biomass. Therefore, vertical integration need to be performed
+on LTL outputs in order to draw the size-spectra.
 
 .. ipython:: python
     :suppress:
@@ -152,18 +164,16 @@ horizontal integral as follows:
     spatial_integral_phy2 = apecosm.spatial_mean_to_integral(spatial_mean_phy2)
     spatial_integral_phy2
 
-
-
 There is also the possibility to control the depth at which the
-average is performed and the domain used for the averaging. For instance, to compute the
-average between 0 and 200m over the
+average is performed and the domain used for the averaging.
+For instance, to compute the average between 0 and 200m over the
 domain defined above:
 
 .. ipython:: python
 
     spatial_0_200_reg_mean_phy2 = apecosm.extract_ltl_data(ltl_data,
                                                            mesh, 'PHY2',
-                                                           mask_dom=domain,
+                                                           mask_dom=domain_ds['domain_1'],
                                                            depth_min=0,
                                                            depth_max=200)
     spatial_0_200_reg_mean_phy2
