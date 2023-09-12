@@ -114,7 +114,8 @@ by setting the ``output_var`` argument to ``length``.
 Plotting of Apecosm size spectra
 ###############################################
 
-Apecosm size-spectra is plotting using the :py:func:`apecosm.plot_oope_spectra` function.
+Apecosm size-spectra is plotting using the
+:py:func:`apecosm.plot_oope_spectra` function.
 
 First, we extract the Apecosm biomass on a given region region:
 
@@ -145,7 +146,7 @@ The size-spectrum can now be plotted using the
     cs = apecosm.plot_oope_spectra(tsmean, const, output_var='weight')
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_ylim(1e7, 1e23)
+    ax.set_ylim(1e8, 1e22)
     ax.set_ylabel("Biomass")
     ax.set_xlabel('Weight (kg)')
     ax.set_title('Apecosm size-spectra')
@@ -213,7 +214,7 @@ same axis:
 
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_ylim(1e7, 1e32)
+    ax.set_ylim(1e8, 1e22)
     ax.set_ylabel("Biomass")
     ax.set_xlabel('Weight (kg)')
     ax.set_title('All variables size-spectra')
