@@ -37,8 +37,7 @@ Computation of mean length
     regional_spatial_integral = apecosm.spatial_mean_to_integral(regional_spatial_mean)
 
 The mean length of each community can be computed by using a weighted mean,
-in which the weight is provided by the biomass in each grid cell. For
-instance, the mean length is provided computed as follows:
+in which the weight is provided by the biomass in each grid cell:
 
 .. math::
 
@@ -46,7 +45,8 @@ instance, the mean length is provided computed as follows:
     {\sum_{y, x, w}  OOPE(t, y, x, c, w) \times \Delta W(c, w) \times dS(x, y) \times L(c, w)}
     {\sum_{y, x, w}  OOPE(t, y, x, c, w) \times \Delta W(c, w) \times dS(x, y)}
 
-Since :math:`L(c,w)` does not depend on :math:`x` and :math:`y`, it can be rewritten as follows:
+Since :math:`L(c,w)` does not depend on :math:`x` and :math:`y`, it
+can be rewritten as follows:
 
 .. math::
     :label: size_mean
@@ -56,9 +56,10 @@ Since :math:`L(c,w)` does not depend on :math:`x` and :math:`y`, it can be rewri
     {\sum_w L(c, w) \times \Delta W(c, w) \left[{\sum_{y, x} OOPE(t, y, x, c, w)  \times dS(x, y)}\right]}
     {\sum_w \Delta W(c, w) \left[{\sum_{y, x} OOPE(t, y, x, c, w)  \times dS(x, y)}\right]}
 
-We notice that the values in brackets are the outputs of the successive calls of
-:py:func:`apecosm.extract_oope_data` and :py:func:`apecosm.spatial_mean_to_integral`. Therefore, the mean length over a given domain
-can be computed by first computing the spatial integral:
+We notice that the values in brackets are the outputs of the successive calls
+of :py:func:`apecosm.extract_oope_data` and
+:py:func:`apecosm.spatial_mean_to_integral`. Therefore, the mean length
+over a given domain can be computed by first computing the spatial integral:
 
 .. ipython:: python
 
@@ -83,6 +84,8 @@ on time:
 
     mean_length = apecosm.compute_community_mean(com_mean_length)
     mean_length
+
+Finally, the mean length time-series can be plotted as follows:
 
 .. ipython:: python
 

@@ -22,6 +22,5 @@ def compute_size_cumprop(data, const):
 
     data = (data * const['weight_step'])
     output = data.cumsum(dim='w') / data.sum(dim='w') * 100
-    output['community_weight'] = data.sum(dim='w')
 
     return output
