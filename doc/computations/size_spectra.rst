@@ -146,7 +146,7 @@ The size-spectrum can now be plotted using the
     cs = apecosm.plot_oope_spectra(tsmean, const, output_var='weight')
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_ylim(1e8, 1e22)
+    ax.set_ylim(1e-6, 1e8)
     ax.set_ylabel("Biomass")
     ax.set_xlabel('Weight (kg)')
     ax.set_title('Apecosm size-spectra')
@@ -214,7 +214,7 @@ same axis:
 
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_ylim(1e8, 1e22)
+    ax.set_ylim(1e-6, 1e18)
     ax.set_ylabel("Biomass")
     ax.set_xlabel('Weight (kg)')
     ax.set_title('All variables size-spectra')
