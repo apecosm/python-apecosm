@@ -43,7 +43,7 @@ def plot_diet_values(diet_data, const, community_index, draw_legend=False, legen
         ax.legend(legend, **legend_args)
     return l
 
-def plot_oope_map(data, mesh, axis=None, draw_land=True, **kwargs):
+def plot_pcolor_map(data, mesh, axis=None, draw_land=True, **kwargs):
 
     '''
     Draws 2D OOPE maps.
@@ -90,6 +90,107 @@ def plot_oope_map(data, mesh, axis=None, draw_land=True, **kwargs):
     lonf = mesh['glamf'].values
     latf = mesh['gphif'].values
     tmask = mesh['tmask'].isel(z=0).values
+
+    lonf, latf, tmask, var_to_plot = _reconstuct_variable(lonf, latf, tmask, data)
+
+    if isinstance(axis, geoaxes.GeoAxesSubplot):
+        projected = True
+        quadmesh = plt.pcolormesh(lonf, latf, var_to_plot[1:, 1:],
+                                  transform=PROJIN, **kwargs)
+    else:
+        projected = False
+        quadmesh = plt.pcolormesh(var_to_plot, **kwargs)
+    if projected and draw_land:
+            axis.add_feature(cfeature.LAND, zorder=1000)
+            axis.add_feature(cfeature.COASTLINE, zorder=1001)
+
+    return quadmesh
+
+def plot_contour_map(data, mesh, filled=False, axis=None, draw_land=False, **kwargs):
+
+    '''
+    Draws 2D OOPE maps.
+
+    :param data: Data to plot
+    :type data: :class:`xarray.DataArray`
+    :param mesh: Mesh dataset
+    :type mesh: :class:`xarray.Dataset`
+    :param ax: Axis on which to draw
+    :type ax: :class:`matplotlib.axes._subplots.AxesSubplot` or
+        :class:`cartopy.mpl.geoaxes.GeoAxesSubplot`, optional
+    :param \**kwargs: Additional arguments to the `pcolormesh` function
+
+    :return: The output quad mesh.
+    :rtype: :class:`matplotlib.collections.QuadMesh`
+
+    '''
+
+    if filled:
+        contour_function = plt.contourf
+        proj_contour_function = plt.tricontourf
+    else:
+        contour_function = plt.contour
+        proj_contour_function = plt.tricontour
+
+    if not isinstance(data, xr.DataArray):
+        message = 'The input must be a "xarray.DataArray" '
+        message += 'Currently, it is a %s object' % type(data)
+        print(message)
+        sys.exit(1)
+
+    if data.ndim != 2:
+        message = 'The input data array must be 2D'
+        print(message)
+        sys.exit(1)
+
+    if 'x' not in data.dims:
+        message = 'The input data array must have a "x" dim. '
+        message += 'Dimensions are %s' % str(data.dims)
+        print(message)
+        sys.exit(1)
+
+    if 'y' not in data.dims:
+        message = 'The input data array must have a "y" dim.'
+        message += 'Dimensions are %s' % str(data.dims)
+        print(message)
+        sys.exit(1)
+
+    if axis is None:
+        axis = plt.gca()
+    lont = mesh['glamt'].values
+    latt = mesh['gphit'].values
+    tmask = mesh['tmask'].isel(z=0).values
+
+    lont, latt, tmask, var_to_plot = _reconstuct_variable(lont, latt, tmask, data)
+
+    if isinstance(axis, geoaxes.GeoAxesSubplot):
+        projected = True
+        # Extract non masked data and associated coordinates, store them
+        # in a 1D array
+        iok = np.nonzero(tmask == 1)
+        lon1d = lont[iok]
+        lat1d = latt[iok]
+        tp1d = var_to_plot[iok]
+
+        # Convert the geographical coordinates into map coords
+        projout = axis.projection
+        _temp = projout.transform_points(PROJIN, lon1d, lat1d)
+        lonout = _temp[..., 0]
+        latout = _temp[..., 1]
+        cl = proj_contour_function(lonout, latout, tp1d, **kwargs)
+    else:
+        projected = False
+        cl = contour_function(var_to_plot, **kwargs)
+    if projected and draw_land:
+            axis.add_feature(cfeature.LAND, zorder=1000)
+            axis.add_feature(cfeature.COASTLINE, zorder=1001)
+
+    return cl
+
+
+
+def _reconstuct_variable(lonf, latf, tmask, data):
+
     var_to_plot_temp = data.values
     nlat_grid, nlon_grid = lonf.shape
     nlat_data, nlon_data = var_to_plot_temp.shape
@@ -97,6 +198,7 @@ def plot_oope_map(data, mesh, axis=None, draw_land=True, **kwargs):
     # If the data array does not have the save dimension as the grid,
     # i.e. new Nemo format, we reconstruct the zonal cyclicity
     if (nlon_data == nlon_grid - 2) & (nlat_data == nlat_grid - 1):
+
         # init an array of the same size as the grid except for
         # the northfold band (top row)
         var_to_plot = np.zeros((nlat_data, nlon_grid), dtype=float)
@@ -118,18 +220,8 @@ def plot_oope_map(data, mesh, axis=None, draw_land=True, **kwargs):
 
     var_to_plot = np.ma.masked_where(tmask == 0, var_to_plot)
 
-    if isinstance(axis, geoaxes.GeoAxesSubplot):
-        projected = True
-        quadmesh = plt.pcolormesh(lonf, latf, var_to_plot[1:, 1:],
-                                  transform=PROJIN, **kwargs)
-    else:
-        projected = False
-        quadmesh = plt.pcolormesh(var_to_plot, **kwargs)
-    if projected and draw_land:
-            axis.add_feature(cfeature.LAND, zorder=1000)
-            axis.add_feature(cfeature.COASTLINE, zorder=1001)
+    return lonf, latf, tmask, var_to_plot
 
-    return quadmesh
 
 
 if __name__ == '__main__':
@@ -143,12 +235,12 @@ if __name__ == '__main__':
 
     fig = plt.figure()
     axes = plt.axes()
-    plot_oope_map(DATA1, MESH)
+    plot_pcolor_map(DATA1, MESH)
     plt.savefig('maps1.png', bbox_inches='tight')
     plt.close(fig)
 
     fig = plt.figure()
     axes = plt.axes(projection=ccrs.PlateCarree())
-    plot_oope_map(DATA1, MESH)
+    plot_pcolor_map(DATA1, MESH)
     plt.savefig('maps2.png', bbox_inches='tight')
     plt.close(fig)
