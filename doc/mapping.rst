@@ -11,3 +11,5 @@ original NEMO grid.
    :caption: Contents:
 
    mapping/pcolor
+   mapping/contour
+   mapping/combined

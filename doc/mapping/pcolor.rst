@@ -1,4 +1,6 @@
-**********************************************************
+
+.. _quadmesh:
+
 Quadmesh plots
 **********************************************************
 
@@ -66,8 +68,7 @@ can call the :py:func:`apecosm.plot_pcolor_plot` function:
 .. ipython:: python
 
     fig = plt.figure(figsize=(12, 8))
-    test = tavg_tot_biomass.where(tavg_tot_biomass != 0)
-    cs = apecosm.plot_pcolor_map(test, mesh)
+    cs = apecosm.plot_pcolor_map(tavg_tot_biomass, mesh)
     cb = plt.colorbar(cs)
     cb.set_label('Biomass density (J/m2)')
 
