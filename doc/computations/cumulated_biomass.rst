@@ -42,25 +42,19 @@ This function is called as follows:
     com_cum_biom = apecosm.compute_size_cumprop(spatial_integral, const)
     com_cum_biom
 
-This function returns the cumulated biomass for each community. In order to extract the cumulated
-proportion including all the communities, the :py:func:`apecosm.compute_community_mean` function must be called.
-
-.. ipython:: python
-
-    cum_biom = apecosm.compute_community_mean(com_cum_biom)
-    cum_biom
+This function returns the cumulated biomass for each community.
 
 .. danger::
 
-    **The** :py:func:`apecosm.compute_community_mean` **can only be called when
-    all the communities have the same size-classes.**
+    It is not possible to obtain the cumulated biomass
+    including all the community, since it supposes that
+    all the communities have the same size-classes, which
+    is not always the case. However, it may be possible to
+    compute it manually.
 
-.. ipython:: python
-    :suppress:
 
-    com_cum_biom = com_cum_biom.compute()
-
-We can now draw the cumulated biomass proportion averaged over the entire simulation. First,
+We can now draw the cumulated biomass proportion averaged
+over the entire simulation period. First,
 we extract the temporal mean of the cumulated biomass.
 
 .. ipython:: python
@@ -80,6 +74,7 @@ Now we can draw the cumulated biomass.
         ax.set_title('Cumulated proportion, c = %d' %c)
         ax.set_ylabel('%')
         ax.set_ylim(0, 100)
+        ax.set_xlim(const['length'].min(), const['length'].max())
         ax.set_xscale('log')
         ax.grid(True)
 

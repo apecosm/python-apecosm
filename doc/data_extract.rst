@@ -30,10 +30,11 @@ Data extraction
                                     replace_dims={'olevel': 'z'})
 
 **********************************************************
-Spatial integration over the entire domain
+Spatial average of Apecosm outputs
 **********************************************************
 
-Apecosm outputs can be extracted over a given geographical by using the :py:func:`apecosm.extract_oope_data` function.
+Apecosm outputs can be extracted over a given
+geographical by using the :py:func:`apecosm.extract_oope_data` function.
 
 This function returns:
 
@@ -42,40 +43,48 @@ This function returns:
 
     X_{mean}(t, c, w) = \dfrac
     {\int\limits_{(y, x)\in S} X(t, y, x, c, w) \times dS(y, x)}
-    {\int\limits_{(y, x)\in S} \times dS(y, x)}
+    {\int\limits_{(y, x)\in S} dS(y, x)}
 
 with :math:`S` the domain where data are extracted, and :math:`dS` the surface
-of the :math:`(i, j)` cell, :math:`c` is the community and :math:`w` is the size-class. It is called as follows:
+of the :math:`(i, j)` cell, :math:`c` is the community and
+:math:`w` is the size-class. It is called as follows:
 
 .. ipython:: python
 
     spatial_mean = apecosm.extract_oope_data(data['OOPE'], mesh)
     spatial_mean
 
-with the first argument being the DataArray from which we extract the mean.
+with the first argument being the ``DataArray`` from which we extract the mean
+and the second argument being the mesh object
+(obtained with the :py:func:`apecosm.open_mesh_mask` function).
 
-In order to extract the mean instead of the integral,
+In order to extract the integral instead of the mean,
 the :py:func:`apecosm.spatial_mean_to_integral` function need
-to be called. This function multiply the above calculation by the denominator of :eq:`oope_mean`.
+to be called. This function multiply the above calculation by
+the denominator of :eq:`oope_mean`, which is stored as
+the ``horizontal_norm_weight`` attribute
 
 .. ipython:: python
 
     spatial_integral = apecosm.spatial_mean_to_integral(spatial_mean)
     spatial_integral
 
-.. _spatial_inte:
-
-**********************************************************
-Spatial integration over the a given subregion
-**********************************************************
-
-In addition, there is the possibility to provide a regional mask in order to extract the area over a given region. For instance, if we have a file containing
-different domains:
+In addition, there is the possibility to provide a regional
+mask in order to extract the data over a given region. For instance, if we
+have a file containing different domains masks:
 
 .. ipython:: python
 
     domain_ds = xr.open_dataset(os.path.join('doc', 'data', 'domains.nc'))
-    domain = domain_ds['domain_1']
+    domain_ds
+
+We can extract the mean biomass over this domain as follows:
+
+.. ipython:: python
+    .. ipython:: python
+
+    regional_spatial_mean = apecosm.extract_oope_data(data['OOPE'], mesh, domain_ds['domain_1'])
+    regional_spatial_mean
 
 .. ipython:: python
     :suppress:
@@ -100,34 +109,88 @@ different domains:
 
     Example of a spatial domain
 
-We can extract the mean biomass over this domain as follows:
-
-.. ipython:: python
-
-    regional_spatial_mean = apecosm.extract_oope_data(data['OOPE'], mesh, domain)
-    regional_spatial_mean
-
 
 .. _extract_ltl:
 
 **********************************************************
-Extraction of biogeochemical data
+Spatial average of NEMO/Pisces outputs
 **********************************************************
 
-The 3D extraction of biogeochemical forcing data is achieved by using the :py:func:`apecosm.extract_ltl_data` function as follows:
+The extraction of 3D biogeochemical forcing data is achieved
+by applying the following formula:
+
+.. math::
+    :label: pisces_mean
+
+    X_{mean}(t) = \dfrac
+    {\int\limits_{(y, x)\in S} \left[\sum_{z=z_{min}}^{z_{max}}X(t, z, y, x) dZ(z)\right]\times dS(y, x)}
+    {\int\limits_{(y, x)\in S} dS(y, x)}
+
+
+It is achieved by using the :py:func:`apecosm.extract_ltl_data`
+function:
 
 .. ipython:: python
 
     spatial_mean_phy2 = apecosm.extract_ltl_data(ltl_data, mesh, 'PHY2')
     spatial_mean_phy2
 
-This function will first vertically **integrate** the LTL biomass (converting from :math:`mmol/m3` into :math:`mmol/m2`). And then
-compute the horizontal **average**. This choice has been made to be consistent with Apecosm outputs. Indeed, OOPE is provided as a vertically
-integrated biomass.
+This function will first vertically **integrate** the LTL biomass
+(converting from :math:`mmol/m3` into :math:`mmol/m2`, term in
+brackets in :eq:`pisces_mean`). Then
+the horizontal **average** is computed. This choice has been made to
+be consistent with Apecosm outputs. Indeed, OOPE is provided as a vertically
+integrated biomass. Therefore, vertical integration need to be performed
+on LTL outputs in order to draw the size-spectra.
 
-However, it remains possible to convert the horizontal average into an horizontal integral as follows:
+.. ipython:: python
+    :suppress:
+
+    fig = plt.figure()
+    spatial_mean_phy2.plot()
+    plt.savefig(os.path.join('doc', '_static', 'mean_phy2.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', '_static', 'mean_phy2.pdf'), bbox_inches='tight')
+    plt.close(fig)
+
+.. figure::  _static/mean_phy2.*
+    :align: center
+
+    Mean concentration of PHY2
+
+However, it remains possible to convert the horizontal average into an
+horizontal integral as follows:
 
 .. ipython:: python
 
     spatial_integral_phy2 = apecosm.spatial_mean_to_integral(spatial_mean_phy2)
     spatial_integral_phy2
+
+There is also the possibility to control the depth at which the
+average is performed and the domain used for the averaging.
+For instance, to compute the average between 0 and 200m over the
+domain defined above:
+
+.. ipython:: python
+
+    spatial_0_200_reg_mean_phy2 = apecosm.extract_ltl_data(ltl_data,
+                                                           mesh, 'PHY2',
+                                                           mask_dom=domain_ds['domain_1'],
+                                                           depth_min=0,
+                                                           depth_max=200)
+    spatial_0_200_reg_mean_phy2
+
+
+.. ipython:: python
+    :suppress:
+
+    fig = plt.figure()
+    spatial_0_200_reg_mean_phy2.plot()
+    plt.savefig(os.path.join('doc', '_static', 'mean_phy2_reg_0_200.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join('doc', '_static', 'mean_phy2_reg_0_200.pdf'), bbox_inches='tight')
+    plt.close(fig)
+
+.. figure::  _static/mean_phy2_reg_0_200.*
+    :align: center
+
+    Mean concentration of PHY2 over the subregion and
+    between 0 and 200m

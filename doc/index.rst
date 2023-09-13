@@ -11,8 +11,12 @@
 
 |
 
-Apecosm model documentation
-================================
+Apecosm python package documentation
+=================================================
+
+In the present document, the use of the Apecosm python package is described.
+The reading of Apecosm outputs as long as some computations
+(size-spectra, computation of mean length, diet matrix) are presented.
 
 .. toctree::
    :maxdepth: 2
@@ -22,6 +26,7 @@ Apecosm model documentation
    config.rst
    opening_data.rst
    data_extract.rst
+   mapping.rst
    computations.rst
    api.rst
    biblio.rst

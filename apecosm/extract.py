@@ -105,7 +105,8 @@ def open_ltl_data(dirin, replace_dims=None, **kwargs):
 
 
 def extract_ltl_data(data, mesh, varname,
-                     mask_dom=None, depth_max=None):
+                     mask_dom=None, depth_min=None,
+                     depth_max=None):
 
     """
     Extraction of LTL values on a given domain.
@@ -119,6 +120,7 @@ def extract_ltl_data(data, mesh, varname,
     :param str varname: LTL variable name
     :param mask_dom: Mask array. If None, full domain is considered
     :type mask_dom: :class:`numpy.array`
+    :param int depth_min: Minimum depth
     :param int depth_max: Maximum depth
 
     :return: A xarray dataset
@@ -155,8 +157,13 @@ def extract_ltl_data(data, mesh, varname,
         vertical_weight = e3t * tmask  # (1, z, lat, lon) or (time, z, lat, lon)
 
         # If a maximum depth is provide, we mask data below
-        if depth_max is not None:
-            vertical_weight = vertical_weight.where(depth <= depth_max)
+        if depth_max is None:
+            depth_max =  sys.float_info.max
+
+        if depth_min is None:
+            depth_min = 0
+
+        vertical_weight = vertical_weight.where((depth >= depth_min) & (depth <= depth_max))
 
         # Replace NaN with 0, especially if VVL is used
         vertical_weight = vertical_weight.fillna(0)
@@ -303,24 +310,9 @@ def extract_mean_size(spatially_integrated_biomass, const, varname, ):
     # time, lat, lon, comm, w
     weight = (spatially_integrated_biomass * const['weight_step']).fillna(0)
     output = const[varname].weighted(weight).mean(dim=['w'])
-    output['community_weight'] = weight.sum(dim='w')
 
     return output
 
-def compute_community_mean(data):
-
-    '''
-    Computes the community mean.
-
-    :param data: Data array that contains a ``community_weight`` attribute.
-    :type data: :class:`xarray.DataArray`
-    return: The mean computed over the communities.
-
-    '''
-
-    weight = data['community_weight']
-    output = data.weighted(weight).mean(dim='c')
-    return output
 
 def extract_weighted_data(data, const, mesh, varname,
                           mask_dom=None):
@@ -365,7 +357,6 @@ def extract_weighted_data(data, const, mesh, varname,
     dims = ['y', 'x']
 
     output = (data[varname].weighted(weight)).mean(dims)
-    output.attrs['average_weight'] = weight.sum(dim=dims).compute()
     return output
 
 
@@ -414,7 +405,7 @@ def extract_oope_data(data, mesh, mask_dom=None):
     tmask = tmask * mask_dom
     weight = (tmask * surf).fillna(0)  # time, lat, lon, comm, w
 
-    output = data.weighted(weight).sum(dim=('x', 'y'))  # time, com, w
+    output = data.weighted(weight).mean(dim=('x', 'y'))  # time, com, w
     output.attrs['horizontal_norm_weight'] = weight.sum(dim=['x', 'y'])
     output.name = data.name
 

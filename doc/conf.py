@@ -25,13 +25,15 @@ import apecosm
 
 def create_folders():
 
-    path = os.path.join('computations', '_static')
-    # Check whether the specified path exists or not
-    isExist = os.path.exists(path)
-    if not isExist:
-        # Create a new directory because it does not exist
-        os.makedirs(path)
-        print("The new directory is created!")
+    for folders in ['computations', 'mapping']:
+
+        path = os.path.join(folders, '_static')
+        # Check whether the specified path exists or not
+        isExist = os.path.exists(path)
+        if not isExist:
+            # Create a new directory because it does not exist
+            os.makedirs(path)
+            print("The new directory is created!")
 
 # -- General configuration ------------------------------------------------
 
@@ -170,7 +172,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'APECOSM.tex', u'APECOSM Documentation',
+    (master_doc, 'Python_Apecosm_doc.tex', u'Documentation of the Apecosm Python package',
      u'Olivier Maury, Philippe Verley, Nicolas Barrier', 'manual'),
 ]
 
@@ -180,7 +182,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'apecosm', u'APECOSM Documentation',
+    (master_doc, 'apecosm', u'Documentation of the Apecosm Python package',
      [author], 1)
 ]
 
@@ -191,7 +193,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'APECOSM', u'APECOSM Documentation',
+    (master_doc, 'APECOSM', u'Documentation of the Apecosm Python package',
      author, 'APECOSM', 'One line description of project.',
      'Miscellaneous'),
 ]
