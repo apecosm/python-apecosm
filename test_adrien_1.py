@@ -76,7 +76,7 @@ apecosm.plot_oope_spectra(np.log10(oope_data),const)
 plt.show()
 
 ax = plt.axes(projection=ccrs.PlateCarree())
-apecosm.plot_oope_map(data['OOPE'].isel(time=0, c=0, w=0),mesh,axis=ax)
+apecosm.plot_pcolor_map(data['OOPE'].isel(time=0, c=0, w=0),mesh,axis=ax)
 plt.show()
 
 
