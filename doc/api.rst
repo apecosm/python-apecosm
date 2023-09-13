@@ -80,7 +80,8 @@ Maps
 .. autosummary::
    :toctree: generated
 
-   plot_oope_map
+   plot_pcolor_map
+   plot_contour_map
 
 
 Size spectra

@@ -85,7 +85,7 @@ ltl_data = apecosm.extract_ltl_data(data_2, 'OOPE', mesh)
 
 apecosm.report(dirin, mesh_file)
 
-apecosm.plot_oope_map(oope_data,mesh,const)
+apecosm.plot_pcolor_map(oope_data,mesh,const)
 # The input data array must be 2D
 # ERROR conda.cli.main_run:execute(33): Subprocess for 'conda run ['python', '/snap/pycharm-professional/327/plugins/python/helpers/pydev/pydevconsole.py', '--mode=client', '--host=127.0.0.1', '--port=40215']' command failed.  (See above for error)
 
@@ -98,7 +98,7 @@ plt.show()
 #    ^^^^^^^^^^^^^^^^
 #ValueError: too many values to unpack (expected 3)
 
-apecosm.plot_oope_map(data['OOPE'],mesh,const)
-apecosm.plot_oope_map(data,mesh,const)
+apecosm.plot_pcolor_map(data['OOPE'],mesh,const)
+apecosm.plot_pcolor_map(data,mesh,const)
 #/home/adrien/anaconda3/bin/conda run -n apecosm --no-capture-output python /snap/pycharm-professional/327/plugins/python/helpers/pydev/pydevconsole.py --mode=client --host=127.0.0.1 --port=32971
 #apecosm.plot_oope_spectra(data, const)
