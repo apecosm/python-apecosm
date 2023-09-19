@@ -20,6 +20,9 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 import os
+import zipfile
+import requests
+from io import BytesIO
 import sys
 import apecosm
 
@@ -34,6 +37,22 @@ def create_folders():
             # Create a new directory because it does not exist
             os.makedirs(path)
             print("The new directory is created!")
+
+
+def download_data():
+
+    path = 'data'
+    data_path_exists = os.path.exists(path)
+    if not data_path_exists:
+        print("Downloading documentation dat from Zenodo:")
+        url = 'https://zenodo.org/record/8359464/files/python_apecosm_doc_data.zip'
+        print(f'URL: {url}')
+        req = requests.get(url)
+        os.makedirs(path)
+        zfile = zipfile.ZipFile(BytesIO(req.content))
+        zfile.extractall('data')
+    else:
+        print("Data folder already exists")
 
 # -- General configuration ------------------------------------------------
 
@@ -121,6 +140,7 @@ numfig = True
 # use sections as a reference for figures: X.1, X.2 with X the section
 numfig_secnum_depth = (1)
 
+download_data()
 create_folders()
 
 import sphinx_rtd_theme
