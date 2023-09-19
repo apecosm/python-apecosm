@@ -132,7 +132,7 @@ function:
 
 .. ipython:: python
 
-    spatial_mean_phy2 = apecosm.extract_ltl_data(ltl_data, mesh, 'PHY2')
+    spatial_mean_phy2 = apecosm.extract_ltl_data(ltl_data['PHY2'], mesh)
     spatial_mean_phy2
 
 This function will first vertically **integrate** the LTL biomass
@@ -172,11 +172,10 @@ domain defined above:
 
 .. ipython:: python
 
-    spatial_0_200_reg_mean_phy2 = apecosm.extract_ltl_data(ltl_data,
-                                                           mesh, 'PHY2',
+    spatial_0_200_reg_mean_phy2 = apecosm.extract_ltl_data(ltl_data['PHY2'],
+                                                           mesh,
                                                            mask_dom=domain_ds['domain_1'],
-                                                           depth_min=0,
-                                                           depth_max=200)
+                                                           depth_limits=[0, 200])
     spatial_0_200_reg_mean_phy2
 
 

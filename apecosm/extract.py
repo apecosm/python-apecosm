@@ -104,31 +104,29 @@ def open_ltl_data(dirin, replace_dims=None, **kwargs):
     return data
 
 
-def extract_ltl_data(data, mesh, varname,
-                     mask_dom=None, depth_min=None,
-                     depth_max=None):
+def extract_ltl_data(data_array, mesh,
+                     mask_dom=None, depth_limits=(None, None)):
 
     """
     Extraction of LTL values on a given domain.
     LTL is vertically integrated and spatially averaged over
     the domain.
 
-    :param data: Apecosm dataset
+    :param data_array: NEMO/Pisces dataset
     :type data: :class:`xarray.Dataset`
     :param mesh: Mesh grid dataset
     :type mesh: :class:`xarray.Dataset`
-    :param str varname: LTL variable name
     :param mask_dom: Mask array. If None, full domain is considered
     :type mask_dom: :class:`numpy.array`
-    :param int depth_min: Minimum depth
-    :param int depth_max: Maximum depth
+    :param int depth_limits: Array with the two depths limits used
+    for integration
 
     :return: A xarray dataset
     """
 
-    surf = mesh['e2t'] * mesh['e1t']
+    depth_min, depth_max = depth_limits
 
-    data_array = data[varname]
+    surf = mesh['e2t'] * mesh['e1t']
 
     if 'gdept_0' in mesh.variables:
         depth = mesh['gdept_0']  # 1, z, lat, lon
@@ -143,12 +141,8 @@ def extract_ltl_data(data, mesh, varname,
     if data_array.ndim == 4:
 
         # If data is 4d, assume a depth dimension. We integrate over this dimension
-
         # First, we extract the cell thickness for the integration
-        if 'e3t' in data.variables:
-            # if VVL, e3t should be read from data
-            e3t = data['e3t']  # time, z, lat, lon
-        elif 'e3t_0' in mesh.variables:
+        if 'e3t_0' in mesh.variables:
             e3t = mesh['e3t_0']  # 1, z, lat, lon
         else:
             e3t = mesh['e3t_1d']
@@ -183,7 +177,8 @@ def extract_ltl_data(data, mesh, varname,
     # Horizonal average of the biomass
     output = data_array.weighted(horizontal_weight).mean(dim=('x', 'y')) # time
 
-    output.attrs['horizontal_norm_weight'] = float(horizontal_weight.sum(dim=('x', 'y')).compute().values)
+    attribute_weight = float(horizontal_weight.sum(dim=('x', 'y')).compute().values)
+    output.attrs['horizontal_norm_weight'] = attribute_weight
 
     return output
 
@@ -209,8 +204,10 @@ def extract_oope_size_integration(data, const, lmin=None, lmax=None):
     :type data: :class:`xarray.DataArray`
     :param const: Apecosm constant dataset. It must contain `weight_step` and `length`
     :type const: :class:`xarray.Dataset`
-    :param float lmin: Minimum size to consider (cm). If None, integrates from the beginning of the size spectra
-    :param float lmax: Maximum size to consider (cm). If None, integrates to the end of the size spectra
+    :param float lmin: Minimum size to consider (cm). If None,
+    integrates from the beginning of the size spectra
+    :param float lmax: Maximum size to consider (cm).
+    If None, integrates to the end of the size spectra
 
     :return: A xarray dataset
     '''
@@ -219,19 +216,19 @@ def extract_oope_size_integration(data, const, lmin=None, lmax=None):
     length = const['length'] * 100
     if lmin is not None:
         # if lmin is not None, check_lmin is True if length greater than Lmin
-        check_lmin = (length >= lmin)
+        check_lmin = length >= lmin
     else:
         # if lmin is None, check_lmin is true everywhere
-        check_lmin = (length >= 0)
+        check_lmin = length >= 0
 
     if lmax is not None:
         # if lmax is not None, check_lmax is True if length greater than lmax
-        check_lmax = (length <= lmax)
+        check_lmax = length <= lmax
     else:
         # if lmax is None, check_lmax is true everywhere
-        check_lmax = (length >= 0)
+        check_lmax = length >= 0
 
-    check_size = (check_lmin & check_lmax)
+    check_size = check_lmin & check_lmax
 
     output = (data * weight_step).where(check_size).sum(dim='w')
     return output
@@ -263,26 +260,26 @@ def extract_time_means(data, time=None):
     if time is None:
         climatology = data.mean(dimname)
     else:
-        climatology = data.groupby('time.%s' % time).mean(dimname)
+        climatology = data.groupby(f'time.{time}').mean(dimname)
 
     return climatology
 
 
-def compute_cumulated_biomass(spatial_integrated_biomass, const):
+def compute_cumulated_biomass(spatial_int_biomass, const):
 
     '''
     Computes the cumulated biomass, i.e. the biomass proportion
     for each size class.
 
-    :param spatial_integrated_biomass: OOPE variable
+    :param spatial_int_biomass: OOPE variable
     :param xarray.Dataset const: Apecosm constant dataset
 
     :return: A xarray.DataArray
 
     '''
 
-    spatial_integrated_biomass = spatial_integrated_biomass * const['weight_step']
-    size_prop = spatial_integrated_biomass.cumsum(dim='w') / spatial_integrated_biomass.sum(dim='w') * 100
+    spatial_int_biomass = spatial_int_biomass * const['weight_step']
+    size_prop = spatial_int_biomass.cumsum(dim='w') / spatial_int_biomass.sum(dim='w') * 100
     return size_prop
 
 def extract_mean_size(spatially_integrated_biomass, const, varname, ):
@@ -290,7 +287,8 @@ def extract_mean_size(spatially_integrated_biomass, const, varname, ):
     """
     Extracts the mean length or weight.
 
-    :param spatially_integrated_biomass: Biomass integrated over a given region (dim: time, c, w). Must be in :math:`J.kg^{-1}`
+    :param spatially_integrated_biomass: Biomass integrated over a
+    given region (dim: time, c, w). Must be in :math:`J.kg^{-1}`
     :type data: :class:`xarray.Dataset`
     :param const: Apecosm constants dataset
     :type const: :class:`xarray.Dataset`
@@ -392,8 +390,6 @@ def extract_oope_data(data, mesh, mask_dom=None):
     else:
         tmask = mesh['tmask']
 
-    tmask = tmask
-
     # extract the domain coordinates
     if mask_dom is None:
         mask_dom = np.ones(tmask.shape)
@@ -437,51 +433,37 @@ def open_fishing_data(dirin):
 
 
 def read_report_params(csv_file_name):
-    file = open(csv_file_name)
-    report_parameters = {'output_dir':'', 'mesh_file':'', 'FONT_SIZE':'', 'LABEL_SIZE':'', 'THIN_LWD':'', 'REGULAR_LWD':'',
-                         'THICK_LWD':'','COL_GRID':'','REGULAR_TRANSP':'','HIGH_TRANSP':'', 'FIG_WIDTH':'','FIG_HEIGHT':'',
-                         'FIG_DPI':'','CB_SHRINK':'','COL_MAP':'','FISHING_PERIOD':'','APECOSM_PERIOD':'','fishing_output_dir':'', 'fishing_config_dir':''}
-    for line in file:
+
+    '''
+    Reads parameter files for the automatic report function
+
+    :param csv_file_name: Path to the parameter CSV file.
+
+    '''
+
+    with open(csv_file_name, 'r', encoding='utf-8') as fout:
+        lines = fout.readlines()
+    report_parameters = {'output_dir':'', 'mesh_file':'', 'FONT_SIZE':'',
+                         'LABEL_SIZE':'', 'THIN_LWD':'', 'REGULAR_LWD':'',
+                         'THICK_LWD':'','COL_GRID':'','REGULAR_TRANSP':'',
+                         'HIGH_TRANSP':'', 'FIG_WIDTH':'','FIG_HEIGHT':'',
+                         'FIG_DPI':'','CB_SHRINK':'','COL_MAP':'','FISHING_PERIOD':'',
+                         'APECOSM_PERIOD':'','fishing_output_dir':'', 'fishing_config_dir':''}
+    for line in lines:
         fields = line.strip().split(',')
         if fields[0] == 'output_dir':
             report_parameters['output_dir'] = fields[1].replace(" ", "")
         elif fields[0] == 'mesh_file':
             report_parameters['mesh_file'] = fields[1].replace(" ", "")
-        elif fields[0] == 'FONT_SIZE':
-            report_parameters['FONT_SIZE'] = int(fields[1])
-        elif fields[0] == 'LABEL_SIZE':
-            report_parameters['LABEL_SIZE'] = int(fields[1])
-        elif fields[0] == 'THIN_LWD':
-            report_parameters['THIN_LWD'] = int(fields[1])
-        elif fields[0] == 'REGULAR_LWD':
-            report_parameters['REGULAR_LWD'] = int(fields[1])
-        elif fields[0] == 'THICK_LWD':
-            report_parameters['THICK_LWD'] = int(fields[1])
         elif fields[0] == 'COL_GRID':
             report_parameters['COL_GRID'] = (int(fields[1].replace(' (', '').split('/')[0])/256, int(fields[2].replace(' ', '').split('/')[0])/256, int(fields[3].replace(') ','').split('/')[0])/256)
-        elif fields[0] == 'REGULAR_TRANSP':
-            report_parameters['REGULAR_TRANSP'] = float(fields[1])
-        elif fields[0] == 'HIGH_TRANSP':
-            report_parameters['HIGH_TRANSP'] = float(fields[1])
-        elif fields[0] == 'FIG_WIDTH':
-            report_parameters['FIG_WIDTH'] = float(fields[1])
-        elif fields[0] == 'FIG_HEIGHT':
-            report_parameters['FIG_HEIGHT'] = float(fields[1])
-        elif fields[0] == 'FIG_DPI':
-            report_parameters['FIG_DPI'] = int(fields[1])
-        elif fields[0] == 'CB_SHRINK':
-            report_parameters['CB_SHRINK'] = float(fields[1])
-        elif fields[0] == 'CB_THRESH':
-            report_parameters['CB_THRESH'] = int(fields[1])
         elif fields[0] == 'COL_MAP':
             report_parameters['COL_MAP'] = fields[1].replace(" ", "")
-        elif fields[0] == 'FISHING_PERIOD':
-            report_parameters['FISHING_PERIOD'] = int(fields[1])
-        elif fields[0] == 'APECOSM_PERIOD':
-            report_parameters['APECOSM_PERIOD'] = int(fields[1])
         elif fields[0] == 'fishing_output_dir':
             report_parameters['fishing_output_dir'] = fields[1].replace(" ", "")
         elif fields[0] == 'fishing_config_dir':
             report_parameters['fishing_config_dir'] = fields[1].replace(" ", "")
+        else:
+            report_parameters[fields[0]] = float(fields[1])
 
     return report_parameters
