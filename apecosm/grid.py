@@ -80,7 +80,7 @@ def read_ape_grid(filename):
     :param str filename: Apecosm vertical grid file
 
     :return: A tuple contaning the depth and thicknessess
-     of the cell points
+        of the cell points
 
      .. todo::
 
@@ -111,9 +111,9 @@ def partial_step_ape(ape_grid, mesh_file_nemo):
     Apecosm vertical grid
 
     :param ape_grid: CSV file containing the Apecosm
-    vertical levels
+        vertical levels
     :param mesh_file_nemo: NetCDF file containing the NEMO mesh
-    file
+        file
 
     '''
 
