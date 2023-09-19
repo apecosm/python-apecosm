@@ -118,10 +118,11 @@ def extract_ltl_data(data_array, mesh,
     :type mesh: :class:`xarray.Dataset`
     :param mask_dom: Mask array. If None, full domain is considered
     :type mask_dom: :class:`numpy.array`
-    :param int depth_limits: Array with the two depths limits used
-    for integration
+    :param int depth_limits: Array with the two depths limits
+        used for integration
 
     :return: A xarray dataset
+
     """
 
     depth_min, depth_max = depth_limits
@@ -288,7 +289,7 @@ def extract_mean_size(spatially_integrated_biomass, const, varname, ):
     Extracts the mean length or weight.
 
     :param spatially_integrated_biomass: Biomass integrated over a
-    given region (dim: time, c, w). Must be in :math:`J.kg^{-1}`
+        given region (dim: time, c, w). Must be in :math:`J.kg^{-1}`
     :type data: :class:`xarray.Dataset`
     :param const: Apecosm constants dataset
     :type const: :class:`xarray.Dataset`
