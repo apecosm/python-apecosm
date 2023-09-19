@@ -12,16 +12,31 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.mpl import geoaxes
 import matplotlib.pyplot as plt
+import numpy as np
 from .misc import extract_community_names
 from .constants import LTL_NAMES
-from math import ceil
-import numpy as np
 
 plt.rcParams['text.usetex'] = False
 
 PROJIN = ccrs.PlateCarree()
 
-def plot_diet_values(diet_data, const, community_index, draw_legend=False, legend_args={}, **kwargs):
+def plot_diet_values(diet_data, const, community_index, draw_legend=False, legend_args=None, **kwargs):
+
+    r'''
+    Draws the diet matrix.
+
+    :param diet_data: DataArray containing the diet matrix. The time
+    and space dimensions must have been removed.
+    :param const: Dataset containing the Apecosm constant variables
+    :param community_index: Index of the community to draw
+    :param draw_legend: True if the legend must be added
+    :param legend_args: Dictionnary containing additional legend arguments
+    :param **kwargs: Additional arguments of the stackplot function
+
+    '''
+
+    if legend_args is None:
+        legend_args = {}
 
     community_names = extract_community_names(const)
     n_community = len(community_names)
@@ -45,7 +60,7 @@ def plot_diet_values(diet_data, const, community_index, draw_legend=False, legen
 
 def plot_pcolor_map(data, mesh, axis=None, draw_land=True, **kwargs):
 
-    '''
+    r'''
     Draws 2D OOPE maps.
 
     :param data: Data to plot
@@ -55,7 +70,7 @@ def plot_pcolor_map(data, mesh, axis=None, draw_land=True, **kwargs):
     :param ax: Axis on which to draw
     :type ax: :class:`matplotlib.axes._subplots.AxesSubplot` or
         :class:`cartopy.mpl.geoaxes.GeoAxesSubplot`, optional
-    :param \**kwargs: Additional arguments to the `pcolormesh` function
+    :param **kwargs: Additional arguments to the `pcolormesh` function
 
     :return: The output quad mesh.
     :rtype: :class:`matplotlib.collections.QuadMesh`
@@ -64,7 +79,7 @@ def plot_pcolor_map(data, mesh, axis=None, draw_land=True, **kwargs):
 
     if not isinstance(data, xr.DataArray):
         message = 'The input must be a "xarray.DataArray" '
-        message += 'Currently, it is a %s object' % type(data)
+        message += f'Currently, it is a {type(data)} object'
         print(message)
         sys.exit(1)
 
@@ -75,13 +90,13 @@ def plot_pcolor_map(data, mesh, axis=None, draw_land=True, **kwargs):
 
     if 'x' not in data.dims:
         message = 'The input data array must have a "x" dim. '
-        message += 'Dimensions are %s' % str(data.dims)
+        message += f'Dimensions are {data.dims}'
         print(message)
         sys.exit(1)
 
     if 'y' not in data.dims:
         message = 'The input data array must have a "y" dim.'
-        message += 'Dimensions are %s' % str(data.dims)
+        message += f'Dimensions are {data.dims}'
         print(message)
         sys.exit(1)
 
@@ -101,14 +116,14 @@ def plot_pcolor_map(data, mesh, axis=None, draw_land=True, **kwargs):
         projected = False
         quadmesh = plt.pcolormesh(var_to_plot, **kwargs)
     if projected and draw_land:
-            axis.add_feature(cfeature.LAND, zorder=1000)
-            axis.add_feature(cfeature.COASTLINE, zorder=1001)
+        axis.add_feature(cfeature.LAND, zorder=1000)
+        axis.add_feature(cfeature.COASTLINE, zorder=1001)
 
     return quadmesh
 
 def plot_contour_map(data, mesh, filled=False, axis=None, draw_land=False, **kwargs):
 
-    '''
+    r'''
     Draws 2D OOPE maps.
 
     :param data: Data to plot
@@ -118,7 +133,7 @@ def plot_contour_map(data, mesh, filled=False, axis=None, draw_land=False, **kwa
     :param ax: Axis on which to draw
     :type ax: :class:`matplotlib.axes._subplots.AxesSubplot` or
         :class:`cartopy.mpl.geoaxes.GeoAxesSubplot`, optional
-    :param \**kwargs: Additional arguments to the `pcolormesh` function
+    :param **kwargs: Additional arguments to the `pcolormesh` function
 
     :return: The output quad mesh.
     :rtype: :class:`matplotlib.collections.QuadMesh`
@@ -134,7 +149,7 @@ def plot_contour_map(data, mesh, filled=False, axis=None, draw_land=False, **kwa
 
     if not isinstance(data, xr.DataArray):
         message = 'The input must be a "xarray.DataArray" '
-        message += 'Currently, it is a %s object' % type(data)
+        message += f'Currently, it is a {type(data)} object'
         print(message)
         sys.exit(1)
 
@@ -145,13 +160,13 @@ def plot_contour_map(data, mesh, filled=False, axis=None, draw_land=False, **kwa
 
     if 'x' not in data.dims:
         message = 'The input data array must have a "x" dim. '
-        message += 'Dimensions are %s' % str(data.dims)
+        message += f'Dimensions are {data.dims}'
         print(message)
         sys.exit(1)
 
     if 'y' not in data.dims:
         message = 'The input data array must have a "y" dim.'
-        message += 'Dimensions are %s' % str(data.dims)
+        message += f'Dimensions are {data.dims}'
         print(message)
         sys.exit(1)
 
@@ -182,8 +197,8 @@ def plot_contour_map(data, mesh, filled=False, axis=None, draw_land=False, **kwa
         projected = False
         cl = contour_function(var_to_plot, **kwargs)
     if projected and draw_land:
-            axis.add_feature(cfeature.LAND, zorder=1000)
-            axis.add_feature(cfeature.COASTLINE, zorder=1001)
+        axis.add_feature(cfeature.LAND, zorder=1000)
+        axis.add_feature(cfeature.COASTLINE, zorder=1001)
 
     return cl
 
@@ -224,23 +239,23 @@ def _reconstuct_variable(lonf, latf, tmask, data):
 
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    DIRIN = '../doc/_static/example/data/'
-    MESH = xr.open_dataset('%s/mesh_mask.nc' % DIRIN).isel(t=0)
+#     DIRIN = '../doc/_static/example/data/'
+#     MESH = xr.open_dataset('%s/mesh_mask.nc' % DIRIN).isel(t=0)
 
-    DATA = xr.open_dataset('%s/apecosm/apecosm_OOPE.nc' % DIRIN)
-    DATA1 = DATA['OOPE'].mean(dim='time').isel(community=0, weight=0)
-    DATA2 = DATA['OOPE'].mean(dim='time').isel(x=0, y=0)
+#     DATA = xr.open_dataset('%s/apecosm/apecosm_OOPE.nc' % DIRIN)
+#     DATA1 = DATA['OOPE'].mean(dim='time').isel(community=0, weight=0)
+#     DATA2 = DATA['OOPE'].mean(dim='time').isel(x=0, y=0)
 
-    fig = plt.figure()
-    axes = plt.axes()
-    plot_pcolor_map(DATA1, MESH)
-    plt.savefig('maps1.png', bbox_inches='tight')
-    plt.close(fig)
+#     fig = plt.figure()
+#     axes = plt.axes()
+#     plot_pcolor_map(DATA1, MESH)
+#     plt.savefig('maps1.png', bbox_inches='tight')
+#     plt.close(fig)
 
-    fig = plt.figure()
-    axes = plt.axes(projection=ccrs.PlateCarree())
-    plot_pcolor_map(DATA1, MESH)
-    plt.savefig('maps2.png', bbox_inches='tight')
-    plt.close(fig)
+#     fig = plt.figure()
+#     axes = plt.axes(projection=ccrs.PlateCarree())
+#     plot_pcolor_map(DATA1, MESH)
+#     plt.savefig('maps2.png', bbox_inches='tight')
+#     plt.close(fig)

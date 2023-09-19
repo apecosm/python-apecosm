@@ -1,9 +1,8 @@
 ''' Module that contains some miscellaneous functions '''
 
+import os
 import numpy as np
 from .constants import ALLOM_W_L
-import os
-import xarray as xr
 
 
 def find_percentile(data, percentage=1):
@@ -99,7 +98,7 @@ def extract_community_names(const):
             comnames.append(const.attrs[attr])
     else:
         for community_index in range(const.dims['c']):
-            name = 'Community %d' % community_index
+            name = f'Community {community_index}'
             comnames.append(name)
     return comnames
 
@@ -144,11 +143,11 @@ def compute_mean_min_max_ts(timeserie, period):
         :type period: int
     '''
 
-    n = int(len(timeserie.time)/period)
-    average = np.zeros(n)
-    maxi = np.zeros(n)
-    mini = np.zeros(n)
-    time = np.zeros(n)
+    number_subperiods = int(len(timeserie.time)/period)
+    average = np.zeros(number_subperiods)
+    maxi = np.zeros(number_subperiods)
+    mini = np.zeros(number_subperiods)
+    time = np.zeros(number_subperiods)
     if period <= 1:
         average = timeserie.values()
         maxi = timeserie.values()
@@ -163,7 +162,7 @@ def compute_mean_min_max_ts(timeserie, period):
         print("WARNING : period >= length(timeserie) --> mean, max, min values of timeserie returned")
     else:
         cpt = 0
-        while cpt < n:
+        while cpt < number_subperiods:
             average[cpt] = timeserie[(cpt * period):((cpt + 1) * period - 1)].mean()
             maxi[cpt] = timeserie[(cpt * period):((cpt + 1) * period - 1)].max()
             mini[cpt] = timeserie[(cpt * period):((cpt + 1) * period - 1)].min()
@@ -183,18 +182,17 @@ def extract_fleet_names(dirin):
     '''
 
     fishing_model = os.path.join(dirin, 'fishing_model.conf')
-    with open(fishing_model) as f:
-        for line in f:
+    with open(fishing_model, 'r', encoding='utf-8') as fout:
+        for line in fout:
             if "nb_fishing_fleets" in line.strip():
                 _, nb_fleet_str = line.split('=')
                 nb_fleet = int(nb_fleet_str)
 
-    fleet = {}
     fleet_names = {}
     for i in np.arange(nb_fleet):
         fleet_fname = os.path.join(dirin, 'fleet_' + str(i) + '.conf')
-        with open(fleet_fname) as f:
-            for line in f:
+        with open(fleet_fname, 'r', encoding='utf-8') as fout:
+            for line in fout:
                 if "fleet_name" in line.strip():
                     _, fleet_name_str = line.split('=')
                     fleet_names[i] = fleet_name_str[:-1]
