@@ -9,7 +9,7 @@ import pandas as pd
 import xarray as xr
 try:
     import pylab as plt
-    import matplotlib.patches as patches
+    from matplotlib import patches
 except ImportError:
     pass
 
@@ -31,8 +31,10 @@ def extract_weight_grid(config):
     c_fonct_w_dep = float(config['biology.functional_response.half_saturation.dependence'])
 
     omega_var_max = omega_var_min + (n_weight_class - 1) * omega_var_step
-    beta = (lmin - lmax * np.power(alpha, (omega_var_min - omega_var_max - 1))) / (1. - np.power(alpha, (omega_var_min - omega_var_max - 1)))
-    gam = np.log((lmin - lmax) / (np.power(alpha, omega_var_min) - np.power(alpha, omega_var_max + 1))) / np.log(alpha)
+    beta = (lmin - lmax * np.power(alpha, (omega_var_min - omega_var_max - 1))) \
+        / (1. - np.power(alpha, (omega_var_min - omega_var_max - 1)))
+    gam = np.log((lmin - lmax) / (np.power(alpha, omega_var_min) \
+        - np.power(alpha, omega_var_max + 1))) / np.log(alpha)
 
     tmp_length = np.zeros(n_weight_class + 1)
     tmp_weight = np.zeros(n_weight_class + 1)
@@ -103,6 +105,17 @@ def read_ape_grid(filename):
 
 
 def partial_step_ape(ape_grid, mesh_file_nemo):
+
+    '''
+    Reads the NEMO mesh file to extract the
+    Apecosm vertical grid
+
+    :param ape_grid: CSV file containing the Apecosm
+    vertical levels
+    :param mesh_file_nemo: NetCDF file containing the NEMO mesh
+    file
+
+    '''
 
     # Reads the NEMO mesh file to extract all
     # the data that are needed.
@@ -175,7 +188,7 @@ def _partial_step_ape_grid(adepth, deltaz, data_mesh_file_nemo, ilat, ilon):
 
     # check if NEMO grid is in partial step or not
     # nemo_partial_step = 'e3t_0' in data.data_vars.keys()
-    nemo_partial_step = (e3t_varname in data_mesh_file_nemo.data_vars.keys())
+    nemo_partial_step = e3t_varname in data_mesh_file_nemo.data_vars.keys()
     #print('NEMO is in partial step mode')
 
     if nemo_partial_step:
@@ -311,9 +324,9 @@ def plot_grid_nemo_ape(ape_grid, mesh_file_nemo, ilat, ilon):
     ax1.set_ylim(ax1.get_ylim()[::-1])
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 #
-     filename = 'APECOSM_depth_grid_37.txt'
+#     filename = 'APECOSM_depth_grid_37.txt'
 #     mesh_file = 'data/mesh_mask.nc'
 #     ilat, ilon = 115, 73
 #     #ilat, ilon = 131, 19
@@ -322,7 +335,7 @@ if __name__ == '__main__':
 #     #mesh_file = '/home/nbarrier/Modeles/apecosm/svn-apecosm/trunk/tools/config/gyre/mesh_mask.nc'
 #     #ilat, ilon = 12,12
 #
-     adepth, deltaz = read_ape_grid(filename)
+#     adepth, deltaz = read_ape_grid(filename)
 #     output = partial_step_ape_grid(filename, mesh_file, ilat, ilon)
 #     plot_grid_nemo_ape(filename, mesh_file, ilat, ilon)
 #     plt.show()
