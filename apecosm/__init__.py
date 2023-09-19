@@ -11,11 +11,11 @@ import os
 
 import pkg_resources  # part of setuptools
 try:
-    __version__ = pkg_resources.require("apecosm")[0].version
-except:
     VERSION_FILE = os.path.join(f'{os.path.dirname(__file__)}', '..', 'VERSION')
     with open(VERSION_FILE, 'r') as infile:
         __version__ = infile.read().strip()
+except:
+    __version__ = pkg_resources.require("apecosm")[0].version
 
 __description__ = "Python package for the manipulation of the Apecosm model"
 __author_email__ = "nicolas.barrier@ird.fr"
