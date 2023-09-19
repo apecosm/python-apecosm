@@ -38,7 +38,7 @@ First, the spatial mean is computed, as in :numref:`extract_ltl`:
 .. ipython:: python
 
     depth_max = 1000
-    ltl_phy2 = apecosm.extract_ltl_data(ltl_data, mesh, 'PHY2', depth_max = 1000)
+    ltl_phy2 = apecosm.extract_ltl_data(ltl_data['PHY2'], mesh, depth_limits=[None, depth_max])
     ltl_phy2
 
 .. ipython:: python
@@ -174,9 +174,9 @@ same regions, as done for PHY2 in the above:
 
 .. ipython:: python
 
-    ltl_zoo2 = apecosm.extract_ltl_data(ltl_data, mesh, 'ZOO2', depth_max=depth_max).compute()
-    ltl_zoo = apecosm.extract_ltl_data(ltl_data, mesh, 'ZOO', depth_max=depth_max).compute()
-    ltl_goc = apecosm.extract_ltl_data(ltl_data, mesh, 'GOC', depth_max=depth_max).compute()
+    ltl_zoo2 = apecosm.extract_ltl_data(ltl_data['ZOO2'], mesh, depth_limits=[None, depth_max]).compute()
+    ltl_zoo = apecosm.extract_ltl_data(ltl_data['ZOO'], mesh, depth_limits=[None, depth_max]).compute()
+    ltl_goc = apecosm.extract_ltl_data(ltl_data['GOC'], mesh, depth_limits=[None, depth_max]).compute()
 
     ltl_goc_mean = ltl_goc.mean(dim='time_counter')
     ltl_zoo_mean = ltl_zoo.mean(dim='time_counter')

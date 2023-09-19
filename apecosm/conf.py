@@ -67,7 +67,7 @@ def read_config(filename, relative_to_main=False, params=None, path=''):
 
             if sep is None:
                 # if seperator is not found, nothing is done
-                message = 'The line {line} could not have been processed'
+                message = f'The line {line} could not have been processed'
                 print(message)
                 continue
 
@@ -86,9 +86,9 @@ def read_config(filename, relative_to_main=False, params=None, path=''):
                 if key not in params.keys():
                     params[key] = _convert(val)
                 else:
-                    message = 'Parameter {key} is already defined '
-                    message += 'and equal to {params[key]}.\n'
-                    message += 'Current value {val} is ignored.'
+                    message = f'Parameter {key} is already defined '
+                    message += f'and equal to {params[key]}.\n'
+                    message += f'Current value {val} is ignored.'
                     print(message)
 
     return params

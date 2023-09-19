@@ -95,19 +95,19 @@ def inpolygon(xin_2d, yin_2d, x_pol, y_pol):
     y_pol = np.array(y_pol)
 
     if xin_2d.ndim != 2:
-        raise ValueError("The xin_2d argument must be 2D. \
+        raise ValueError(f"The xin_2d argument must be 2D. \
                          {xin_2d.ndim} dimensions")
 
     if yin_2d.ndim != 2:
-        raise ValueError("The yin_2d argument must be 2D. \
+        raise ValueError(f"The yin_2d argument must be 2D. \
                          {yin_2d.ndim} dimensions")
 
     if x_pol.ndim != 1:
-        raise ValueError("The x_pol argument must be 1D. \
+        raise ValueError(f"The x_pol argument must be 1D. \
                          {x_pol.ndim} dimensions")
 
     if y_pol.ndim != 1:
-        raise ValueError("The y_pol argument must be 1D. \
+        raise ValueError(f"The y_pol argument must be 1D. \
                           {y_pol.ndim} dimensions")
 
     x_pol = np.array(x_pol)
