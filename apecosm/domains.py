@@ -53,9 +53,9 @@ def generate_mask(mesh, domain):
     lat = mesh['gphit'].values
 
     if isinstance(domain, str):
-        if domain not in DOMAINS.keys():
+        if domain not in DOMAINS:
             message = 'Domain must be in '
-            message += ','.join(DOMAINS.keys())
+            message += ', '.join(DOMAINS)
             print(message)
             sys.exit(1)
         domain = DOMAINS[domain]
@@ -96,19 +96,19 @@ def inpolygon(xin_2d, yin_2d, x_pol, y_pol):
 
     if xin_2d.ndim != 2:
         raise ValueError("The xin_2d argument must be 2D. \
-                         %d dimensions" % xin_2d.ndim)
+                         {xin_2d.ndim} dimensions")
 
     if yin_2d.ndim != 2:
         raise ValueError("The yin_2d argument must be 2D. \
-                         %d dimensions" % yin_2d.ndim)
+                         {yin_2d.ndim} dimensions")
 
     if x_pol.ndim != 1:
         raise ValueError("The x_pol argument must be 1D. \
-                         %d dimensions" % x_pol.ndim)
+                         {x_pol.ndim} dimensions")
 
     if y_pol.ndim != 1:
         raise ValueError("The y_pol argument must be 1D. \
-                          %d dimensions" % y_pol.ndim)
+                          {y_pol.ndim} dimensions")
 
     x_pol = np.array(x_pol)
     y_pol = np.array(y_pol)
