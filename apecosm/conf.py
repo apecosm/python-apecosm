@@ -47,7 +47,7 @@ def read_config(filename, relative_to_main=False, params=None, path=''):
         path = os.path.dirname(filename)
 
     # Opens the configuration file and extracts the lines
-    with open(filename) as file_in:
+    with open(filename, 'r', encoding='utf-8') as file_in:
         lines = file_in.readlines()
 
     # removes blank spaces at the beginning and end of the lines
@@ -67,7 +67,7 @@ def read_config(filename, relative_to_main=False, params=None, path=''):
 
             if sep is None:
                 # if seperator is not found, nothing is done
-                message = 'The line %s could not have been processed' % line
+                message = 'The line {line} could not have been processed'
                 print(message)
                 continue
 
@@ -86,9 +86,9 @@ def read_config(filename, relative_to_main=False, params=None, path=''):
                 if key not in params.keys():
                     params[key] = _convert(val)
                 else:
-                    message = 'Parameter %s is already defined ' % (key)
-                    message += 'and equal to %s.\n' % (params[key])
-                    message += 'Current value %s is ignored.' % val
+                    message = 'Parameter {key} is already defined '
+                    message += 'and equal to {params[key]}.\n'
+                    message += 'Current value {val} is ignored.'
                     print(message)
 
     return params

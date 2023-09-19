@@ -2,8 +2,6 @@
 Module for analysing Apecosm outputs
 """
 
-from .extract import extract_oope_data
-
 def compute_size_cumprop(data, const):
 
     """
@@ -20,7 +18,7 @@ def compute_size_cumprop(data, const):
     :type mask_dom: :class:`numpy.array`
     """
 
-    data = (data * const['weight_step'])
+    data = data * const['weight_step']
     output = data.cumsum(dim='w') / data.sum(dim='w') * 100
 
     return output
