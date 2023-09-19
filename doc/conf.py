@@ -74,6 +74,7 @@ extensions = ['sphinx.ext.todo',
     'IPython.sphinxext.ipython_directive',
     'IPython.sphinxext.ipython_console_highlighting',
     'sphinxcontrib.programoutput',
+    "nbsphinx"
 ]
 
 bibtex_bibfiles = ['_static/biblio.bib']

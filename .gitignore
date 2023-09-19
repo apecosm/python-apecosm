@@ -6,7 +6,6 @@ dist
 **/.*.swp
 **/*pdf
 **/.ipynb_checkpoints/
-**/*.ipynb
 **/*.swp
 **/*.pyc
 venv
