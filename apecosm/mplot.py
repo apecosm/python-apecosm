@@ -31,7 +31,7 @@ def plot_diet_values(diet_data, const, community_index, draw_legend=False, legen
     :param community_index: Index of the community to draw
     :param draw_legend: True if the legend must be added
     :param legend_args: Dictionnary containing additional legend arguments
-    :param **kwargs: Additional arguments of the stackplot function
+    :param \**kwargs: Additional arguments of the stackplot function
 
     '''
 
@@ -70,7 +70,7 @@ def plot_pcolor_map(data, mesh, axis=None, draw_land=True, **kwargs):
     :param ax: Axis on which to draw
     :type ax: :class:`matplotlib.axes._subplots.AxesSubplot` or
         :class:`cartopy.mpl.geoaxes.GeoAxesSubplot`, optional
-    :param **kwargs: Additional arguments to the `pcolormesh` function
+    :param \**kwargs: Additional arguments to the `pcolormesh` function
 
     :return: The output quad mesh.
     :rtype: :class:`matplotlib.collections.QuadMesh`
@@ -132,8 +132,8 @@ def plot_contour_map(data, mesh, filled=False, axis=None, draw_land=False, **kwa
     :type mesh: :class:`xarray.Dataset`
     :param ax: Axis on which to draw
     :type ax: :class:`matplotlib.axes._subplots.AxesSubplot` or
-        :class:`cartopy.mpl.geoaxes.GeoAxesSubplot`, optional
-    :param **kwargs: Additional arguments to the `pcolormesh` function
+        :class:`cartopy.mpl.geoaxes.GeoAxesSubplot` , optional
+    :param \**kwargs: Additional arguments to the `pcolormesh` function
 
     :return: The output quad mesh.
     :rtype: :class:`matplotlib.collections.QuadMesh`
