@@ -3,6 +3,8 @@
 Examples
 =================================
 
+Here are provided some examples.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
