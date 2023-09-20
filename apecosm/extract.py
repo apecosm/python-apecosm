@@ -314,7 +314,7 @@ def extract_mean_size(spatially_integrated_biomass, const, varname, ):
 
 
 def extract_weighted_data(data, const, mesh, varname,
-                          mask_dom=None):
+                          mask_dom=None, dims=('x', 'y')):
 
     """
     Extracts data outputs and weight them using
@@ -330,6 +330,8 @@ def extract_weighted_data(data, const, mesh, varname,
         to extract (`repfonct_day` for instance)
     :type varname: str
     :param mask_dom: Array of domain mask
+    :param dims: Dimensions over which to perform the
+        average.
     :type mask_dom: :class:`numpy.array`, optional
 
     """
@@ -352,8 +354,6 @@ def extract_weighted_data(data, const, mesh, varname,
 
     # time, lat, lon, comm, w
     weight = (tmask * surf * oope * const['weight_step']).fillna(0)
-
-    dims = ['y', 'x']
 
     output = (data[varname].weighted(weight)).mean(dims)
     return output
