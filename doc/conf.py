@@ -94,7 +94,7 @@ master_doc = 'index'
 # General information about the project.
 project = u'Apecosm Python package'
 copyright = u'2017, Olivier Maury, Philippe Verley, Nicolas Barrier'
-author = u'Olivier Maury, Philippe Verley, Nicolas Barrier'
+author = u'Nicolas Barrier, Jonathan Rault, Adrien Brunel, Olivier Maury'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -194,7 +194,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'Python_Apecosm_doc.tex', u'Documentation of the Apecosm Python package',
-     u'Olivier Maury, Philippe Verley, Nicolas Barrier', 'manual'),
+     u'Nicolas Barrier, Jonathan Rault, Adrien Brunel, Olivier Maury', 'manual'),
 ]
 
 
