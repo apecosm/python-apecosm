@@ -28,14 +28,16 @@ setup(
     long_description_content_type="text/markdown",
     keywords="ocean; grid model; ocean ecosystem; biology; deb",
     include_package_data=True,
-    url="https://github.com/apecosm/apecosm-python",
+    package_data = {'apecosm': ['resources/*', 'templates/*']},
+    url="https://github.com/apecosm/python-apecosm",
     packages=find_packages(),
     install_requires=['xarray>=0.1',
                       'numpy>=1.9',
                       'netCDF4>=1.1', 
                       'matplotlib>=1.4',
-                      'basemap>=1.0',
-                      'pandas'
+                      'cartopy',
+                      'pandas',
+                      'nc-time-axis'
                      ],
 
     long_description = long_description,

@@ -7,197 +7,259 @@ can be used by using a virtual environment
 
 from __future__ import print_function
 import sys
-import os.path
-import numpy as np
 import xarray as xr
-try:
-    import Ngl
-except ImportError:
-    pass
-import apecosm.extract
-import apecosm.misc as misc
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+from cartopy.mpl import geoaxes
+import matplotlib.pyplot as plt
+import numpy as np
+from .misc import extract_community_names
+from .constants import LTL_NAMES
 
+plt.rcParams['text.usetex'] = False
 
-def plot_oope_map(data, figname, size_class=None, percentage=1):
+PROJIN = ccrs.PlateCarree()
 
-    ''' Draws 2D OOPE maps.
+def plot_diet_values(diet_data, const, community_index, draw_legend=False, legend_args=None, **kwargs):
 
-    :param xarray.Dataset data: 2D OOPE array. Dims must be (y, x, comm, size)
-    :param str figname: Name of the figure file (must end by .png or .pdf)
-    :param list size_class: Size classes to output (in m)
-    :param float percentage: percentage used to saturate colorbar from percentile.
-     Colorbar is saturated from values of the (X) and (100 - X) percentile.
+    r'''
+    Draws the diet matrix.
 
-    :return: None
-    
+    :param diet_data: DataArray containing the diet matrix. The time
+    and space dimensions must have been removed.
+    :param const: Dataset containing the Apecosm constant variables
+    :param community_index: Index of the community to draw
+    :param draw_legend: True if the legend must be added
+    :param legend_args: Dictionnary containing additional legend arguments
+    :param \**kwargs: Additional arguments of the stackplot function
+
     '''
 
-    if size_class is None:
-        size_class = [1e-3, 1e-2, 1e-1, 1]
+    if legend_args is None:
+        legend_args = {}
 
-    # sort size class in ascending order, and add 0 and infinity as size bounds
-    size_class = np.sort(size_class)
+    community_names = extract_community_names(const)
+    n_community = len(community_names)
 
-    if size_class[0] != 0:
-        size_class = np.concatenate(([0], size_class), axis=0)
-    if size_class[-1] != np.Inf:
-        size_class = np.concatenate((size_class, [np.Inf]), axis=0)
+    legend = LTL_NAMES.copy()
+    for c in range(n_community):
+        legend.append(community_names[c])
 
-    # Check that the OOPE dataset has 4 dimensions (i.e. no time dimension)
-    ndims = len(data['OOPE'].dims)
+    ax = plt.gca()
+    length = const['length'].isel(c=community_index)
+    diet = diet_data.isel(c=community_index)#.compute()
+    repf = diet.sum(dim='prey_group')
+    l = ax.stackplot(length, diet.T, edgecolor='k', **kwargs)
+    ax.set_xscale('log')
+    ax.set_xlim(length.min(), length.max())
+    ax.set_ylim(0, repf.max())
+    ax.set_title(community_names[community_index])
+    if draw_legend:
+        ax.legend(legend, **legend_args)
+    return l
 
-    if ndims != 4:
-        message = 'Data must have dimensions of size (lat, lon, comm, wei)'
+def plot_pcolor_map(data, mesh, axis=None, draw_land=True, **kwargs):
+
+    r'''
+    Draws 2D OOPE maps.
+
+    :param data: Data to plot
+    :type data: :class:`xarray.DataArray`
+    :param mesh: Mesh dataset
+    :type mesh: :class:`xarray.Dataset`
+    :param ax: Axis on which to draw
+    :type ax: :class:`matplotlib.axes._subplots.AxesSubplot` or
+        :class:`cartopy.mpl.geoaxes.GeoAxesSubplot`, optional
+    :param \**kwargs: Additional arguments to the `pcolormesh` function
+
+    :return: The output quad mesh.
+    :rtype: :class:`matplotlib.collections.QuadMesh`
+
+    '''
+
+    if not isinstance(data, xr.DataArray):
+        message = 'The input must be a "xarray.DataArray" '
+        message += f'Currently, it is a {type(data)} object'
         print(message)
-        sys.exit(0)
+        sys.exit(1)
 
-    # Recover data variables
-    length = data['length'].values
-    oope = data['OOPE'].values
-    lon = data['longitude'][:].values
-    lat = data['latitude'][:].values
-    comm = data['community'][:].values.astype(np.int)
+    if data.ndim != 2:
+        message = 'The input data array must be 2D'
+        print(message)
+        sys.exit(1)
 
-    # mask oope where land
-    oope = np.ma.masked_where(np.isnan(oope), oope)
+    if 'x' not in data.dims:
+        message = 'The input data array must have a "x" dim. '
+        message += f'Dimensions are {data.dims}'
+        print(message)
+        sys.exit(1)
 
-    comm_string = misc.extract_community_names(data)
+    if 'y' not in data.dims:
+        message = 'The input data array must have a "y" dim.'
+        message += f'Dimensions are {data.dims}'
+        print(message)
+        sys.exit(1)
 
-    if figname.endswith('png'):
-        form = 'png'
-    elif figname.endswith('pdf'):
-        form = 'pdf'
+    if axis is None:
+        axis = plt.gca()
+
+    lonf = mesh['glamf'].values
+    latf = mesh['gphif'].values
+    tmask = mesh['tmask'].isel(z=0).values
+
+    lonf, latf, tmask, var_to_plot = _reconstuct_variable(lonf, latf, tmask, data)
+
+    if isinstance(axis, geoaxes.GeoAxesSubplot):
+        projected = True
+        quadmesh = axis.pcolormesh(lonf, latf, var_to_plot[1:, 1:],
+                                  transform=PROJIN, **kwargs)
     else:
-        message = 'Figure name should end with png or pdf'
-        print(message)
-        sys.exit(0)
+        projected = False
+        quadmesh = axis.pcolormesh(var_to_plot, **kwargs)
+    if projected and draw_land:
+        axis.add_feature(cfeature.LAND, zorder=1000)
+        axis.add_feature(cfeature.COASTLINE, zorder=1001)
 
-    # opens the document
-    wks = Ngl.open_wks(form, figname)
+    return quadmesh
 
-    # set the document colormap
-    # resngl = Ngl.Resources()
-    # resngl.wkColorMap = 'precip2_15lev'
-    # Ngl.set_values(wks, resngl)
+def plot_contour_map(data, mesh, filled=False, axis=None, draw_land=False, **kwargs):
 
-    # Add gray to the workspace
-    Ngl.new_color(wks, 0.7, 0.7, 0.7)
+    r'''
+    Draws 2D OOPE maps.
 
-    # init the plot resources
-    # For a detailed description, see https://www.ncl.ucar.edu/Document/Graphics/Resources/
-    res = Ngl.Resources()
+    :param data: Data to plot
+    :type data: :class:`xarray.DataArray`
+    :param mesh: Mesh dataset
+    :type mesh: :class:`xarray.Dataset`
+    :param ax: Axis on which to draw
+    :type ax: :class:`matplotlib.axes._subplots.AxesSubplot` or
+        :class:`cartopy.mpl.geoaxes.GeoAxesSubplot` , optional
+    :param \**kwargs: Additional arguments to the `pcolormesh` function
 
-    # not necessary, just a good habit
-    res.nglDraw = False
-    res.nglFrame = False
-
-    # Set map resources.
-    res.mpLimitMode = "LatLon"     # limit map via lat/lon
-    res.mpMinLatF = lat.min()         # map area
-    res.mpMaxLatF = lat.max()         # latitudes
-    res.mpMinLonF = lon.min()         # and
-    res.mpMaxLonF = lon.max()         # longitudes
-    res.mpFillOn = True
-    res.mpLandFillColor = "LightGray"
-    res.mpOceanFillColor = -1
-    res.mpInlandWaterFillColor = "LightBlue"
-    res.mpGeophysicalLineThicknessF = 1  # thickness of coastlines
-
-    # coordinates for contour plots
-    res.sfXArray = lon
-    res.sfYArray = lat
-
-    res.cnFillOn = True  # filled contour
-    res.cnLinesOn = False  # no lines
-    res.cnLineLabelsOn = False  # no labels
-    res.cnInfoLabelOn = False  # no info about contours
-
-    res.cnFillMode = 'CellFill'  # contourf=AreaFill, pcolor="CellFill" or "RasterFill"
-    res.lbOrientation = "Horizontal"  # colorbar orientation
-    res.lbLabelFontHeightF = 0.012  # colorbar label fontsize
-    res.lbTitlePosition = "Bottom"  # position of colorbar title
-    res.lbTitleFontHeightF = 0.012  # title font height
-
-    # res.cnFillPalette = "wgne15"
-    res.cnFillPalette = "WhiteBlueGreenYellowRed"
-
-    txres = Ngl.Resources()
-    txres.txJust = "BottomCenter"
-    txres.txFontHeightF = 0.02
-
-    res.cnLevelSelectionMode = 'ExplicitLevels'
-    res.cnMaxLevelCount = 41
-    res.mpGridAndLimbOn = True
-
-    # Equations are complicated with NCARG
-    # see https://www.ncl.ucar.edu/Applications/fcodes.shtml
-    res.lbTitleString = "OOPE (J.kg~S~-1~N~.m~S~-2~N~)"  # title of colorbar
-
-    # Loop over communities
-    for icom in comm:
-        # Loop over size classes
-        for isize in xrange(0, len(size_class) - 1):
-
-            # Extract sizes comprised between the size class bound
-            iw = np.nonzero((length >= size_class[isize]) & (length < size_class[isize+1]))[0]
-            if iw.size == 0:
-                continue
-
-            # Integrate OOPE for the given community and given size class
-            temp = oope[:, :, icom, iw]
-            temp = np.sum(temp, axis=-1)
-
-            # Finds the colorbar limits
-            cmin, cmax = misc.find_percentile(temp, percentage=1)
-
-            # draw the contour maps
-            # defines the contour
-            res.cnLevels = np.linspace(cmin, cmax, res.cnMaxLevelCount)
-            mapplot = Ngl.contour_map(wks, temp, res)
-
-            # add title
-            title = 'Community=%s, %.2E m <= L < %.2E m' % (comm_string[icom], size_class[isize], size_class[isize + 1])
-            Ngl.text_ndc(wks, title, 0.5, 0.85, txres)
-
-            # draws the map
-            Ngl.draw(mapplot)
-
-            # add a page to the pdf output
-            Ngl.frame(wks)
-
-            # WARNING!!! After calls to this function,
-            # Ngl.end() function has to be called!
-
-
-def plot_season_oope(file_pattern, figname, percentage=1):
-
-    ''' Plot seasonal means
-
-    :param str file_pattern: File pattern (for instance, "data/\*nc")
-    :param str figname: Figure name
-    :param str percentage: Percentile for colormap saturation
-
-    :return: None
+    :return: The output quad mesh.
+    :rtype: :class:`matplotlib.collections.QuadMesh`
 
     '''
 
-    fig_dir = os.path.dirname(figname)
-    fig_name = os.path.basename(figname)
-
-    data = xr.open_mfdataset(file_pattern)
-
-    clim = extract.extract_time_means(data, time='season')
-    for s in clim['season'].values:
-
-        print('++++++++++++++++ Drawing season %s ' % s)
-
-        temp = clim.sel(season=s)
-        outfile = '%s/%s_%s' % (fig_dir, s, fig_name)
-        plot_oope_map(temp, outfile, percentage=percentage)
-
-    Ngl.end()
 
 
-if __name__ == '__main__':
+    if not isinstance(data, xr.DataArray):
+        message = 'The input must be a "xarray.DataArray" '
+        message += f'Currently, it is a {type(data)} object'
+        print(message)
+        sys.exit(1)
 
-    plot_season_oope('data/CMIP2_SPIN_OOPE_EMEAN.nc', './OOPE_mean.pdf')
+    if data.ndim != 2:
+        message = 'The input data array must be 2D'
+        print(message)
+        sys.exit(1)
+
+    if 'x' not in data.dims:
+        message = 'The input data array must have a "x" dim. '
+        message += f'Dimensions are {data.dims}'
+        print(message)
+        sys.exit(1)
+
+    if 'y' not in data.dims:
+        message = 'The input data array must have a "y" dim.'
+        message += f'Dimensions are {data.dims}'
+        print(message)
+        sys.exit(1)
+
+    if axis is None:
+        axis = plt.gca()
+
+    if filled:
+        contour_function = axis.contourf
+        proj_contour_function = axis.tricontourf
+    else:
+        contour_function = axis.contour
+        proj_contour_function = axis.tricontour
+
+    lont = mesh['glamt'].values
+    latt = mesh['gphit'].values
+    tmask = mesh['tmask'].isel(z=0).values
+
+    lont, latt, tmask, var_to_plot = _reconstuct_variable(lont, latt, tmask, data)
+
+    if isinstance(axis, geoaxes.GeoAxesSubplot):
+        projected = True
+        # Extract non masked data and associated coordinates, store them
+        # in a 1D array
+        iok = np.nonzero(np.ma.getmaskarray(var_to_plot) == 0)
+        lon1d = lont[iok]
+        lat1d = latt[iok]
+        tp1d = var_to_plot[iok]
+
+        # Convert the geographical coordinates into map coords
+        projout = axis.projection
+        _temp = projout.transform_points(PROJIN, lon1d, lat1d)
+        lonout = _temp[..., 0]
+        latout = _temp[..., 1]
+        cl = proj_contour_function(lonout, latout, tp1d, **kwargs)
+    else:
+        projected = False
+        cl = contour_function(var_to_plot, **kwargs)
+    if projected and draw_land:
+        axis.add_feature(cfeature.LAND, zorder=1000)
+        axis.add_feature(cfeature.COASTLINE, zorder=1001)
+
+    return cl
+
+
+
+def _reconstuct_variable(lonf, latf, tmask, data):
+
+    var_to_plot_temp = data.values
+    nlat_grid, nlon_grid = lonf.shape
+    nlat_data, nlon_data = var_to_plot_temp.shape
+
+    # If the data array does not have the save dimension as the grid,
+    # i.e. new Nemo format, we reconstruct the zonal cyclicity
+    if (nlon_data == nlon_grid - 2) & (nlat_data == nlat_grid - 1):
+
+        # init an array of the same size as the grid except for
+        # the northfold band (top row)
+        var_to_plot = np.zeros((nlat_data, nlon_grid), dtype=float)
+
+        # fill inner bound
+        var_to_plot[:, 1:-1] = var_to_plot_temp
+
+        # add cyclicity
+        var_to_plot[:, 0] = var_to_plot[:, -2]
+        var_to_plot[:, -1] = var_to_plot[:, 1]
+
+        # Remove upper row
+        lonf = lonf[:-1, :]
+        latf = latf[:-1, :]
+        tmask = tmask[:-1, :]
+
+    else:
+        var_to_plot = var_to_plot_temp
+
+    var_to_plot = np.ma.masked_where((tmask == 0) | (np.isnan(var_to_plot)), var_to_plot)
+
+    return lonf, latf, tmask, var_to_plot
+
+
+
+# if __name__ == '__main__':
+
+#     DIRIN = '../doc/_static/example/data/'
+#     MESH = xr.open_dataset('%s/mesh_mask.nc' % DIRIN).isel(t=0)
+
+#     DATA = xr.open_dataset('%s/apecosm/apecosm_OOPE.nc' % DIRIN)
+#     DATA1 = DATA['OOPE'].mean(dim='time').isel(community=0, weight=0)
+#     DATA2 = DATA['OOPE'].mean(dim='time').isel(x=0, y=0)
+
+#     fig = plt.figure()
+#     axes = plt.axes()
+#     plot_pcolor_map(DATA1, MESH)
+#     plt.savefig('maps1.png', bbox_inches='tight')
+#     plt.close(fig)
+
+#     fig = plt.figure()
+#     axes = plt.axes(projection=ccrs.PlateCarree())
+#     plot_pcolor_map(DATA1, MESH)
+#     plt.savefig('maps2.png', bbox_inches='tight')
+#     plt.close(fig)

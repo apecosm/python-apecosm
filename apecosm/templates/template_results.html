@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <title>Apecosm report</title>
+    <link href="../css/styles.css" rel="stylesheet" type="text/css">
+
+</head>
+<body>
+
+    <section class="main-content">
+
+    <div style="text-align: center">
+    <img src="https://apecosm.org/wp-content/uploads/2020/10/cropped-logo_apecosm_sanstexte_rvb_300dpi-2.png" width="20%">
+    </div>
+
+<h1>Simulation results </h1>
+
+<h2> Domain </h2>
+
+<div style="text-align: center">
+    <img class="center" src={{ domain_figs }} width="80%">
+</div>
+
+</h2>
+
+<h2> Time series </h2>
+<div style="text-align: center">
+    <img src={{ ts_figs }} width="150%">
+</div>
+
+<h2> Mean size/weight </h2>
+
+<h3> Size </h3>
+<div style="text-align: center">
+    <img src={{ mean_length_figs }} width="150%">
+</div>
+
+<h3> Weights </h3>
+<div style="text-align: center">
+    <img src={{ mean_weight_figs }} width="150%">
+</div>
+
+
+<h2> Size spectra </h2>
+<div style="text-align: center">
+    <img class="center" src={{ spectra_figs }} width="80%">
+</div>
+
+<h2> Cumulated biomass </h2>
+<div style="text-align: center">
+    <img src={{ cumbiom_figs }} width="150%">
+</div>
+
+{% if repfonct_figs is defined %}
+<h2> Functional response </h2>
+<div style="text-align: center">
+    <img src={{ repfonct_figs }} width="150%">
+</div>
+{% endif %}
+
+{% if mort_figs is defined %}
+<h2> Mortality </h2>
+<div style="text-align: center">
+    <img src={{ mort_figs }} width="150%">
+</div>
+{% endif %}
+
+{% if diet_figs is defined %}
+<h2> Diets </h2>
+<div style="text-align: center">
+    <img src={{ diet_figs }} width="150%">
+</div>
+{% endif %}
+
+{% if maps_figs is defined %}
+<h2> Maps </h2>
+<div style="text-align: center">
+    <img src={{ maps_figs }} width="150%">
+</div>
+{% endif %}
+
+</section>
+
+</body>
+</html>
