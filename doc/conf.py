@@ -193,7 +193,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'Python_Apecosm_doc.tex', u'Documentation of the Apecosm Python package',
+    (master_doc, 'Python_Apecosm_doc.tex', f'Apecosm Python package v{version}',
      u'Nicolas Barrier, Jonathan Rault, Adrien Brunel, Olivier Maury', 'manual'),
 ]
 
