@@ -102,6 +102,7 @@ def plot_pcolor_map(data, mesh, axis=None, draw_land=True, **kwargs):
 
     if axis is None:
         axis = plt.gca()
+
     lonf = mesh['glamf'].values
     latf = mesh['gphif'].values
     tmask = mesh['tmask'].isel(z=0).values
@@ -110,11 +111,11 @@ def plot_pcolor_map(data, mesh, axis=None, draw_land=True, **kwargs):
 
     if isinstance(axis, geoaxes.GeoAxesSubplot):
         projected = True
-        quadmesh = plt.pcolormesh(lonf, latf, var_to_plot[1:, 1:],
+        quadmesh = axis.pcolormesh(lonf, latf, var_to_plot[1:, 1:],
                                   transform=PROJIN, **kwargs)
     else:
         projected = False
-        quadmesh = plt.pcolormesh(var_to_plot, **kwargs)
+        quadmesh = axis.pcolormesh(var_to_plot, **kwargs)
     if projected and draw_land:
         axis.add_feature(cfeature.LAND, zorder=1000)
         axis.add_feature(cfeature.COASTLINE, zorder=1001)
@@ -140,12 +141,7 @@ def plot_contour_map(data, mesh, filled=False, axis=None, draw_land=False, **kwa
 
     '''
 
-    if filled:
-        contour_function = plt.contourf
-        proj_contour_function = plt.tricontourf
-    else:
-        contour_function = plt.contour
-        proj_contour_function = plt.tricontour
+
 
     if not isinstance(data, xr.DataArray):
         message = 'The input must be a "xarray.DataArray" '
@@ -172,6 +168,14 @@ def plot_contour_map(data, mesh, filled=False, axis=None, draw_land=False, **kwa
 
     if axis is None:
         axis = plt.gca()
+
+    if filled:
+        contour_function = axis.contourf
+        proj_contour_function = axis.tricontourf
+    else:
+        contour_function = axis.contour
+        proj_contour_function = axis.tricontour
+
     lont = mesh['glamt'].values
     latt = mesh['gphit'].values
     tmask = mesh['tmask'].isel(z=0).values
@@ -182,7 +186,7 @@ def plot_contour_map(data, mesh, filled=False, axis=None, draw_land=False, **kwa
         projected = True
         # Extract non masked data and associated coordinates, store them
         # in a 1D array
-        iok = np.nonzero(tmask == 1)
+        iok = np.nonzero(np.ma.getmaskarray(var_to_plot) == 0)
         lon1d = lont[iok]
         lat1d = latt[iok]
         tp1d = var_to_plot[iok]
@@ -233,7 +237,7 @@ def _reconstuct_variable(lonf, latf, tmask, data):
     else:
         var_to_plot = var_to_plot_temp
 
-    var_to_plot = np.ma.masked_where(tmask == 0, var_to_plot)
+    var_to_plot = np.ma.masked_where((tmask == 0) | (np.isnan(var_to_plot)), var_to_plot)
 
     return lonf, latf, tmask, var_to_plot
 
