@@ -26,8 +26,8 @@ The reading of Apecosm outputs as long as some computations
    config.rst
    opening_data.rst
    data_extract.rst
-   mapping.rst
    computations.rst
+   mapping.rst
    examples.rst
    api.rst
    biblio.rst
