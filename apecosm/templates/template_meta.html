@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <title>Apecosm report</title>
+    <link href="../css/styles.css" rel="stylesheet" type="text/css">
+    
+</head>
+<body>
+    
+<section class="main-content">
+
+    <div style="text-align: center">
+<img src="https://apecosm.org/wp-content/uploads/2020/10/cropped-logo_apecosm_sanstexte_rvb_300dpi-2.png" width="20%">
+    </div>
+
+<h1>Simulation description </h2>
+
+<h2>Duration</h2>
+
+<table>
+    
+    <tbody>
+    <tr>
+    <td>Beginning</td>
+    <td>{{ start_date }}</td>
+    </tr>
+    <tr>
+        <td>End</td>
+        <td>{{ end_date }}</td>
+    </tr>
+    
+</table>
+
+<h2>Dimensions</h2>
+
+<table>
+    <tbody>    
+    <tr>
+    {% for item in list_dims %}
+        <td>{{ item }}</td>
+    {% endfor %}        
+    </tr>
+    <tr>
+    {% for item in list_dims %}
+        <td>{{ dims[item] }}</td>
+        {% endfor %}
+    </tr>
+</tbody>
+
+</table>
+
+<h2> Communities </h2>
+
+<table>
+    <tbody>    
+    <tr>
+    {% for item in community_names %}
+        <td>{{ item }}</td>
+    {% endfor %}        
+    </tr>
+    <tr>
+    {% for item in community_names %}
+        <td>{{ community_names[item] }}</td>
+        {% endfor %}
+    </tr>
+</tbody>
+</table>
+
+{% if fleet_names is defined %}
+<h2> Fisheries </h2>
+
+<table>
+    <tbody>
+    <tr>
+    {% for item in fleet_names %}
+        <td>{{ item }}</td>
+    {% endfor %}
+    </tr>
+    <tr>
+    {% for item in fleet_names %}
+        <td>{{ fleet_names[item] }}</td>
+        {% endfor %}
+    </tr>
+</tbody>
+</table>
+{% endif %}
+
+</section>
+
+</body>
+</html>

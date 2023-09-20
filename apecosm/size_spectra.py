@@ -15,9 +15,10 @@ import xarray as xr
 import apecosm.constants as co
 import apecosm.misc
 import apecosm.conf
+from .misc import extract_community_names
 
 
-def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight'):
+def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight', **kwargs):
 
     r'''
     Computes the size/weight spectra for lower trophic levels
@@ -65,13 +66,13 @@ def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight'):
 
     # multiply conversion factor from C to E
     conv *= co.C_E_CONVERT
-    data *= conv
+    data = data * conv
 
-    if isinstance(data, xr.DataArray):
-        print('Data is converted into a numpy array')
-        data = data.values
-        data = np.ma.masked_where(np.isnan(data), data)
-        data = np.atleast_1d(data)
+    # if isinstance(data, xr.DataArray):
+    #     print('Data is converted into a numpy array')
+    #     data = data.values
+    #     data = np.ma.masked_where(np.isnan(data), data)
+    #     data = np.atleast_1d(data)
 
     # L is a 2d array
     L = np.sort(L)
@@ -80,38 +81,34 @@ def compute_spectra_ltl(data, L, N=100, conv=1e-3, output_var='weight'):
         print(message)
         sys.exit(0)
 
-    # if float provided, converted into array for calculation convenience.
-    if isinstance(data, np.float64):
-        data = np.atleast_1d(data)
-
-    if data.ndim != 1:
-        message = 'Number of dimensions must be one.'
-        print(message)
-        sys.exit(0)
-
     # Convert L into W using allometric formulae
     W = apecosm.misc.size_to_weight(L)
 
     # generate a vector of weights and length
-    wvec = np.linspace(W[0], W[1], N)
-    lvec = np.linspace(L[0], L[1], N)
+    wvec = xr.DataArray(data=np.linspace(W[0], W[1], N), dims='l')
+    lvec = xr.DataArray(data=np.linspace(L[0], L[1], N), dims='l')
 
-    # Convert W, L and data into consistent arrays
-    data2d, wvec2d = np.meshgrid(data, wvec)
-    data2d, lvec2d = np.meshgrid(data, lvec)
+    # broadcast arrays
+    data, lvec2 = xr.broadcast(data, lvec)
+    data, wvec2 = xr.broadcast(data, wvec)
 
-    alpha = data2d / np.log(W[1] / W[0])
-    beta = data2d / np.log(L[1] / L[0])
-    rho = alpha * np.power(wvec2d, -1)
-    rhoL = beta * np.power(lvec2d, -1)
+    alpha = data / np.log(W[1] / W[0])
+    beta = data / np.log(L[1] / L[0])
+    rho = alpha * np.power(wvec2, -1)
+    rhoL = beta * np.power(lvec2, -1)
 
     if output_var == 'weight':
-        return wvec2d, rho
+        x = wvec
+        y = rho
     else:
-        return lvec2d, rhoL
+        x = lvec
+        y = rhoL
+
+    l = plt.plot(x, y.T, **kwargs)
+    return l[0]
 
 
-def plot_oope_spectra(data, output_var='length', config=None, **kwargs):
+def plot_oope_spectra(data, const, output_var='weight', **kwargs):
 
     r'''
     Plots the OOPE size spectra. Since OOPE data are
@@ -139,42 +136,39 @@ def plot_oope_spectra(data, output_var='length', config=None, **kwargs):
 
     '''
 
-    message = 'The input dataset must be have two dimensions '
-    message += '(community, weight)'
+    message = 'The input dataset must be have (community, weight) dimensions '
 
-    if data['OOPE'].ndim != 2:
+    if 'c' not in data.dims:
         print(message)
         sys.exit(0)
 
-    if 'community' not in data['OOPE'].dims:
-        print(message)
-        sys.exit(0)
-
-    if 'weight' not in data['OOPE'].dims:
+    if 'w' not in data.dims:
         print(message)
         sys.exit(0)
 
     # recovers the default cmap
     cmap = getattr(plt.cm, plt.rcParams['image.cmap'])
 
-    oope = data['OOPE'].values
-    weight = data['weight'].values
-    length = data['length'].values
-    commnames = apecosm.misc.extract_community_names(data)
-    comm = data['community'].values.astype(np.int)
+    weight = const['weight']
+    length = const['length']
 
     if output_var == 'length':
-        wstep, lstep = apecosm.grid.extract_weight_grid(config)
-        oope = oope * wstep[np.newaxis, :] / lstep[np.newaxis, :]
+        wstep = const['weight_step']  # kg
+        lstep = const['length_step']  # l
+        data = data * wstep / lstep
         xvar = length
     else:
         xvar = weight
 
-    ax = plt.gca()
-    for icom in comm:
-        color = cmap(float(icom) / len(comm))
-        ax.scatter(xvar, oope[icom], c=color, label=commnames[icom], **kwargs)
+    comnames = extract_community_names(const)
 
+    ax = plt.gca()
+    l = []
+    for icom in data['c'].values:
+        color = cmap(float(icom) / len(data['c']))
+        lll = ax.plot(xvar.isel(c=icom), data.isel(c=icom).T, color=color, label=comnames[icom], **kwargs)
+        l.append(lll[0])
+    return l
 
 def set_plot_lim():
 
