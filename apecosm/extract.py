@@ -55,8 +55,16 @@ def open_constants(dirin, replace_dims=None):
         constant = constant.rename(replace_dims)
     return constant
 
+def _check_file(f, varlist):
+    
+    for v in varlist:
+        if v in f:
+            return True
 
-def open_apecosm_data(dirin, replace_dims=None, **kwargs):
+    return False
+
+
+def open_apecosm_data(dirin, replace_dims=None, varlist=None, **kwargs):
 
     '''
     Opens Apecosm outputs.
@@ -78,6 +86,12 @@ def open_apecosm_data(dirin, replace_dims=None, **kwargs):
 
     # open the dataset
     filelist.sort()
+
+    if varlist is not None:
+        if isinstance(varlist, str):
+            varlist = [varlist]
+        filelist = [f for f in filelist if _check_file(f, varlist)] 
+    
     data = xr.open_mfdataset(filelist, **kwargs)
     if replace_dims is not None:
         data = data.rename(replace_dims)
