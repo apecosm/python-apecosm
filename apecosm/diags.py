@@ -1,13 +1,10 @@
-'''
+"""
 Module for analysing Apecosm outputs
-'''
+"""
 
-from .extract import extract_oope_data
+def compute_size_cumprop(data, const):
 
-
-def compute_size_cumprop(mesh, data, const, maskdom=None):
-
-    '''
+    """
     Computes the cumulated biomass proportion as
     a function of length.
 
@@ -17,13 +14,11 @@ def compute_size_cumprop(mesh, data, const, maskdom=None):
     :type mesh: :class:`xarray.Dataset`
     :param const: Apecosm constants datasets
     :type const: :class:`xarray.Dataset`
-    :param const: Mask array. If None, full domain
-        is considered
-    :type const: :class:`numpy.array`
+    :param mask_dom: Mask array. If None, full domain is considered
+    :type mask_dom: :class:`numpy.array`
+    """
 
+    data = data * const['weight_step']
+    output = data.cumsum(dim='w') / data.sum(dim='w') * 100
 
-    '''
-
-    output = extract_oope_data(data, mesh, const, maskdom, use_wstep=True)
-    output = output.cumsum(dim='w') / output.sum(dim='w') * 100
     return output

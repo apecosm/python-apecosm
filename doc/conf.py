@@ -20,8 +20,39 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 import os
+import zipfile
+import requests
+from io import BytesIO
 import sys
 import apecosm
+
+def create_folders():
+
+    for folders in ['computations', 'mapping']:
+
+        path = os.path.join(folders, '_static')
+        # Check whether the specified path exists or not
+        isExist = os.path.exists(path)
+        if not isExist:
+            # Create a new directory because it does not exist
+            os.makedirs(path)
+            print("The new directory is created!")
+
+
+def download_data():
+
+    path = 'data'
+    data_path_exists = os.path.exists(path)
+    if not data_path_exists:
+        print("Downloading documentation dat from Zenodo:")
+        url = 'https://zenodo.org/record/8359464/files/python_apecosm_doc_data.zip'
+        print(f'URL: {url}')
+        req = requests.get(url)
+        os.makedirs(path)
+        zfile = zipfile.ZipFile(BytesIO(req.content))
+        zfile.extractall('data')
+    else:
+        print("Data folder already exists")
 
 # -- General configuration ------------------------------------------------
 
@@ -38,10 +69,12 @@ extensions = ['sphinx.ext.todo',
     'sphinx.ext.autosummary',
     'sphinx.ext.mathjax',
     'sphinx.ext.githubpages',
+    'matplotlib.sphinxext.plot_directive',
     'sphinxcontrib.bibtex',
     'IPython.sphinxext.ipython_directive',
     'IPython.sphinxext.ipython_console_highlighting',
     'sphinxcontrib.programoutput',
+    "nbsphinx"
 ]
 
 bibtex_bibfiles = ['_static/biblio.bib']
@@ -61,7 +94,7 @@ master_doc = 'index'
 # General information about the project.
 project = u'Apecosm Python package'
 copyright = u'2017, Olivier Maury, Philippe Verley, Nicolas Barrier'
-author = u'Olivier Maury, Philippe Verley, Nicolas Barrier'
+author = u'Nicolas Barrier, Jonathan Rault, Adrien Brunel, Olivier Maury'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -81,7 +114,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'alias.rst', 'index_private.rst', 'index_public.rst']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'alias.rst', 'index_private.rst', 'index_public.rst', 'wgrid.rst', 'zgrid.rst']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -108,6 +141,8 @@ numfig = True
 # use sections as a reference for figures: X.1, X.2 with X the section
 numfig_secnum_depth = (1)
 
+download_data()
+create_folders()
 
 import sphinx_rtd_theme
 html_theme = "sphinx_rtd_theme"
@@ -126,7 +161,7 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 html_static_path = ['_static']
 
 # see https://github.com/rtfd/sphinx_rtd_theme/issues/117
-#html_context = {'css_files': ['_static/theme_overrides.css']}
+# html_context = {'css_files': ['_static/theme_overrides.css']}
 
 # -- Options for HTMLHelp output ------------------------------------------
 
@@ -158,8 +193,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'APECOSM.tex', u'APECOSM Documentation',
-     u'Olivier Maury, Philippe Verley, Nicolas Barrier', 'manual'),
+    (master_doc, 'Python_Apecosm_doc.tex', f'Apecosm Python package v{version}',
+     u'Nicolas Barrier, Jonathan Rault, Adrien Brunel, Olivier Maury', 'manual'),
 ]
 
 
@@ -168,7 +203,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'apecosm', u'APECOSM Documentation',
+    (master_doc, 'apecosm', u'Documentation of the Apecosm Python package',
      [author], 1)
 ]
 
@@ -179,7 +214,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'APECOSM', u'APECOSM Documentation',
+    (master_doc, 'APECOSM', u'Documentation of the Apecosm Python package',
      author, 'APECOSM', 'One line description of project.',
      'Miscellaneous'),
 ]

@@ -7,11 +7,12 @@ authors:
   - family-names: Rault
     given-names: Jonathan
     orcid: https://orcid.org/0009-0008-5880-9028
+  - family-names: Brunel
+    given-names: Adrien
+    orcid: 0000-0001-9761-6925
   - family-names: Maury
     given-names: Olivier
     orcid: https://orcid.org/0000-0002-7999-9982
 
 title: APECOSM Python package
-version: 1.0.2
-date-released: 2023-02-28
 doi: 10.5281/zenodo.4110303

@@ -55,17 +55,36 @@
 <table>
     <tbody>    
     <tr>
-    {% for item in comnames %}
+    {% for item in community_names %}
         <td>{{ item }}</td>
     {% endfor %}        
     </tr>
     <tr>
-    {% for item in comnames %}
-        <td>{{ comnames[item] }}</td>
+    {% for item in community_names %}
+        <td>{{ community_names[item] }}</td>
         {% endfor %}
     </tr>
 </tbody>
 </table>
+
+{% if fleet_names is defined %}
+<h2> Fisheries </h2>
+
+<table>
+    <tbody>
+    <tr>
+    {% for item in fleet_names %}
+        <td>{{ item }}</td>
+    {% endfor %}
+    </tr>
+    <tr>
+    {% for item in fleet_names %}
+        <td>{{ fleet_names[item] }}</td>
+        {% endfor %}
+    </tr>
+</tbody>
+</table>
+{% endif %}
 
 </section>
 
