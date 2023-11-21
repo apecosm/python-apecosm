@@ -4,15 +4,19 @@
    contain the root `toctree` directive.
 
 .. only:: html
-    
+
     .. image:: _static/logo-apecosm.*
        :width: 250 px
        :align: center
 
 |
 
-Apecosm model documentation
-================================
+Apecosm python package documentation
+=================================================
+
+In the present document, the use of the Apecosm python package is described.
+The reading of Apecosm outputs as long as some computations
+(size-spectra, computation of mean length, diet matrix) are presented.
 
 .. toctree::
    :maxdepth: 2
@@ -20,8 +24,10 @@ Apecosm model documentation
    :numbered:
 
    config.rst
-   wgrid.rst
-   zgrid.rst
+   opening_data.rst
    data_extract.rst
+   computations.rst
+   mapping.rst
+   examples.rst
    api.rst
    biblio.rst
