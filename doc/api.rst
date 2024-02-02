@@ -21,7 +21,7 @@ Reading grid
    :toctree: generated
 
    extract_weight_grid
-   read_ape_grid 
+   read_ape_grid
    partial_step_ape
    plot_grid_nemo_ape
 
@@ -39,6 +39,9 @@ Data extraction
    extract_time_means
    extract_oope_data
    generate_mask
+   spatial_mean_to_integral
+   extract_mean_size
+   extract_weighted_data
 
 Habitat
 -----------------------
@@ -67,7 +70,7 @@ Miscellaneous
 Maps
 -----------------------
 
-.. warning:: 
+.. warning::
 
     The following functions need the PyNgl library. This could be done by
     setting up a virtual environment.
@@ -77,7 +80,8 @@ Maps
 .. autosummary::
    :toctree: generated
 
-   plot_oope_map
+   plot_pcolor_map
+   plot_contour_map
 
 
 Size spectra
@@ -88,5 +92,3 @@ Size spectra
 
    compute_spectra_ltl
    plot_oope_spectra
-
-

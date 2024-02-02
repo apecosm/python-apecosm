@@ -17,63 +17,26 @@
 <h1>Input variables </h2>
 
 <h2> Lengths </h2>
-
-<table id="tablefigs">
-    <tbody>
-        {% for item in length_figs %}
-            <tr>
-                <td id="tdfigs">
-                    <div style="text-align: center">
-                <img src={{ length_figs[item] }} width="80%">
-            </div>
-                </td>
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div style="text-align: center">
+    <img src={{ length_figs }} width="150%">
+</div>
 
 <h2> Weights </h2>
-
-<table id="tablefigs">
-    <tbody>
-            {% for item in weight_figs %}
-                <tr>
-                    <td id="tdfigs">
-                        <div style="text-align: center">
-                        <img src={{ weight_figs[item] }} width="80%">
-                        </div>
-                    </td>
-                </tr>
-            {% endfor %}
-        </tr>
-    </tbody>
-</table>
+<div style="text-align: center">
+    <img src={{ weight_figs }} width="150%">
+</div>
 
 <h2> Trophic Interactions </h2>
-
 <div style="text-align: center">
     <img src={{ trophic_figs }} width="80%">
 </div>
 
 <h2> LTL selectivities </h2>
+<div style="text-align: center">
+    <img src={{ select_figs }} width="150%">
+</div>
 
-<table id="tablefigs">
-    <tbody>
-            {% for item in select_figs %}
-                <tr>
-                    <td id="tdfigs">
-                        <div style="text-align: center">
-                        <img src={{ select_figs[item] }} width="80%">
-                        </div>
-                    </td>
-                </tr>
-            {% endfor %}
-        </tr>
-    </tbody>
-</table>
-
-
-
+</h1>
 </section>
 </body>
 </html>

@@ -111,7 +111,7 @@ text-decoration: underline; }
 margin-top: 0px; }
 
 .main-content img {
-max-width: 100%; }
+max-width: 200%; }
 
 @media screen and (min-width: 64em) {
     .main-content {
