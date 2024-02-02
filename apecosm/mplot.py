@@ -73,12 +73,6 @@ def plot_oope_map(data, mesh, axis=None, **kwargs):
     else:
         projected = False
         quadmesh = plt.pcolormesh(lonf, latf, var_to_plot, **kwargs)
-    if projected:
-        try:
-            axis.add_feature(cfeature.LAND, zorder=1000)
-            axis.add_feature(cfeature.COASTLINE, zorder=1001)
-        except:
-            pass
 
     return quadmesh
 
