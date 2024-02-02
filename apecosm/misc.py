@@ -1,5 +1,6 @@
 ''' Module that contains some miscellaneous functions '''
 
+import os
 import numpy as np
 from .constants import ALLOM_W_L
 
@@ -90,15 +91,15 @@ def extract_community_names(const):
     :return: The list of community names
     '''
 
-    comnames = {}
+    comnames = []
     attrlist = [attr for attr in const.attrs if attr.startswith('Community_')]
     if len(attrlist) != 0:
         for attr in attrlist:
-            comnames[attr.replace('_', ' ')] = const.attrs[attr]
+            comnames.append(const.attrs[attr])
     else:
         for community_index in range(const.dims['c']):
-            name = 'Community %d' % community_index
-            comnames[name] = name
+            name = f'Community {community_index}'
+            comnames.append(name)
     return comnames
 
 
@@ -128,6 +129,76 @@ def weight_to_size(weight):
     '''
 
     return np.power(weight / ALLOM_W_L, 1/3.)
+
+
+def compute_mean_min_max_ts(timeserie, period):
+
+    '''
+        Compute the mean, min and max value of timeserie ts over time of length period
+
+        :param timeserie: timeserie (containing a time field).
+        :param period: number of time step upon which are computed mean, min and max value of ts.
+
+        :type ts: xarray with a field named time
+        :type period: int
+    '''
+
+    number_subperiods = int(len(timeserie.time)/period)
+    average = np.zeros(number_subperiods)
+    maxi = np.zeros(number_subperiods)
+    mini = np.zeros(number_subperiods)
+    time = np.zeros(number_subperiods)
+    if period <= 1:
+        average = timeserie.values()
+        maxi = timeserie.values()
+        mini = timeserie.values()
+        time = timeserie.time
+        print("WARNING : period <= 1 --> raw timeserie returned")
+    elif period >= len(timeserie.time):
+        average = timeserie.mean()
+        maxi = timeserie.max()
+        mini = timeserie.min()
+        time = 0
+        print("WARNING : period >= length(timeserie) --> mean, max, min values of timeserie returned")
+    else:
+        cpt = 0
+        while cpt < number_subperiods:
+            average[cpt] = timeserie[(cpt * period):((cpt + 1) * period - 1)].mean()
+            maxi[cpt] = timeserie[(cpt * period):((cpt + 1) * period - 1)].max()
+            mini[cpt] = timeserie[(cpt * period):((cpt + 1) * period - 1)].min()
+            time[cpt] = timeserie.time[cpt * period]
+            cpt = cpt + 1
+    return average, maxi, mini, time
+
+
+def extract_fleet_names(dirin):
+
+    '''
+    Extracts fleet names from the fishing configuration file.
+
+    :param str: configuration path
+
+    :return: The list of fleet names
+    '''
+
+    fishing_model = os.path.join(dirin, 'fishing_model.conf')
+    with open(fishing_model, 'r', encoding='utf-8') as fout:
+        for line in fout:
+            if "nb_fishing_fleets" in line.strip():
+                _, nb_fleet_str = line.split('=')
+                nb_fleet = int(nb_fleet_str)
+
+    fleet_names = {}
+    for i in np.arange(nb_fleet):
+        fleet_fname = os.path.join(dirin, 'fleet_' + str(i) + '.conf')
+        with open(fleet_fname, 'r', encoding='utf-8') as fout:
+            for line in fout:
+                if "fleet_name" in line.strip():
+                    _, fleet_name_str = line.split('=')
+                    fleet_names[i] = fleet_name_str[:-1]
+
+    return fleet_names
+
 
 
 if __name__ == '__main__':
