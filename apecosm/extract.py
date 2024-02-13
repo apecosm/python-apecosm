@@ -95,7 +95,7 @@ def open_apecosm_data(dirin, replace_dims=None, varlist=None, **kwargs):
     return data
 
 
-def open_ltl_data(dirin, replace_dims=None, **kwargs):
+def open_ltl_data(dirin, suffix=None, replace_dims=None, **kwargs):
 
     """
     Opens NEMO/PISCES outputs.
@@ -108,9 +108,17 @@ def open_ltl_data(dirin, replace_dims=None, **kwargs):
     :type replace_dims: dict, optional
     """
 
-    pattern = os.path.join(dirin, '*.nc')
-    filelist = glob(pattern)
-    filelist.sort()
+    if suffix is None:
+        pattern = os.path.join(dirin, '*.nc')
+        filelist = glob(pattern)
+        filelist.sort()
+
+    else:
+        filelist = []
+        for s in suffix:
+            pattern =  os.path.join(dirin, f'*{s}*.nc')
+            filelist +=  glob(pattern)
+        filelist.sort()
 
     data = xr.open_mfdataset(filelist, **kwargs)
     if replace_dims is not None:
