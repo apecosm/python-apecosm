@@ -283,7 +283,7 @@ def extract_time_means(data, time=None):
     if time is None:
         climatology = data.mean(dimname)
     else:
-        climatology = data.groupby(f'time.{time}').mean(dimname)
+        climatology = data.groupby(f'{dimname}.{time}').mean(dimname)
 
     return climatology
 
