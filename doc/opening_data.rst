@@ -117,6 +117,7 @@ For instance in case of very heavy simulations
 the processing can be provided as follows:
 
 .. ipython:: python
+   :okwarning:
 
     data_chunked = apecosm.open_apecosm_data(os.path.join('doc', 'data', 'apecosm'),
                                              chunks={'time': 1, 'x': 50, 'y': 50})
