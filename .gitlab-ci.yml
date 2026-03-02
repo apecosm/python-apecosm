@@ -20,7 +20,7 @@ build-pages:
   - pip install --upgrade pip
   - apt install -y libnetcdf-dev
   - pip install sphinx sphinxcontrib-bibtex sphinxcontrib-htmlhelp sphinxcontrib-mermaid sphinxcontrib-programoutput sphinx-rtd-theme linkify-it-py
-  - pip install ipython myst_parser
+  - pip install ipython myst_parser nbsphinx pandoc
   - pip install xarray cartopy netCDF4 nc-time-axis psutil jinja2 dask
   - pip install . 
   - sphinx-build -b html doc/ public  
