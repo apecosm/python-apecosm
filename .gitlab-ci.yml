@@ -9,6 +9,7 @@ build-pages:
     paths:
       - .cache/pip
       - .venv
+      - data
   script:
   - apt update -y
   - DEBIAN_FRONTEND=noninteractive apt install -y python3.10 pipx python-is-python3 python3-venv git
