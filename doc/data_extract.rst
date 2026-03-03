@@ -7,6 +7,7 @@ Data extraction
 
 .. ipython:: python
     :suppress:
+    :okwarning:
 
     import sys
     import os
@@ -50,6 +51,7 @@ of the :math:`(i, j)` cell, :math:`c` is the community and
 :math:`w` is the size-class. It is called as follows:
 
 .. ipython:: python
+    :okwarning:
 
     spatial_mean = apecosm.extract_oope_data(data['OOPE'], mesh)
     spatial_mean
@@ -65,6 +67,7 @@ the denominator of :eq:`oope_mean`, which is stored as
 the ``horizontal_norm_weight`` attribute
 
 .. ipython:: python
+    :okwarning:
 
     spatial_integral = apecosm.spatial_mean_to_integral(spatial_mean)
     spatial_integral
@@ -74,6 +77,7 @@ mask in order to extract the data over a given region. For instance, if we
 have a file containing different domains masks:
 
 .. ipython:: python
+    :okwarning:
 
     domain_ds = xr.open_dataset(os.path.join('doc', 'data', 'domains.nc'))
     domain_ds
@@ -82,12 +86,14 @@ We can extract the mean biomass over this domain as follows:
 
 .. ipython:: python
     .. ipython:: python
+    :okwarning:
 
     regional_spatial_mean = apecosm.extract_oope_data(data['OOPE'], mesh, domain_ds['domain_1'])
     regional_spatial_mean
 
 .. ipython:: python
     :suppress:
+    :okwarning:
 
     fig = plt.figure()
     lonf = mesh['glamf']
@@ -131,6 +137,7 @@ It is achieved by using the :py:func:`apecosm.extract_ltl_data`
 function:
 
 .. ipython:: python
+    :okwarning:
 
     spatial_mean_phy2 = apecosm.extract_ltl_data(ltl_data['PHY2'], mesh)
     spatial_mean_phy2
@@ -144,6 +151,7 @@ integrated biomass. Therefore, vertical integration need to be performed
 on LTL outputs in order to draw the size-spectra.
 
 .. ipython:: python
+    :okwarning:
     :suppress:
 
     fig = plt.figure()
@@ -161,6 +169,7 @@ However, it remains possible to convert the horizontal average into an
 horizontal integral as follows:
 
 .. ipython:: python
+    :okwarning:
 
     spatial_integral_phy2 = apecosm.spatial_mean_to_integral(spatial_mean_phy2)
     spatial_integral_phy2
@@ -171,6 +180,7 @@ For instance, to compute the average between 0 and 200m over the
 domain defined above:
 
 .. ipython:: python
+    :okwarning:
 
     spatial_0_200_reg_mean_phy2 = apecosm.extract_ltl_data(ltl_data['PHY2'],
                                                            mesh,
@@ -181,6 +191,7 @@ domain defined above:
 
 .. ipython:: python
     :suppress:
+    :okwarning:
 
     fig = plt.figure()
     spatial_0_200_reg_mean_phy2.plot()
