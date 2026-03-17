@@ -53,7 +53,7 @@ def open_constants(dirin, replace_dims=None):
     return constant
 
 def _check_file(f, varlist):
-    
+
     for v in varlist:
         if v in f:
             return True
@@ -87,8 +87,8 @@ def open_apecosm_data(dirin, replace_dims=None, varlist=None, **kwargs):
     if varlist is not None:
         if isinstance(varlist, str):
             varlist = [varlist]
-        filelist = [f for f in filelist if _check_file(f, varlist)] 
-    
+        filelist = [f for f in filelist if _check_file(f, varlist)]
+
     data = xr.open_mfdataset(filelist, **kwargs)
     if replace_dims is not None:
         data = data.rename(replace_dims)
@@ -334,6 +334,17 @@ def extract_mean_size(spatially_integrated_biomass, const, varname, ):
 
     return output
 
+"""
+Function that potentially reshape mesh file for data extraction
+"""
+def _shrink_mesh(mesh, data):
+
+    if (data.sizes['y'] == (mesh.sizes['y'] - 1)) & (data.sizes['x'] == (mesh.sizes['x'] - 2)):
+        # if data is on T grid, we need to remove the last line and column of the mesh
+        mesh = mesh.isel(y=slice(0, -1), x=slice(1, -1))
+
+    return mesh
+
 
 def extract_weighted_data(data, const, mesh, varname,
                           mask_dom=None, dims=('x', 'y')):
@@ -358,6 +369,8 @@ def extract_weighted_data(data, const, mesh, varname,
 
     """
 
+    mesh = _shrink_mesh(mesh, data)
+
     if 'tmaskutil' in mesh.variables:
         tmask = mesh['tmaskutil']
     else:
@@ -370,6 +383,8 @@ def extract_weighted_data(data, const, mesh, varname,
         mask_dom = np.ones(tmask.shape)
 
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
+    mask_dom = _shrink_mesh(mask_dom, data)
+
     tmask = tmask * mask_dom
 
     oope = data['OOPE']
@@ -406,6 +421,8 @@ def extract_oope_data(data, mesh, mask_dom=None):
 
     """
 
+    mesh = _shrink_mesh(mesh, data)
+
     surf = mesh['e2t'] * mesh['e1t']
 
     if 'tmaskutil' in mesh.variables:
@@ -418,6 +435,7 @@ def extract_oope_data(data, mesh, mask_dom=None):
         mask_dom = np.ones(tmask.shape)
 
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
+    mask_dom = _shrink_mesh(mask_dom, data)
 
     # add virtual dimensions to domain mask and
     # correct landsea mask
