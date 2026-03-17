@@ -18,6 +18,7 @@ from .extract import extract_oope_data, extract_time_means, open_apecosm_data, o
 from .misc import extract_community_names, compute_mean_min_max_ts, extract_fleet_names
 from .size_spectra import plot_oope_spectra
 from dask.diagnostics import ProgressBar
+from .extract import _shrink_mesh
 
 plt.rcParams['text.usetex'] = False
 
@@ -381,6 +382,7 @@ def _plot_integrated_time_series(spatial_integrated_biomass, report_dir, mesh, c
 def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
 
     crs_in = ccrs.PlateCarree()
+    mesh = _shrink_mesh(mesh, data)
 
     lon_f = np.squeeze(mesh['glamf'].values)
     lat_f = np.squeeze(mesh['gphif'].values)
@@ -388,6 +390,8 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
     if mask_dom is None:
         mask_dom = np.ones(lon_f.shape)
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
+    mask_dom = _shrink_mesh(mask_dom, data)
+
 
     community_names = extract_community_names(const)
 
@@ -427,8 +431,14 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
     fig, axes = plt.subplots(n_row, n_col, figsize=(n_col * FIG_WIDTH, n_row * FIG_HEIGHT), dpi=FIG_DPI, subplot_kw={'projection': crs_out})
     c = 0
     ccc = 0
+    cpt = 0
     for i in range(n_row):
+        if(ccc > n_community):
+            break
         for j in range(n_col):
+            if(ccc > n_community):
+                break
+            print(cpt)
             print("i =", i)
             print("j =", j)
             print("cpu% = ", psutil.cpu_percent())
@@ -457,6 +467,7 @@ def _plot_mean_maps(report_dir, mesh, data, const, crs_out, mask_dom, dom_name):
             else:
                 ax = plt.subplot(n_row, n_col, ccc)
                 ax.axis('off')
+            cpt += 1
     output.close()
     del output
     fig.tight_layout()
