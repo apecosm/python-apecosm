@@ -428,7 +428,7 @@ def extract_oope_data(data, mesh, mask_dom=None):
     if 'tmaskutil' in mesh.variables:
         tmask = mesh['tmaskutil']
     else:
-        tmask = mesh['tmask']
+        tmask = mesh['tmask'].isel(z=0)
 
     # extract the domain coordinates
     if mask_dom is None:
