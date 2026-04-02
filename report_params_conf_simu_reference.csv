@@ -1,0 +1,21 @@
+output_dir, /home/adrien/MEGA/Pro/Apecosm/Datarmor/FileZilla/CONFIG_RP_INTA_V1/output/
+mesh_file, /home/adrien/MEGA/Pro/Apecosm/Datarmor/FileZilla/CONFIG_RP_INTA_V1/corrected-eORCA1L75_grid.nc
+fishing_output_dir, /home/adrien/MEGA/Pro/Apecosm/Datarmor/FileZilla/CONFIG_RP_INTA_V1/fishing-outputs/
+fishing_config_dir, /home/adrien/MEGA/Pro/Apecosm/Datarmor/FileZilla/CONFIG_RP_INTA_V1/fishing-config/
+FONT_SIZE, 25
+LABEL_SIZE, 25
+THIN_LWD, 1
+REGULAR_LWD, 2
+THICK_LWD, 4
+COL_GRID, (190/256, 190/256, 190/256)
+REGULAR_TRANSP, 0.80
+HIGH_TRANSP, 0.25
+FIG_WIDTH, 12
+FIG_HEIGHT, 6
+FIG_DPI, 100
+CB_SHRINK, 0.7
+CB_THRESH, 5
+COL_MAP, RdYlBu_r
+FISHING_PERIOD, 1AS
+APECOSM_PERIOD, 1
+LAND_BACKGROUND, True

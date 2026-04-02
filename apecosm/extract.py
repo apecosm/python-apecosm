@@ -22,9 +22,10 @@ def open_mesh_mask(mesh_file, replace_dims=None):
     :rtype: :class:`xarray.Dataset`
     """
 
-    # open the mesh file, extract tmask, lonT and latT
+    # open the mesh file, extract t_mask, lonT and latT
     mesh = xr.open_dataset(mesh_file)
     if replace_dims is not None:
+        mesh = mesh.rename(replace_dims)
         mesh = mesh.rename(replace_dims)
     if 't' in mesh.dims:
         mesh = mesh.isel(t=0)
@@ -32,21 +33,21 @@ def open_mesh_mask(mesh_file, replace_dims=None):
     return mesh
 
 
-def open_constants(dirin, replace_dims=None):
+def open_constants(dir_in, replace_dims=None):
 
     """
     Opens an Apecosm constant file. It will look for
     a file that contains `Constant`.
 
-    :param dirin: Input directory.
-    :type dirin: str
+    :param dir_in: Input directory.
+    :type dir_in: str
 
     :param replace_dims: Dictionnary that is used to
         rename dimensions
     :type replace_dims: dict, optional
     """
 
-    path = os.path.join(dirin, '*Constant*.nc')
+    path = os.path.join(dir_in, '*Constant*.nc')
     constant = xr.open_mfdataset(path)
     if replace_dims is not None:
         constant = constant.rename(replace_dims)
@@ -61,23 +62,23 @@ def _check_file(f, varlist):
     return False
 
 
-def open_apecosm_data(dirin, replace_dims=None, varlist=None, **kwargs):
+def open_apecosm_data(dir_in, replace_dims=None, varlist=None, **kwargs):
 
     """
     Opens Apecosm outputs.
 
-    :param dirin: Input directory.
-    :type dirin: str
+    :param dir_in: Input directory.
+    :type dir_in: str
 
     :param replace_dims: Dictionnary that is used to
         rename dimensions
     :type replace_dims: dict, optional
     """
 
-    pattern = os.path.join(dirin, '*.nc.*')
+    pattern = os.path.join(dir_in, '*.nc.*')
     filelist = glob(pattern)
     if len(filelist) == 0:
-        pattern = os.path.join(dirin, '*.nc')
+        pattern = os.path.join(dir_in, '*.nc')
         filelist = glob(pattern)
         filelist = [f for f in filelist if 'Constant' not in f]
 
@@ -94,14 +95,13 @@ def open_apecosm_data(dirin, replace_dims=None, varlist=None, **kwargs):
         data = data.rename(replace_dims)
     return data
 
-
-def open_ltl_data(dirin, suffix=None, replace_dims=None, **kwargs):
+def open_ltl_data(dir_in, suffix=None, replace_dims=None, **kwargs):
 
     """
     Opens NEMO/PISCES outputs.
 
-    :param dirin: Input directory.
-    :type dirin: str
+    :param dir_in: Input directory.
+    :type dir_in: str
 
     :param replace_dims: Dictionnary that is used to
         rename dimensions
@@ -109,14 +109,14 @@ def open_ltl_data(dirin, suffix=None, replace_dims=None, **kwargs):
     """
 
     if suffix is None:
-        pattern = os.path.join(dirin, '*.nc')
+        pattern = os.path.join(dir_in, '*.nc')
         filelist = glob(pattern)
         filelist.sort()
 
     else:
         filelist = []
         for s in suffix:
-            pattern =  os.path.join(dirin, f'*{s}*.nc')
+            pattern =  os.path.join(dir_in, f'*{s}*.nc')
             filelist +=  glob(pattern)
         filelist.sort()
 
@@ -156,10 +156,10 @@ def extract_ltl_data(data_array, mesh,
     else:
         depth = mesh['gdept_1d']
 
-    tmask = mesh['tmask']
+    t_mask = mesh['tmask']
 
     if 'tmaskutil' in mesh.variables:
-        tmask *= mesh['tmaskutil']
+        t_mask *= mesh['tmaskutil']
 
     if data_array.ndim == 4:
 
@@ -171,7 +171,7 @@ def extract_ltl_data(data_array, mesh,
             e3t = mesh['e3t_1d']
 
         # Create a vertical_weight mask
-        vertical_weight = e3t * tmask  # (1, z, lat, lon) or (time, z, lat, lon)
+        vertical_weight = e3t * t_mask  # (1, z, lat, lon) or (time, z, lat, lon)
 
         # If a maximum depth is provide, we mask data below
         if depth_max is None:
@@ -193,9 +193,10 @@ def extract_ltl_data(data_array, mesh,
         mask_dom = np.ones(tmask[0].shape)
 
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
-    tmask = tmask * mask_dom  # 0 if land or out of domain, else 1
 
-    horizontal_weight = (surf * tmask).isel(z=0).fillna(0)
+    t_mask = t_mask * mask_dom  # 0 if land or out of domain, else 1
+
+    horizontal_weight = (surf * t_mask)
 
     # Horizonal average of the biomass
     output = data_array.weighted(horizontal_weight).mean(dim=('x', 'y')) # time
@@ -372,25 +373,29 @@ def extract_weighted_data(data, const, mesh, varname,
     mesh = _shrink_mesh(mesh, data)
 
     if 'tmaskutil' in mesh.variables:
-        tmask = mesh['tmaskutil']
+        t_mask = mesh['tmaskutil']
     else:
-        tmask = mesh['tmask'].isel(z=0)
+        t_mask = mesh['tmask'].isel(z=0)
+
 
     surf = mesh['e1t'] * mesh['e2t']
 
+    t_mask = _squeeze_variable(t_mask)
+    surf = _squeeze_variable(mesh['e1t'] * mesh['e2t'])
+
     # extract the domain coordinates
     if mask_dom is None:
-        mask_dom = np.ones(tmask.shape)
+        mask_dom = np.ones(t_mask.shape)
 
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
     mask_dom = _shrink_mesh(mask_dom, data)
 
-    tmask = tmask * mask_dom
+    t_mask = t_mask * mask_dom
 
     oope = data['OOPE']
 
     # time, lat, lon, comm, w
-    weight = (tmask * surf * oope * const['weight_step']).fillna(0)
+    weight = (t_mask * surf * oope * const['weight_step']).fillna(0)
 
     output = (data[varname].weighted(weight)).mean(dims)
     return output
@@ -426,21 +431,23 @@ def extract_oope_data(data, mesh, mask_dom=None):
     surf = mesh['e2t'] * mesh['e1t']
 
     if 'tmaskutil' in mesh.variables:
-        tmask = mesh['tmaskutil']
+        t_mask = mesh['tmaskutil']
     else:
-        tmask = mesh['tmask'].isel(z=0)
+        t_mask = mesh['tmask']
+
+    t_mask = _squeeze_variable(t_mask)
 
     # extract the domain coordinates
     if mask_dom is None:
-        mask_dom = np.ones(tmask.shape)
+        mask_dom = np.ones(t_mask.shape)
 
     mask_dom = xr.DataArray(data=mask_dom, dims=['y', 'x'])
     mask_dom = _shrink_mesh(mask_dom, data)
 
     # add virtual dimensions to domain mask and
     # correct landsea mask
-    tmask = tmask * mask_dom
-    weight = (tmask * surf).fillna(0)  # time, lat, lon, comm, w
+    t_mask = t_mask * mask_dom
+    weight = (t_mask * surf).fillna(0)  # time, lat, lon, comm, w
 
     output = data.weighted(weight).mean(dim=('x', 'y'))  # time, com, w
     output.attrs['horizontal_norm_weight'] = weight.sum(dim=['x', 'y'])
@@ -448,27 +455,44 @@ def extract_oope_data(data, mesh, mask_dom=None):
 
     return output
 
-def open_fishing_data(dirin):
+def open_fishing_data(dir_in):
 
     """
         Opens Apecosm fishing output files : market_result.nc; fleet_maps_2d_X.nc;
         fleet_summary_X.nc; fleet_parameters_X.nc
 
-        :param dirin: Directory of Apecosm fishing outputs.
+        :param dir_in: Directory of Apecosm fishing outputs.
 
-        :type dirin: str
+        :type dir_in: str
     """
 
-    market = xr.open_dataset(os.path.join(dirin, "market_results.nc"))
+    pattern = os.path.join(dir_in, '*market_results*_wtime.nc')
+    filelist = glob(pattern)
+    filelist.sort()
+    market = xr.open_mfdataset(filelist)
     nb_fleet = len(market['fleet'])
 
     fleet_maps = {}
+    for i in np.arange(nb_fleet):
+        pattern = os.path.join(dir_in, '*fleet_maps_2d_'+str(i)+'*_wtime.nc')
+        filelist = glob(pattern)
+        filelist.sort()
+        fleet_maps[i] = xr.open_mfdataset(filelist)
+
     fleet_summary = {}
+    for i in np.arange(nb_fleet):
+        pattern = os.path.join(dir_in, '*fleet_summary_'+str(i)+'*_wtime.nc')
+        filelist = glob(pattern)
+        filelist.sort()
+        fleet_summary[i] = xr.open_mfdataset(filelist)
+        #fleet_summary[i] = xr.decode_cf(fleet_summary[i])
+
     fleet_parameters = {}
     for i in np.arange(nb_fleet):
-        fleet_maps[i] = xr.open_dataset(os.path.join(dirin, 'fleet_maps_2d_' + str(i) + '.nc'))
-        fleet_summary[i] = xr.open_dataset(os.path.join(dirin, 'fleet_summary_' + str(i) + '.nc'))
-        fleet_parameters[i] = xr.open_dataset(os.path.join(dirin, 'fleet_parameters_' + str(i) + '.nc'))
+        pattern = os.path.join(dir_in, '*fleet_parameters_'+str(i)+'*_wtime.nc')
+        filelist = glob(pattern)
+        filelist.sort()
+        fleet_parameters[i] = xr.open_mfdataset(filelist)
 
     return market, fleet_maps, fleet_summary, fleet_parameters
 
@@ -500,6 +524,12 @@ def read_report_params(csv_file_name):
             report_parameters['COL_GRID'] = (int(fields[1].replace(' (', '').split('/')[0])/256, int(fields[2].replace(' ', '').split('/')[0])/256, int(fields[3].replace(') ','').split('/')[0])/256)
         elif fields[0] == 'COL_MAP':
             report_parameters['COL_MAP'] = fields[1].replace(" ", "")
+        elif fields[0] == 'FISHING_PERIOD':
+            report_parameters['FISHING_PERIOD'] = fields[1].replace(" ", "")
+        elif fields[0] == 'APECOSM_PERIOD':
+            report_parameters['APECOSM_PERIOD'] = int(fields[1])
+        elif fields[0] == 'LAND_BACKGROUND':
+            report_parameters['LAND_BACKGROUND'] = bool(fields[1])
         elif fields[0] == 'fishing_output_dir':
             report_parameters['fishing_output_dir'] = fields[1].replace(" ", "")
         elif fields[0] == 'fishing_config_dir':
